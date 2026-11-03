@@ -442,7 +442,10 @@ export const Dashboard = () => {
               {/* Metric 2: Total Registered Patients */}
               <div
                 style={{ ...styles.dashKpiCard, cursor: 'pointer' }}
-                onClick={() => setActiveTab('patient-record')}
+                onClick={() => {
+                  setSelectedPatientId('');
+                  setActiveTab('patient-record');
+                }}
                 title="View Patient Records"
               >
                 <div style={styles.dashKpiTop}>
@@ -571,7 +574,10 @@ export const Dashboard = () => {
                 <button
                   type="button"
                   style={{ ...styles.dashShortcutPill, backgroundColor: 'var(--primary-soft)', borderColor: 'var(--primary)', color: 'var(--primary-dark)', fontWeight: 700 }}
-                  onClick={() => setActiveTab('patient-record')}
+                  onClick={() => {
+                    setSelectedPatientId('');
+                    setActiveTab('patient-record');
+                  }}
                 >
                   <span style={{ ...styles.dashKeyBadge, backgroundColor: 'var(--primary)', color: '#FFFFFF' }}>F3</span>
                   <span>New Consultation / Case</span>
@@ -691,7 +697,10 @@ export const Dashboard = () => {
                       <button
                         type="button"
                         style={styles.dashEmptyBtn}
-                        onClick={() => setActiveTab('patient-record')}
+                        onClick={() => {
+                          setSelectedPatientId('');
+                          setActiveTab('patient-record');
+                        }}
                       >
                         <UserPlus size={14} />
                         <span>Start New Consultation (F3)</span>
@@ -1234,7 +1243,12 @@ export const Dashboard = () => {
         {/* Exact Tab Navigation Sidebar */}
         <SidebarTabs
           activeTab={activeTab}
-          onSelectTab={setActiveTab}
+          onSelectTab={(tabId) => {
+            if (tabId === 'patient-record') {
+              setSelectedPatientId('');
+            }
+            setActiveTab(tabId);
+          }}
           onSearchFocus={handleSearchFocus}
           width={sidebarWidth}
         />

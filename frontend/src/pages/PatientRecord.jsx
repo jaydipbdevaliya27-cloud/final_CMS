@@ -27,6 +27,7 @@ import {
   Stethoscope,
   Receipt,
   Users,
+  UserPlus,
   ExternalLink,
   Languages,
   UtensilsCrossed,
@@ -156,6 +157,8 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
   const [patientHighlightIndex, setPatientHighlightIndex] = useState(0);
   const searchWrapRef = useRef(null);
+  const patientSearchInputRef = useRef(null);
+  const [recentPatientsList, setRecentPatientsList] = useState([]);
 
   const [currentPatient, setCurrentPatient] = useState(null);
   const [patientVisits, setPatientVisits] = useState([]);
@@ -441,20 +444,44 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
         if (selectedPatientId) {
           const res = await patientAPI.getById(selectedPatientId);
           if (res.success && res.patient) {
-            setCurrentPatient(res.patient);
+            handleSelectPatient(res.patient, true);
             return;
           }
         }
-        const allRes = await patientAPI.getAll('');
-        if (allRes.success && allRes.data && allRes.data.length > 0) {
-          setCurrentPatient(allRes.data[0]);
-        }
+        // Do NOT auto-load any patient by default!
+        // Start in search mode so doctor can search by patient name first.
+        setCurrentPatient(null);
+        setShowNewCaseForm(false);
+        showNewCaseFormRef.current = false;
       } catch (err) {
         console.error('Error loading initial patient:', err);
       }
     };
     initPatient();
   }, [selectedPatientId]);
+
+  // --- Load Recent Patients for Landing Search View ---
+  useEffect(() => {
+    if (!currentPatient) {
+      patientAPI
+        .getAll('')
+        .then((res) => {
+          if (res.success && Array.isArray(res.data)) {
+            setRecentPatientsList(res.data.slice(0, 8));
+          }
+        })
+        .catch((err) => console.error('Error fetching recent patients:', err));
+    }
+  }, [currentPatient]);
+
+  // --- Auto-focus Search Bar when in Search Mode ---
+  useEffect(() => {
+    if (!currentPatient) {
+      setTimeout(() => {
+        patientSearchInputRef.current?.focus();
+      }, 100);
+    }
+  }, [currentPatient]);
 
   // --- 2. Live Debounced Search for Patients ---
   useEffect(() => {
@@ -517,10 +544,13 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
     }
   }, [currentPatient?.patientId]);
 
-  const handleSelectPatient = (patient) => {
+  const handleSelectPatient = (patient, autoStartCase = true) => {
     setCurrentPatient(patient);
     setShowSearchDropdown(false);
     setPatientSearch('');
+    if (autoStartCase) {
+      handleOpenNewCase(patient);
+    }
   };
 
   // --- Open Family Due Details Modal ---
@@ -681,8 +711,9 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
   };
 
   // --- Open New Case Form ---
-  const handleOpenNewCase = () => {
-    if (!currentPatient) {
+  const handleOpenNewCase = (targetPatient = null) => {
+    const patientToUse = targetPatient || currentPatient;
+    if (!patientToUse) {
       showToast('Please search and select a patient first to start a new case visit.', 'error');
       return;
     }
@@ -694,6 +725,22 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
       ...initialVisitForm,
       visitDate: getTodayDateStr(),
       bp: '',
+      treatments: [{ id: Date.now() + '-t1', item: '', qty: '1' }],
+      prescriptions: [
+        {
+          id: Date.now() + '-p1',
+          medicine: '',
+          qty: '',
+          morning: '1',
+          noon: '0',
+          evening: '1',
+          night: '0',
+          timing: 'AF',
+        },
+      ],
+      charge: '0',
+      received: '0',
+      due: '0',
     };
     setVisitForm(freshForm);
     visitFormRef.current = freshForm;
@@ -704,7 +751,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
         bpInputRef.current.focus();
         bpInputRef.current.select?.();
       }
-    }, 80);
+    }, 100);
   };
 
   // --- Start Edit on an Existing Past Visit ---
@@ -988,6 +1035,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
           <div style={styles.searchInputWrapper}>
             <Search size={15} color="var(--text-muted)" style={styles.searchIcon} />
             <input
+              ref={patientSearchInputRef}
               type="text"
               value={patientSearch}
               onChange={(e) => setPatientSearch(e.target.value)}
@@ -1020,8 +1068,12 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                   setShowSearchDropdown(false);
                 }
               }}
-              placeholder="Universal Search: Name, Family ID (shows all members), Patient ID, Area..."
-              style={styles.searchInput}
+              placeholder="🔍 Search Patient by Name to Start Case Entry (e.g. Ramesh, Priya, Hitesh)..."
+              style={{
+                ...styles.searchInput,
+                borderColor: !currentPatient ? 'var(--primary)' : 'var(--border)',
+                boxShadow: !currentPatient ? '0 0 0 2px var(--primary-soft)' : 'var(--shadow-sm)',
+              }}
             />
             {patientSearch && (
               <button
@@ -1182,8 +1234,25 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
               </button>
             </div>
 
-            {/* Right: Delete & Edit Patient Buttons */}
+            {/* Right: Change Patient, Delete & Edit Patient Buttons */}
             <div style={styles.bannerActionsCol}>
+              <button
+                type="button"
+                onClick={() => {
+                  setCurrentPatient(null);
+                  setShowNewCaseForm(false);
+                  showNewCaseFormRef.current = false;
+                  setTimeout(() => {
+                    patientSearchInputRef.current?.focus();
+                  }, 80);
+                }}
+                style={styles.searchAnotherPatientBtn}
+                title="Search and switch to another patient"
+              >
+                <Search size={12} color="var(--primary)" />
+                <span>Change Patient</span>
+              </button>
+
               <button
                 type="button"
                 onClick={() => setShowDeleteModal(true)}
@@ -1274,18 +1343,87 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
           </div>
         </div>
       ) : (
-        <div style={styles.noPatientSelected}>
-          <User size={30} color="var(--text-muted)" />
-          <p style={styles.noPatientText}>
-            No patient selected. Search by name, Patient ID, or Family ID above.
+        <div style={styles.searchLandingHero}>
+          <div style={styles.searchLandingIconCircle}>
+            <Stethoscope size={32} color="var(--primary)" />
+          </div>
+          <h2 style={styles.searchLandingTitle}>OPD Patient Consultation</h2>
+          <p style={styles.searchLandingSubtitle}>
+            Search patient by name above, or click any recent patient below to immediately start case entry.
           </p>
-          <button
-            type="button"
-            onClick={onNavigateToAddMember}
-            style={styles.registerNewMemberBtn}
+
+          {/* Quick Search Focus Bar Hint */}
+          <div
+            style={styles.quickSearchHintBox}
+            onClick={() => patientSearchInputRef.current?.focus()}
+            title="Click to search patient by name"
           >
-            + Register New Member
-          </button>
+            <Search size={16} color="var(--primary)" />
+            <span style={styles.quickSearchHintText}>
+              Type patient name in search box above (e.g. Ramesh, Priya, Hitesh) and press Enter
+            </span>
+            <span style={styles.searchKeyPill}>↵ Enter</span>
+          </div>
+
+          {/* Recent OPD Patients Quick List */}
+          {recentPatientsList.length > 0 && (
+            <div style={styles.recentPatientsSection}>
+              <div style={styles.recentSectionHeader}>
+                <span style={styles.recentSectionTitle}>Recent OPD Patients</span>
+                <span style={styles.recentSectionSub}>Click any patient to open and start case entry</span>
+              </div>
+              <div style={styles.recentPatientsGrid}>
+                {recentPatientsList.map((p) => (
+                  <div
+                    key={p._id || p.patientId}
+                    style={styles.recentPatientCard}
+                    onClick={() => handleSelectPatient(p, true)}
+                    title={`Click to open Case Entry for ${p.name}`}
+                  >
+                    <div style={styles.recentPatientCardTop}>
+                      <span style={styles.recentPatientName}>{p.name}</span>
+                      <span style={styles.recentPatientPid}>{p.patientId}</span>
+                    </div>
+                    <div style={styles.recentPatientCardMeta}>
+                      <span>{p.relation || (p.isHead ? 'Head' : 'Member')}</span>
+                      <span>&bull;</span>
+                      <span>Age {p.age || '-'}</span>
+                      {p.bloodGroup && (
+                        <>
+                          <span>&bull;</span>
+                          <span>{p.bloodGroup}</span>
+                        </>
+                      )}
+                      {p.area && (
+                        <>
+                          <span>&bull;</span>
+                          <span>{p.area}</span>
+                        </>
+                      )}
+                    </div>
+                    <div style={styles.recentPatientStartBtn}>
+                      <Plus size={13} />
+                      <span>Start Case Entry</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Register New Patient Action */}
+          <div style={styles.newPatientRegisterFooter}>
+            <span style={styles.newPatientPromptText}>New patient visiting clinic for the first time?</span>
+            <button
+              type="button"
+              onClick={onNavigateToAddMember}
+              style={styles.registerNewMemberHeroBtn}
+              title="Register a new patient member (F2)"
+            >
+              <UserPlus size={14} />
+              <span>+ Register New Patient (F2)</span>
+            </button>
+          </div>
         </div>
       )}
 
@@ -3690,21 +3828,194 @@ const styles = {
     borderRadius: '3px',
   },
 
-  noPatientSelected: {
+  searchAnotherPatientBtn: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '4px',
+    backgroundColor: 'var(--surface-alt)',
+    border: '1px solid var(--border)',
+    color: 'var(--primary)',
+    fontSize: '11px',
+    fontWeight: 700,
+    padding: '4px 8px',
+    borderRadius: '5px',
+    cursor: 'pointer',
+    transition: 'all 0.15s ease',
+  },
+
+  searchLandingHero: {
     backgroundColor: '#FFFFFF',
-    border: '1px dashed var(--border)',
-    borderRadius: '6px',
-    padding: '20px',
+    border: '1px solid var(--border)',
+    borderRadius: '10px',
+    padding: '24px 20px',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: '8px',
+    justifyContent: 'flex-start',
+    gap: '10px',
     textAlign: 'center',
+    boxShadow: 'var(--shadow-sm)',
+    flex: 1,
+    overflowY: 'auto',
   },
-  noPatientText: {
-    fontSize: '12px',
+  searchLandingIconCircle: {
+    width: '58px',
+    height: '58px',
+    borderRadius: '50%',
+    backgroundColor: 'var(--primary-soft)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: '2px',
+  },
+  searchLandingTitle: {
+    fontSize: '17px',
+    fontWeight: 800,
+    color: 'var(--text)',
+    letterSpacing: '-0.02em',
+    margin: 0,
+  },
+  searchLandingSubtitle: {
+    fontSize: '12.5px',
     color: 'var(--text-muted)',
+    maxWidth: '520px',
+    margin: 0,
+    lineHeight: 1.4,
+  },
+  quickSearchHintBox: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    backgroundColor: 'var(--surface-alt)',
+    border: '1.5px dashed var(--primary)',
+    borderRadius: '8px',
+    padding: '9px 16px',
+    cursor: 'pointer',
+    marginTop: '4px',
+    maxWidth: '560px',
+    width: '100%',
+    transition: 'all 0.15s ease',
+  },
+  quickSearchHintText: {
+    fontSize: '12px',
+    color: 'var(--primary-dark)',
+    fontWeight: 600,
+    flex: 1,
+    textAlign: 'left',
+  },
+  searchKeyPill: {
+    fontSize: '10.5px',
+    fontWeight: 700,
+    backgroundColor: 'var(--primary)',
+    color: '#FFFFFF',
+    padding: '2px 8px',
+    borderRadius: '4px',
+    letterSpacing: '0.4px',
+  },
+  recentPatientsSection: {
+    width: '100%',
+    maxWidth: '820px',
+    marginTop: '12px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+  },
+  recentSectionHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '0 2px',
+    flexWrap: 'wrap',
+    gap: '4px',
+  },
+  recentSectionTitle: {
+    fontSize: '11.5px',
+    fontWeight: 700,
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
+    color: 'var(--text)',
+  },
+  recentSectionSub: {
+    fontSize: '11px',
+    color: 'var(--text-muted)',
+  },
+  recentPatientsGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+    gap: '8px',
+  },
+  recentPatientCard: {
+    backgroundColor: '#FFFFFF',
+    border: '1px solid var(--border)',
+    borderRadius: '7px',
+    padding: '9px 12px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '5px',
+    cursor: 'pointer',
+    textAlign: 'left',
+    transition: 'all 0.15s ease',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+  },
+  recentPatientCardTop: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  recentPatientName: {
+    fontSize: '12.5px',
+    fontWeight: 700,
+    color: 'var(--text)',
+  },
+  recentPatientPid: {
+    fontSize: '10px',
+    fontWeight: 700,
+    backgroundColor: 'var(--surface-alt)',
+    padding: '1px 5px',
+    borderRadius: '4px',
+    color: 'var(--primary)',
+  },
+  recentPatientCardMeta: {
+    fontSize: '11px',
+    color: 'var(--text-muted)',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+  },
+  recentPatientStartBtn: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '4px',
+    fontSize: '10.5px',
+    fontWeight: 700,
+    color: 'var(--primary)',
+    marginTop: '2px',
+  },
+  newPatientRegisterFooter: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    marginTop: '12px',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+  },
+  newPatientPromptText: {
+    fontSize: '11.5px',
+    color: 'var(--text-muted)',
+  },
+  registerNewMemberHeroBtn: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '6px',
+    backgroundColor: 'var(--primary)',
+    color: '#FFFFFF',
+    padding: '5px 12px',
+    borderRadius: '6px',
+    fontSize: '11.5px',
+    fontWeight: 700,
+    cursor: 'pointer',
+    border: 'none',
+    boxShadow: '0 2px 6px rgba(20, 107, 92, 0.25)',
   },
   registerNewMemberBtn: {
     backgroundColor: 'var(--primary)',
