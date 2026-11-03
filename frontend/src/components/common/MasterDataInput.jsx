@@ -1,0 +1,281 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { masterDataAPI } from '../../services/api';
+import { useDebounce } from '../../hooks/useDebounce';
+
+export const MasterDataInput = ({
+  type, // 'society' | 'area' | 'allergy' | 'complaint' | 'medicine' | 'investigation'
+  value,
+  onChange,
+  placeholder = '',
+  required = false,
+  style = {},
+  inputStyle = {},
+  onSelectCallback,
+  allowMultiple = false, // When true, supports comma-separated list and space-to-comma
+}) => {
+  const [suggestions, setSuggestions] = useState([]);
+  const [isOpen, setIsOpen] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(0);
+  const wrapperRef = useRef(null);
+  const inputRef = useRef(null);
+
+  // Extract active search token (text after last comma when allowMultiple is active)
+  const getActiveToken = (text) => {
+    if (!allowMultiple) return (text || '').trim();
+    const str = text || '';
+    const lastComma = str.lastIndexOf(',');
+    return (lastComma !== -1 ? str.slice(lastComma + 1) : str).trim();
+  };
+
+  const currentToken = getActiveToken(value);
+  const debouncedToken = useDebounce(currentToken, 200);
+
+  // Fetch suggestions for this type
+  useEffect(() => {
+    let active = true;
+    const fetchItems = async () => {
+      try {
+        const res = await masterDataAPI.getItems(type, debouncedToken || '');
+        if (active && res.success) {
+          setSuggestions(res.data || []);
+        }
+      } catch (err) {
+        console.error(`Error loading master data for ${type}:`, err);
+      }
+    };
+
+    fetchItems();
+    return () => {
+      active = false;
+    };
+  }, [type, debouncedToken]);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleInputChange = (e) => {
+    let val = e.target.value;
+
+    // When allowMultiple is enabled and space is typed after a word:
+    // "when we give space in complaint there will be added comma to add other complaints"
+    if (allowMultiple && val.endsWith(' ')) {
+      const trimmed = val.trimEnd();
+      if (trimmed.length > 0 && !trimmed.endsWith(',')) {
+        val = trimmed + ', ';
+      }
+    }
+
+    onChange(val);
+    setIsOpen(true);
+    setHighlightedIndex(0);
+  };
+
+  const selectItem = (item) => {
+    const selectedVal = item.value;
+
+    if (allowMultiple) {
+      const currentVal = value || '';
+      const lastCommaIdx = currentVal.lastIndexOf(',');
+      let prefix = '';
+      if (lastCommaIdx !== -1) {
+        prefix = currentVal.slice(0, lastCommaIdx + 1).trimEnd() + ' ';
+      }
+      const newVal = `${prefix}${selectedVal}, `;
+      onChange(newVal);
+
+      // Keep focus in input and cursor at end to immediately select the next complaint
+      setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.focus();
+          inputRef.current.setSelectionRange(newVal.length, newVal.length);
+        }
+      }, 0);
+
+      // Keep suggestions open for picking the next complaint
+      setIsOpen(true);
+      setHighlightedIndex(0);
+    } else {
+      onChange(selectedVal);
+      setIsOpen(false);
+    }
+
+    if (onSelectCallback) onSelectCallback(selectedVal);
+  };
+
+  const handleKeyDown = (e) => {
+    // If Space is pressed and allowMultiple is true:
+    if (allowMultiple && e.key === ' ') {
+      const val = value || '';
+      const input = inputRef.current;
+      const cursorPos = input ? input.selectionStart : val.length;
+      const beforeCursor = val.slice(0, cursorPos);
+      const afterCursor = val.slice(cursorPos);
+      const trimmedBefore = beforeCursor.trimEnd();
+
+      if (trimmedBefore.length > 0 && !trimmedBefore.endsWith(',')) {
+        e.preventDefault();
+        const newVal = trimmedBefore + ', ' + afterCursor.trimStart();
+        onChange(newVal);
+        setTimeout(() => {
+          if (inputRef.current) {
+            const nextPos = trimmedBefore.length + 2;
+            inputRef.current.setSelectionRange(nextPos, nextPos);
+          }
+        }, 0);
+        setIsOpen(true);
+        return;
+      }
+    }
+
+    // If Comma is pressed and allowMultiple is true:
+    if (allowMultiple && e.key === ',') {
+      const val = value || '';
+      const input = inputRef.current;
+      const cursorPos = input ? input.selectionStart : val.length;
+      const beforeCursor = val.slice(0, cursorPos);
+      const afterCursor = val.slice(cursorPos);
+      const trimmedBefore = beforeCursor.trimEnd();
+
+      if (trimmedBefore.length > 0 && !trimmedBefore.endsWith(',')) {
+        e.preventDefault();
+        const newVal = trimmedBefore + ', ' + afterCursor.trimStart();
+        onChange(newVal);
+        setTimeout(() => {
+          if (inputRef.current) {
+            const nextPos = trimmedBefore.length + 2;
+            inputRef.current.setSelectionRange(nextPos, nextPos);
+          }
+        }, 0);
+        setIsOpen(true);
+        return;
+      }
+    }
+
+    if (!isOpen || suggestions.length === 0) {
+      if (e.key === 'ArrowDown') {
+        setIsOpen(true);
+      }
+      return;
+    }
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setHighlightedIndex((prev) =>
+        prev < suggestions.length - 1 ? prev + 1 : 0
+      );
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHighlightedIndex((prev) =>
+        prev > 0 ? prev - 1 : suggestions.length - 1
+      );
+    } else if (e.key === 'Enter') {
+      // If there are suggestions, select the highlighted one or first match on Enter
+      if (suggestions.length > 0) {
+        e.preventDefault();
+        selectItem(suggestions[highlightedIndex] || suggestions[0]);
+      }
+    } else if (e.key === 'Escape') {
+      setIsOpen(false);
+    }
+  };
+
+  return (
+    <div ref={wrapperRef} style={{ position: 'relative', width: '100%', ...style }}>
+      <input
+        ref={inputRef}
+        type="text"
+        value={value}
+        onChange={handleInputChange}
+        onFocus={() => setIsOpen(true)}
+        onKeyDown={handleKeyDown}
+        placeholder={placeholder}
+        required={required}
+        style={{
+          width: '100%',
+          padding: '11px 14px',
+          fontSize: '0.92rem',
+          backgroundColor: 'var(--surface-alt)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-md)',
+          color: 'var(--text)',
+          ...inputStyle,
+        }}
+      />
+
+      {/* Suggestion Dropdown */}
+      {isOpen && suggestions.length > 0 && (
+        <ul style={styles.dropdown}>
+          {suggestions.map((item, idx) => {
+            const isHighlighted = idx === highlightedIndex;
+            return (
+              <li
+                key={item._id || idx}
+                onMouseDown={(e) => {
+                  e.preventDefault(); // prevents blur before click
+                  selectItem(item);
+                }}
+                onMouseEnter={() => setHighlightedIndex(idx)}
+                style={{
+                  ...styles.dropdownItem,
+                  backgroundColor: isHighlighted ? 'var(--primary-soft)' : 'transparent',
+                  color: isHighlighted ? 'var(--primary-dark)' : 'var(--text)',
+                  fontWeight: isHighlighted ? 600 : 400,
+                }}
+              >
+                <span>{item.value}</span>
+                {item.shortcut && (
+                  <span style={styles.shortcutBadge}>{item.shortcut}</span>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+};
+
+const styles = {
+  dropdown: {
+    position: 'absolute',
+    top: 'calc(100% + 4px)',
+    left: 0,
+    right: 0,
+    backgroundColor: 'var(--surface)',
+    border: '1px solid var(--border)',
+    borderRadius: '8px',
+    boxShadow: 'var(--shadow-md)',
+    maxHeight: '180px',
+    overflowY: 'auto',
+    listStyle: 'none',
+    zIndex: 100,
+    padding: '4px 0',
+  },
+  dropdownItem: {
+    padding: '9px 14px',
+    fontSize: '0.88rem',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    transition: 'background 0.15s ease',
+  },
+  shortcutBadge: {
+    fontSize: '0.72rem',
+    backgroundColor: 'var(--surface-alt)',
+    border: '1px solid var(--border)',
+    padding: '2px 6px',
+    borderRadius: '4px',
+    color: 'var(--text-muted)',
+    fontWeight: 600,
+  },
+};
+
