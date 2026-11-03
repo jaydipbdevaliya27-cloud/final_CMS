@@ -42,6 +42,8 @@ const cleanupStaleIndexes = async (db) => {
     { coll: 'visits', index: 'clinicId_1' },
     { coll: 'dietaries', index: 'clinicId_1_code_1' },
     { coll: 'dietaries', index: 'clinicId_1' },
+    { coll: 'certificates', index: 'clinicId_1' },
+    { coll: 'certificates', index: 'clinicId_1_certificateId_1' },
   ];
 
   for (const item of staleIndexes) {

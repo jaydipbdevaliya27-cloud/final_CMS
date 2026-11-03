@@ -288,6 +288,33 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
   const [visitForm, setVisitForm] = useState(initialVisitForm);
   const [isSavingVisit, setIsSavingVisit] = useState(false);
 
+  // Synchronous references to eliminate stale closures in keyboard shortcuts
+  const visitFormRef = useRef(visitForm);
+  visitFormRef.current = visitForm;
+
+  const editingVisitIdRef = useRef(editingVisitId);
+  editingVisitIdRef.current = editingVisitId;
+
+  const currentPatientRef = useRef(currentPatient);
+  currentPatientRef.current = currentPatient;
+
+  const attachedReportRef = useRef(attachedReport);
+  attachedReportRef.current = attachedReport;
+
+  const showNewCaseFormRef = useRef(showNewCaseForm);
+  showNewCaseFormRef.current = showNewCaseForm;
+
+  const handleSaveVisitRef = useRef();
+
+  // Helper to reliably update form field and sync ref immediately
+  const updateFormField = (field, value) => {
+    setVisitForm((prev) => {
+      const updated = { ...prev, [field]: value };
+      visitFormRef.current = updated;
+      return updated;
+    });
+  };
+
   const showToast = (text, type = 'success') => {
     setToastMessage({ text, type });
     setTimeout(() => setToastMessage({ text: '', type: 'success' }), 4000);
@@ -305,7 +332,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
     }
   }, [showNewCaseForm]);
 
-  // --- Global Keyboard Shortcuts: Alt+N or F3 for New Case, Ctrl+Enter for Save & Print ---
+  // --- Global Keyboard Shortcuts: Alt+N/F3 for New Case, Ctrl+S for Save Case, Ctrl+Enter for Save & Print ---
   useEffect(() => {
     const handleGlobalShortcuts = (e) => {
       // Don't intercept if an overlay modal is open
@@ -313,26 +340,46 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
         return;
       }
 
+      // 1. Open New Case: Alt+N or F3
       const isAltN = e.altKey && (e.key === 'n' || e.key === 'N');
       const isF3 = e.key === 'F3';
-
-      if (isAltN || (isF3 && !showNewCaseForm)) {
+      if (isAltN || (isF3 && !showNewCaseFormRef.current)) {
         e.preventDefault();
         handleOpenNewCase();
         return;
       }
 
-      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-        if (showNewCaseForm) {
+      // 2. Case Form Shortcuts: Active when New Case / Edit Visit Form is visible
+      if (showNewCaseFormRef.current) {
+        // A. Save Case without print: Ctrl+S or Alt+S
+        const isCtrlS = (e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S');
+        const isAltS = e.altKey && (e.key === 's' || e.key === 'S');
+        if (isCtrlS || isAltS) {
           e.preventDefault();
-          handleSaveVisit(true);
+          e.stopPropagation();
+          if (handleSaveVisitRef.current) {
+            handleSaveVisitRef.current(false);
+          }
+          return;
+        }
+
+        // B. Save & Print Case: Ctrl+Enter or Alt+P
+        const isCtrlEnter = (e.ctrlKey || e.metaKey) && e.key === 'Enter';
+        const isAltP = e.altKey && (e.key === 'p' || e.key === 'P');
+        if (isCtrlEnter || isAltP) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (handleSaveVisitRef.current) {
+            handleSaveVisitRef.current(true);
+          }
+          return;
         }
       }
     };
 
     window.addEventListener('keydown', handleGlobalShortcuts);
     return () => window.removeEventListener('keydown', handleGlobalShortcuts);
-  }, [showNewCaseForm, showAddReportModal, showTotalDueModal, showFamilyDueModal, showPrintModal]);
+  }, [showAddReportModal, showTotalDueModal, showFamilyDueModal, showPrintModal]);
 
   // --- Dragger Event Handlers ---
   useEffect(() => {
@@ -493,13 +540,17 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
 
   // --- Treatment Row Handlers (with Auto-Add on typing) ---
   const handleAddTreatment = () => {
-    setVisitForm((prev) => ({
-      ...prev,
-      treatments: [
-        ...prev.treatments,
-        { id: Date.now() + '-' + Math.random(), item: '', qty: '1' },
-      ],
-    }));
+    setVisitForm((prev) => {
+      const updated = {
+        ...prev,
+        treatments: [
+          ...prev.treatments,
+          { id: Date.now() + '-' + Math.random(), item: '', qty: '1' },
+        ],
+      };
+      visitFormRef.current = updated;
+      return updated;
+    });
   };
 
   const handleUpdateTreatment = (id, field, value) => {
@@ -511,7 +562,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
       );
 
       // Auto add new row when writing in the item field of the last row
-      if (isLast && field === 'item' && value && value.trim().length > 0) {
+      if (isLast && field === 'item' && value && String(value).trim().length > 0) {
         updated.push({
           id: Date.now() + '-' + Math.random(),
           item: '',
@@ -519,38 +570,46 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
         });
       }
 
-      return { ...prev, treatments: updated };
+      const res = { ...prev, treatments: updated };
+      visitFormRef.current = res;
+      return res;
     });
   };
 
   const handleRemoveTreatment = (id) => {
     setVisitForm((prev) => {
       const filtered = prev.treatments.filter((t) => t.id !== id);
-      return {
+      const res = {
         ...prev,
         treatments: filtered.length > 0 ? filtered : [{ id: Date.now() + '-t1', item: '', qty: '1' }],
       };
+      visitFormRef.current = res;
+      return res;
     });
   };
 
   // --- Prescription Row Handlers (with Auto-Add on typing) ---
   const handleAddPrescription = () => {
-    setVisitForm((prev) => ({
-      ...prev,
-      prescriptions: [
-        ...prev.prescriptions,
-        {
-          id: Date.now() + '-' + Math.random(),
-          medicine: '',
-          qty: '',
-          morning: '1',
-          noon: '0',
-          evening: '1',
-          night: '0',
-          timing: 'AF',
-        },
-      ],
-    }));
+    setVisitForm((prev) => {
+      const updated = {
+        ...prev,
+        prescriptions: [
+          ...prev.prescriptions,
+          {
+            id: Date.now() + '-' + Math.random(),
+            medicine: '',
+            qty: '',
+            morning: '1',
+            noon: '0',
+            evening: '1',
+            night: '0',
+            timing: 'AF',
+          },
+        ],
+      };
+      visitFormRef.current = updated;
+      return updated;
+    });
   };
 
   const handleUpdatePrescription = (id, field, value) => {
@@ -562,7 +621,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
       );
 
       // Auto add new row when writing in the medicine field of the last row
-      if (isLast && field === 'medicine' && value && value.trim().length > 0) {
+      if (isLast && field === 'medicine' && value && String(value).trim().length > 0) {
         updated.push({
           id: Date.now() + '-' + Math.random(),
           medicine: '',
@@ -575,14 +634,16 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
         });
       }
 
-      return { ...prev, prescriptions: updated };
+      const res = { ...prev, prescriptions: updated };
+      visitFormRef.current = res;
+      return res;
     });
   };
 
   const handleRemovePrescription = (id) => {
     setVisitForm((prev) => {
       const filtered = prev.prescriptions.filter((p) => p.id !== id);
-      return {
+      const res = {
         ...prev,
         prescriptions:
           filtered.length > 0
@@ -600,18 +661,30 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
               },
             ],
       };
+      visitFormRef.current = res;
+      return res;
     });
   };
 
   // --- Open New Case Form ---
   const handleOpenNewCase = () => {
+    if (!currentPatient) {
+      showToast('Please search and select a patient first to start a new case visit.', 'error');
+      return;
+    }
     setEditingVisitId(null);
-    setVisitForm({
+    editingVisitIdRef.current = null;
+    setAttachedReport(null);
+    attachedReportRef.current = null;
+    const freshForm = {
       ...initialVisitForm,
       visitDate: getTodayDateStr(),
       bp: '',
-    });
+    };
+    setVisitForm(freshForm);
+    visitFormRef.current = freshForm;
     setShowNewCaseForm(true);
+    showNewCaseFormRef.current = true;
     setTimeout(() => {
       if (bpInputRef.current) {
         bpInputRef.current.focus();
@@ -623,7 +696,8 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
   // --- Start Edit on an Existing Past Visit ---
   const handleStartEditVisit = (visit) => {
     setEditingVisitId(visit._id);
-    setVisitForm({
+    editingVisitIdRef.current = visit._id;
+    const formVals = {
       visitDate: visit.visitDate || getTodayDateStr(),
       bp: visit.bp || '',
       sugar: visit.sugar || '',
@@ -636,7 +710,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
           ? visit.treatments.map((t, idx) => ({
             id: t._id || `${Date.now()}-${idx}`,
             item: t.item,
-            qty: t.qty || '1',
+            qty: t.qty !== undefined && t.qty !== null ? String(t.qty) : '1',
           }))
           : [{ id: Date.now() + '-t1', item: '', qty: '1' }],
       prescriptions:
@@ -665,65 +739,82 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
           ],
       charge: String(visit.charge || 0),
       received: String(visit.received || 0),
-    });
+    };
+    setVisitForm(formVals);
+    visitFormRef.current = formVals;
     setAttachedReport(visit.labReport || null);
+    attachedReportRef.current = visit.labReport || null;
     setShowNewCaseForm(true);
+    showNewCaseFormRef.current = true;
     setTimeout(() => {
       if (bpInputRef.current) {
         bpInputRef.current.focus();
+        bpInputRef.current.select?.();
       }
     }, 80);
   };
 
   // --- Save / Update Visit & Optional Print ---
   const handleSaveVisit = async (andPrint = false) => {
-    if (!currentPatient) {
+    const patient = currentPatientRef.current || currentPatient;
+    if (!patient) {
       showToast('Please select a patient first', 'error');
       return;
     }
 
+    // Always read from the synchronous ref to guarantee the freshest user-entered values
+    const form = visitFormRef.current || visitForm;
+    const editingId = editingVisitIdRef.current !== undefined ? editingVisitIdRef.current : editingVisitId;
+    const labReport = attachedReportRef.current || attachedReport;
+
+    const formCharge = Math.max(0, Number(form.charge) || 0);
+    const formReceived = Math.max(0, Number(form.received) || 0);
+
     try {
       setIsSavingVisit(true);
       const payload = {
-        patientId: currentPatient.patientId,
-        familyId: currentPatient.familyId,
-        patientName: currentPatient.name,
-        visitDate: visitForm.visitDate,
-        bp: visitForm.bp,
-        sugar: visitForm.sugar,
-        other: visitForm.other,
-        reference: visitForm.reference,
-        investigation: (visitForm.investigation || '').replace(/,\s*$/, '').trim(),
-        complaint: (visitForm.complaint || '').replace(/,\s*$/, '').trim(),
-        treatments: visitForm.treatments
-          .filter((t) => t.item && t.item.trim())
-          .map((t) => ({ item: t.item.trim(), qty: t.qty.trim() || '1' })),
-        prescriptions: visitForm.prescriptions
-          .filter((p) => p.medicine && p.medicine.trim())
+        patientId: patient.patientId,
+        familyId: patient.familyId,
+        patientName: patient.name,
+        visitDate: form.visitDate || getTodayDateStr(),
+        bp: form.bp || '',
+        sugar: form.sugar || '',
+        other: form.other || '',
+        reference: form.reference || '',
+        investigation: (form.investigation || '').replace(/,\s*$/, '').trim(),
+        complaint: (form.complaint || '').replace(/,\s*$/, '').trim(),
+        treatments: (form.treatments || [])
+          .filter((t) => t && t.item && String(t.item).trim())
+          .map((t) => ({
+            item: String(t.item).trim(),
+            qty: String(t.qty || '').trim() || '1'
+          })),
+        prescriptions: (form.prescriptions || [])
+          .filter((p) => p && p.medicine && String(p.medicine).trim())
           .map((p) => ({
-            medicine: p.medicine.trim(),
-            qty: p.qty.trim(),
-            morning: p.morning.trim() || '1',
-            noon: p.noon.trim() || '0',
-            evening: p.evening.trim() || '1',
-            night: p.night.trim() || '0',
+            medicine: String(p.medicine).trim(),
+            qty: String(p.qty || '').trim(),
+            morning: String(p.morning || '').trim() || '1',
+            noon: String(p.noon || '').trim() || '0',
+            evening: String(p.evening || '').trim() || '1',
+            night: String(p.night || '').trim() || '0',
             timing: p.timing || 'AF',
           })),
-        charge: chargeNum,
-        received: receivedNum,
-        labReport: attachedReport || null,
+        charge: formCharge,
+        received: formReceived,
+        labReport: labReport || null,
       };
 
       let res;
-      if (editingVisitId) {
-        res = await visitAPI.update(editingVisitId, payload);
+      if (editingId) {
+        res = await visitAPI.update(editingId, payload);
       } else {
         res = await visitAPI.create(payload);
       }
 
       if (res.success) {
         showToast(
-          editingVisitId
+          editingId
             ? 'Visit record updated successfully!'
             : 'New visit saved successfully and dues updated!'
         );
@@ -740,23 +831,28 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
             : null,
         }));
 
-        loadPatientVisits(currentPatient.patientId);
+        loadPatientVisits(patient.patientId);
 
         // Reset and close case form
-        setVisitForm({
+        const resetForm = {
           ...initialVisitForm,
           visitDate: getTodayDateStr(),
-        });
+        };
+        setVisitForm(resetForm);
+        visitFormRef.current = resetForm;
         setEditingVisitId(null);
+        editingVisitIdRef.current = null;
         setAttachedReport(null);
+        attachedReportRef.current = null;
         setShowNewCaseForm(false);
+        showNewCaseFormRef.current = false;
 
         if (andPrint && res.visit) {
           setPrintVisit({
             ...res.visit,
-            patient: currentPatient,
+            patient: patient,
           });
-          setPrintDietary(res.visit.dietary || visitForm.dietary || '');
+          setPrintDietary(res.visit.dietary || form.dietary || '');
           setPrintLanguage('en');
           setShowPrintModal(true);
         }
@@ -768,6 +864,8 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
       setIsSavingVisit(false);
     }
   };
+
+  handleSaveVisitRef.current = handleSaveVisit;
 
   const handleDeleteVisit = async (visitId) => {
     if (!window.confirm('Are you sure you want to delete this visit record?')) return;
@@ -1209,9 +1307,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                       <input
                         type="date"
                         value={visitForm.visitDate}
-                        onChange={(e) =>
-                          setVisitForm({ ...visitForm, visitDate: e.target.value })
-                        }
+                        onChange={(e) => updateFormField('visitDate', e.target.value)}
                         style={styles.titleDateInput}
                       />
                     </div>
@@ -1232,7 +1328,10 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                         </button>
                         <button
                           type="button"
-                          onClick={() => setAttachedReport(null)}
+                          onClick={() => {
+                            setAttachedReport(null);
+                            attachedReportRef.current = null;
+                          }}
                           style={styles.detachReportBtn}
                           title="Detach this report from case"
                         >
@@ -1255,8 +1354,11 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                       type="button"
                       onClick={() => {
                         setShowNewCaseForm(false);
+                        showNewCaseFormRef.current = false;
                         setEditingVisitId(null);
+                        editingVisitIdRef.current = null;
                         setAttachedReport(null);
+                        attachedReportRef.current = null;
                       }}
                       style={styles.closeCaseBtn}
                       title="Close case entry form"
@@ -1275,9 +1377,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                       type="text"
                       placeholder="e.g. 120/80"
                       value={visitForm.bp}
-                      onChange={(e) =>
-                        setVisitForm({ ...visitForm, bp: e.target.value })
-                      }
+                      onChange={(e) => updateFormField('bp', e.target.value)}
                       style={styles.vitalsInput}
                     />
                   </div>
@@ -1288,9 +1388,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                       type="text"
                       placeholder="mg/dL"
                       value={visitForm.sugar}
-                      onChange={(e) =>
-                        setVisitForm({ ...visitForm, sugar: e.target.value })
-                      }
+                      onChange={(e) => updateFormField('sugar', e.target.value)}
                       style={styles.vitalsInput}
                     />
                   </div>
@@ -1301,9 +1399,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                       type="text"
                       placeholder="Pulse/Temp"
                       value={visitForm.other}
-                      onChange={(e) =>
-                        setVisitForm({ ...visitForm, other: e.target.value })
-                      }
+                      onChange={(e) => updateFormField('other', e.target.value)}
                       style={styles.vitalsInput}
                     />
                   </div>
@@ -1314,9 +1410,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                       type="text"
                       placeholder="Dr. Ref"
                       value={visitForm.reference}
-                      onChange={(e) =>
-                        setVisitForm({ ...visitForm, reference: e.target.value })
-                      }
+                      onChange={(e) => updateFormField('reference', e.target.value)}
                       style={styles.vitalsInput}
                     />
                   </div>
@@ -1327,9 +1421,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                       type="investigation"
                       allowMultiple={true}
                       value={visitForm.investigation}
-                      onChange={(val) =>
-                        setVisitForm({ ...visitForm, investigation: val })
-                      }
+                      onChange={(val) => updateFormField('investigation', val)}
                       placeholder="CBC, X-Ray, etc."
                       inputStyle={styles.vitalsInput}
                     />
@@ -1341,9 +1433,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                       type="complaint"
                       allowMultiple={true}
                       value={visitForm.complaint}
-                      onChange={(val) =>
-                        setVisitForm({ ...visitForm, complaint: val })
-                      }
+                      onChange={(val) => updateFormField('complaint', val)}
                       placeholder="Fever, Cough, etc."
                       inputStyle={styles.vitalsInput}
                     />
@@ -1564,9 +1654,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                         type="number"
                         min="0"
                         value={visitForm.charge}
-                        onChange={(e) =>
-                          setVisitForm({ ...visitForm, charge: e.target.value })
-                        }
+                        onChange={(e) => updateFormField('charge', e.target.value)}
                         style={styles.billingInput}
                       />
                     </div>
@@ -1577,9 +1665,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                         type="number"
                         min="0"
                         value={visitForm.received}
-                        onChange={(e) =>
-                          setVisitForm({ ...visitForm, received: e.target.value })
-                        }
+                        onChange={(e) => updateFormField('received', e.target.value)}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
                             e.preventDefault();
@@ -1587,7 +1673,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                           }
                         }}
                         style={styles.billingInput}
-                        title="Press Enter to Save & Print Case"
+                        title="Press Enter to Save & Print Case (or Ctrl+Enter)"
                       />
                     </div>
 
@@ -1610,7 +1696,11 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                       type="button"
                       onClick={() => {
                         setShowNewCaseForm(false);
+                        showNewCaseFormRef.current = false;
                         setEditingVisitId(null);
+                        editingVisitIdRef.current = null;
+                        setAttachedReport(null);
+                        attachedReportRef.current = null;
                       }}
                       style={styles.cancelDraftBtn}
                     >
@@ -1622,9 +1712,11 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                       onClick={() => handleSaveVisit(false)}
                       disabled={isSavingVisit}
                       style={styles.saveOnlyBtn}
+                      title="Save Case without printing (Shortcut: Ctrl+S or Alt+S)"
                     >
                       <Save size={14} />
                       <span>{isSavingVisit ? 'Saving...' : editingVisitId ? 'Update Case' : 'Save Case'}</span>
+                      <span style={styles.shortcutPill}>Ctrl+S</span>
                     </button>
 
                     <button
@@ -1632,25 +1724,13 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                       onClick={() => handleSaveVisit(true)}
                       disabled={isSavingVisit}
                       style={styles.saveAndPrintBtn}
-                      title="Save and print case (Enter / Ctrl+Enter)"
+                      title="Save and Print Prescription (Shortcut: Ctrl+Enter)"
                     >
                       <Printer size={14} />
                       <span>
                         {isSavingVisit ? 'Recording...' : editingVisitId ? 'Update & Print' : 'Save & Print'}
                       </span>
-                      <span
-                        style={{
-                          fontSize: '10px',
-                          opacity: 0.9,
-                          backgroundColor: 'rgba(255,255,255,0.22)',
-                          padding: '1px 5px',
-                          borderRadius: '4px',
-                          marginLeft: '4px',
-                          fontWeight: 'bold',
-                        }}
-                      >
-                        Enter
-                      </span>
+                      <span style={styles.shortcutPillLight}>Ctrl+Enter</span>
                     </button>
                   </div>
                 </div>
@@ -2201,6 +2281,14 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
       {showPrintModal && printVisit && (() => {
         const t = RX_TRANSLATIONS[printLanguage] || RX_TRANSLATIONS.en;
         const formattedDate = formatRxDate(printVisit.visitDate);
+        const visitTime = printVisit.createdAt
+          ? new Date(printVisit.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })
+          : '';
+        const dateTimeDisplay = visitTime ? `${formattedDate}  ${visitTime}` : formattedDate;
+        const validTreatments = Array.isArray(printVisit.treatments)
+          ? printVisit.treatments.filter((tr) => tr && tr.item && String(tr.item).trim())
+          : [];
+        const hasTreatments = validTreatments.length > 0;
         const dietaryItems = (printDietary || '')
           .split(',')
           .map((item) => item.trim())
@@ -2528,6 +2616,76 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                       {formattedDate}
                     </span>
                   </div>
+                </div>
+
+                {/* 2B. CLINICAL VITALS & CASE OBSERVATIONS (MATCHING DR. CHIRAG PAGHDAL'S LETTERPAD BLUEPRINT) */}
+                <div style={styles.letterpadClinicalBox}>
+                  {/* Row 1: Date - Time | BP | Sugar | Other */}
+                  <div style={styles.letterpadClinicalRow}>
+                    <div style={styles.letterpadVitalsItem}>
+                      <span style={styles.clinicalHeaderLabel}>Date - Time :</span>
+                      <span style={styles.clinicalValueUnderline}>{dateTimeDisplay}</span>
+                    </div>
+
+                    <div style={styles.letterpadVitalsItem}>
+                      <span style={styles.clinicalHeaderLabel}>BP :</span>
+                      <span style={styles.clinicalValueUnderline}>{printVisit.bp || '--'}</span>
+                    </div>
+
+                    <div style={styles.letterpadVitalsItem}>
+                      <span style={styles.clinicalHeaderLabel}>Sugar :</span>
+                      <span style={styles.clinicalValueUnderline}>
+                        {printVisit.sugar ? `${printVisit.sugar} mg/dL` : '--'}
+                      </span>
+                    </div>
+
+                    <div style={styles.letterpadVitalsItem}>
+                      <span style={styles.clinicalHeaderLabel}>Other :</span>
+                      <span style={styles.clinicalValueUnderline}>{printVisit.other || '--'}</span>
+                    </div>
+                  </div>
+
+                  {/* Row 2: Reference & Investigation (when available) */}
+                  {(printVisit.reference || printVisit.investigation) && (
+                    <div style={styles.letterpadClinicalRow}>
+                      {printVisit.reference && (
+                        <div style={styles.letterpadVitalsItem}>
+                          <span style={styles.clinicalHeaderLabel}>Reference :</span>
+                          <span style={styles.clinicalValueUnderline}>{printVisit.reference}</span>
+                        </div>
+                      )}
+                      {printVisit.investigation && (
+                        <div style={styles.letterpadVitalsItem}>
+                          <span style={styles.clinicalHeaderLabel}>Investigation :</span>
+                          <span style={styles.clinicalValueUnderline}>{printVisit.investigation}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Row 3: [ T ] Treatments in Clinic & • Complaints */}
+                  {(hasTreatments || printVisit.complaint) && (
+                    <div style={styles.letterpadTreatmentsComplaintsRow}>
+                      {hasTreatments && (
+                        <div style={styles.letterpadTreatmentGroup}>
+                          <span style={styles.letterpadTBox}>[ T ]</span>
+                          <span style={styles.letterpadTreatmentText}>
+                            {validTreatments
+                              .map((tr) => `${tr.item}${tr.qty ? ` (${tr.qty})` : ''}`)
+                              .join(', ')}
+                          </span>
+                        </div>
+                      )}
+
+                      {printVisit.complaint && (
+                        <div style={styles.letterpadComplaintGroup}>
+                          <span style={styles.complaintBulletPoint}>&bull;</span>
+                          <span style={styles.complaintTitleLabel}>Complaints :</span>
+                          <span style={styles.complaintTextValue}>{printVisit.complaint}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* 3. PRESCRIPTION BODY */}
@@ -3954,6 +4112,26 @@ const styles = {
     gap: '5px',
     cursor: 'pointer',
   },
+  shortcutPill: {
+    fontSize: '10px',
+    fontWeight: 700,
+    backgroundColor: '#EEF2F6',
+    color: '#475569',
+    padding: '1px 5px',
+    borderRadius: '4px',
+    marginLeft: '4px',
+    border: '1px solid #CBD5E1',
+  },
+  shortcutPillLight: {
+    fontSize: '10px',
+    fontWeight: 700,
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
+    color: '#FFFFFF',
+    padding: '1px 5px',
+    borderRadius: '4px',
+    marginLeft: '4px',
+    border: '1px solid rgba(255, 255, 255, 0.35)',
+  },
 
   // Dragger Bars
   verticalDraggerBar: {
@@ -4769,6 +4947,98 @@ const styles = {
     paddingBottom: '1px',
     minWidth: '95px',
     textAlign: 'center',
+  },
+  letterpadClinicalBox: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '5px',
+    padding: '4px 0 6px 0',
+    borderBottom: '1px solid #94A3B8',
+    marginBottom: '8px',
+    position: 'relative',
+    zIndex: 1,
+  },
+  letterpadClinicalRow: {
+    display: 'flex',
+    alignItems: 'baseline',
+    gap: '20px',
+    flexWrap: 'wrap',
+  },
+  letterpadVitalsItem: {
+    display: 'flex',
+    alignItems: 'baseline',
+    gap: '6px',
+    minWidth: '100px',
+  },
+  clinicalHeaderLabel: {
+    fontSize: '11px',
+    fontWeight: 900,
+    color: '#000000',
+    letterSpacing: '0.4px',
+    textTransform: 'uppercase',
+  },
+  clinicalValueUnderline: {
+    fontSize: '12px',
+    fontWeight: 700,
+    color: '#0F172A',
+    borderBottom: '1px dashed #64748B',
+    paddingBottom: '1px',
+    minWidth: '40px',
+  },
+  letterpadTreatmentsComplaintsRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '16px',
+    flexWrap: 'wrap',
+    marginTop: '2px',
+  },
+  letterpadTreatmentGroup: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+  },
+  letterpadTBox: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    border: '1.5px solid #000000',
+    borderRadius: '3px',
+    fontWeight: 900,
+    fontSize: '11px',
+    padding: '0 4px',
+    height: '18px',
+    backgroundColor: '#F8FAFC',
+    color: '#000000',
+    lineHeight: 1,
+    letterSpacing: '0.5px',
+  },
+  letterpadTreatmentText: {
+    fontSize: '11.5px',
+    fontWeight: 700,
+    color: '#0F172A',
+  },
+  letterpadComplaintGroup: {
+    display: 'flex',
+    alignItems: 'baseline',
+    gap: '4px',
+  },
+  complaintBulletPoint: {
+    fontSize: '14px',
+    fontWeight: 900,
+    color: '#000000',
+    lineHeight: 1,
+  },
+  complaintTitleLabel: {
+    fontSize: '11px',
+    fontWeight: 900,
+    color: '#000000',
+    letterSpacing: '0.3px',
+    textTransform: 'uppercase',
+  },
+  complaintTextValue: {
+    fontSize: '11.5px',
+    fontWeight: 700,
+    color: '#0F172A',
   },
   letterpadPharmacyBar: {
     marginTop: '22px',

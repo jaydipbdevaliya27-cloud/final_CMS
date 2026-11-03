@@ -47,7 +47,7 @@ const visitSchema = new mongoose.Schema(
     bp: {
       type: String,
       trim: true,
-      default: '120/80',
+      default: '',
     },
     sugar: {
       type: String,
