@@ -1,7 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { patientAPI, visitAPI, masterDataAPI, familyAPI } from '../services/api';
-import { MasterDataInput } from '../components/common/MasterDataInput';
+import {
+  MasterDataInput,
+  preloadMasterData,
+  resolveMasterShortcut,
+} from '../components/common/MasterDataInput';
 import { useDebounce } from '../hooks/useDebounce';
 import { InvestigationReportModal } from '../components/reports/InvestigationReportModal';
 import {
@@ -288,31 +292,54 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
   const [visitForm, setVisitForm] = useState(initialVisitForm);
   const [isSavingVisit, setIsSavingVisit] = useState(false);
 
+  // Preload master data in memory on component mount for zero-latency shortcut auto-resolve
+  useEffect(() => {
+    preloadMasterData('medicine');
+    preloadMasterData('complaint');
+    preloadMasterData('investigation');
+    preloadMasterData('allergy');
+    preloadMasterData('area');
+    preloadMasterData('society');
+    preloadMasterData('dietary');
+  }, []);
+
   // Synchronous references to eliminate stale closures in keyboard shortcuts
   const visitFormRef = useRef(visitForm);
-  visitFormRef.current = visitForm;
+  useEffect(() => {
+    visitFormRef.current = visitForm;
+  }, [visitForm]);
 
   const editingVisitIdRef = useRef(editingVisitId);
-  editingVisitIdRef.current = editingVisitId;
+  useEffect(() => {
+    editingVisitIdRef.current = editingVisitId;
+  }, [editingVisitId]);
 
   const currentPatientRef = useRef(currentPatient);
-  currentPatientRef.current = currentPatient;
+  useEffect(() => {
+    currentPatientRef.current = currentPatient;
+  }, [currentPatient]);
 
   const attachedReportRef = useRef(attachedReport);
-  attachedReportRef.current = attachedReport;
+  useEffect(() => {
+    attachedReportRef.current = attachedReport;
+  }, [attachedReport]);
 
   const showNewCaseFormRef = useRef(showNewCaseForm);
-  showNewCaseFormRef.current = showNewCaseForm;
+  useEffect(() => {
+    showNewCaseFormRef.current = showNewCaseForm;
+  }, [showNewCaseForm]);
 
   const handleSaveVisitRef = useRef();
   const isSavingVisitRef = useRef(false);
 
   // Helper to reliably update form field and sync ref immediately
   const updateFormField = (field, value) => {
-    const current = visitFormRef.current || visitForm;
-    const updated = { ...current, [field]: value };
-    visitFormRef.current = updated;
-    setVisitForm(updated);
+    setVisitForm((prev) => {
+      const current = prev || visitFormRef.current || visitForm;
+      const updated = { ...current, [field]: value };
+      visitFormRef.current = updated;
+      return updated;
+    });
   };
 
   const showToast = (text, type = 'success') => {
@@ -368,9 +395,14 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
         if (isCtrlS || isAltS) {
           e.preventDefault();
           e.stopPropagation();
-          if (handleSaveVisitRef.current && !isSavingVisitRef.current) {
-            handleSaveVisitRef.current(false);
+          if (document.activeElement && typeof document.activeElement.blur === 'function') {
+            document.activeElement.blur();
           }
+          setTimeout(() => {
+            if (handleSaveVisitRef.current && !isSavingVisitRef.current) {
+              handleSaveVisitRef.current(false);
+            }
+          }, 35);
           return;
         }
 
@@ -380,9 +412,14 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
         if (isCtrlEnter || isAltP) {
           e.preventDefault();
           e.stopPropagation();
-          if (handleSaveVisitRef.current && !isSavingVisitRef.current) {
-            handleSaveVisitRef.current(true);
+          if (document.activeElement && typeof document.activeElement.blur === 'function') {
+            document.activeElement.blur();
           }
+          setTimeout(() => {
+            if (handleSaveVisitRef.current && !isSavingVisitRef.current) {
+              handleSaveVisitRef.current(true);
+            }
+          }, 35);
           return;
         }
       }
@@ -539,60 +576,96 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
 
   // --- Treatment Row Handlers (with Auto-Add on typing) ---
   const handleAddTreatment = () => {
-    const current = visitFormRef.current || visitForm;
-    const updated = {
-      ...current,
-      treatments: [
-        ...(current.treatments || []),
-        { id: Date.now() + '-' + Math.random(), item: '', qty: '1' },
-      ],
-    };
-    visitFormRef.current = updated;
-    setVisitForm(updated);
+    setVisitForm((prev) => {
+      const current = prev || visitFormRef.current || visitForm;
+      const updated = {
+        ...current,
+        treatments: [
+          ...(current.treatments || []),
+          { id: Date.now() + '-' + Math.random(), item: '', qty: '1' },
+        ],
+      };
+      visitFormRef.current = updated;
+      return updated;
+    });
   };
 
   const handleUpdateTreatment = (id, field, value) => {
-    const current = visitFormRef.current || visitForm;
-    const treatments = current.treatments || [];
-    const idx = treatments.findIndex((t) => t.id === id);
-    const isLast = idx === treatments.length - 1;
-    const updated = treatments.map((t) =>
-      t.id === id ? { ...t, [field]: value } : t
-    );
+    setVisitForm((prev) => {
+      const current = prev || visitFormRef.current || visitForm;
+      const treatments = current.treatments || [];
+      const idx = treatments.findIndex((t) => t.id === id);
+      const isLast = idx === treatments.length - 1;
+      const updated = treatments.map((t) =>
+        t.id === id ? { ...t, [field]: value } : t
+      );
 
-    // Auto add new row when writing in the item field of the last row
-    if (isLast && field === 'item' && value && String(value).trim().length > 0) {
-      updated.push({
-        id: Date.now() + '-' + Math.random(),
-        item: '',
-        qty: '1',
-      });
-    }
+      // Auto add new row when writing in the item field of the last row
+      if (isLast && field === 'item' && value && String(value).trim().length > 0) {
+        updated.push({
+          id: Date.now() + '-' + Math.random(),
+          item: '',
+          qty: '1',
+        });
+      }
 
-    const res = { ...current, treatments: updated };
-    visitFormRef.current = res;
-    setVisitForm(res);
+      const res = { ...current, treatments: updated };
+      visitFormRef.current = res;
+      return res;
+    });
   };
 
   const handleRemoveTreatment = (id) => {
-    const current = visitFormRef.current || visitForm;
-    const filtered = (current.treatments || []).filter((t) => t.id !== id);
-    const res = {
-      ...current,
-      treatments: filtered.length > 0 ? filtered : [{ id: Date.now() + '-t1', item: '', qty: '1' }],
-    };
-    visitFormRef.current = res;
-    setVisitForm(res);
+    setVisitForm((prev) => {
+      const current = prev || visitFormRef.current || visitForm;
+      const filtered = (current.treatments || []).filter((t) => t.id !== id);
+      const res = {
+        ...current,
+        treatments: filtered.length > 0 ? filtered : [{ id: Date.now() + '-t1', item: '', qty: '1' }],
+      };
+      visitFormRef.current = res;
+      return res;
+    });
   };
 
   // --- Prescription Row Handlers (with Auto-Add on typing) ---
   const handleAddPrescription = () => {
-    const current = visitFormRef.current || visitForm;
-    const updated = {
-      ...current,
-      prescriptions: [
-        ...(current.prescriptions || []),
-        {
+    setVisitForm((prev) => {
+      const current = prev || visitFormRef.current || visitForm;
+      const updated = {
+        ...current,
+        prescriptions: [
+          ...(current.prescriptions || []),
+          {
+            id: Date.now() + '-' + Math.random(),
+            medicine: '',
+            qty: '',
+            morning: '1',
+            noon: '0',
+            evening: '1',
+            night: '0',
+            timing: 'AF',
+          },
+        ],
+      };
+      visitFormRef.current = updated;
+      return updated;
+    });
+  };
+
+  const handleUpdatePrescription = (id, field, value) => {
+    setVisitForm((prev) => {
+      const current = prev || visitFormRef.current || visitForm;
+      const prescriptions = current.prescriptions || [];
+      const idx = prescriptions.findIndex((p) => p.id === id);
+      const isLast = idx === prescriptions.length - 1;
+      const updated = prescriptions.map((p) =>
+        p.id === id ? { ...p, [field]: value } : p
+      );
+
+      // Auto add new row when writing in the medicine field of the last row
+      if (isLast && field === 'medicine' && value && String(value).trim().length > 0) {
+        updated.push({
           id: Date.now() + '-' + Math.random(),
           medicine: '',
           qty: '',
@@ -601,64 +674,40 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
           evening: '1',
           night: '0',
           timing: 'AF',
-        },
-      ],
-    };
-    visitFormRef.current = updated;
-    setVisitForm(updated);
-  };
+        });
+      }
 
-  const handleUpdatePrescription = (id, field, value) => {
-    const current = visitFormRef.current || visitForm;
-    const prescriptions = current.prescriptions || [];
-    const idx = prescriptions.findIndex((p) => p.id === id);
-    const isLast = idx === prescriptions.length - 1;
-    const updated = prescriptions.map((p) =>
-      p.id === id ? { ...p, [field]: value } : p
-    );
-
-    // Auto add new row when writing in the medicine field of the last row
-    if (isLast && field === 'medicine' && value && String(value).trim().length > 0) {
-      updated.push({
-        id: Date.now() + '-' + Math.random(),
-        medicine: '',
-        qty: '',
-        morning: '1',
-        noon: '0',
-        evening: '1',
-        night: '0',
-        timing: 'AF',
-      });
-    }
-
-    const res = { ...current, prescriptions: updated };
-    visitFormRef.current = res;
-    setVisitForm(res);
+      const res = { ...current, prescriptions: updated };
+      visitFormRef.current = res;
+      return res;
+    });
   };
 
   const handleRemovePrescription = (id) => {
-    const current = visitFormRef.current || visitForm;
-    const filtered = (current.prescriptions || []).filter((p) => p.id !== id);
-    const res = {
-      ...current,
-      prescriptions:
-        filtered.length > 0
-          ? filtered
-          : [
-            {
-              id: Date.now() + '-p1',
-              medicine: '',
-              qty: '',
-              morning: '1',
-              noon: '0',
-              evening: '1',
-              night: '0',
-              timing: 'AF',
-            },
-          ],
-    };
-    visitFormRef.current = res;
-    setVisitForm(res);
+    setVisitForm((prev) => {
+      const current = prev || visitFormRef.current || visitForm;
+      const filtered = (current.prescriptions || []).filter((p) => p.id !== id);
+      const res = {
+        ...current,
+        prescriptions:
+          filtered.length > 0
+            ? filtered
+            : [
+              {
+                id: Date.now() + '-p1',
+                medicine: '',
+                qty: '',
+                morning: '1',
+                noon: '0',
+                evening: '1',
+                night: '0',
+                timing: 'AF',
+              },
+            ],
+      };
+      visitFormRef.current = res;
+      return res;
+    });
   };
 
   // --- Open New Case Form ---
@@ -786,24 +835,33 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
     const formCharge = Math.max(0, Number(form.charge) || 0);
     const formReceived = Math.max(0, Number(form.received) || 0);
 
+    // Auto-resolve any shortcuts typed in treatments & prescriptions using master data cache
     const validTreatments = (form.treatments || [])
-      .filter((t) => t && t.item && String(t.item).trim())
-      .map((t) => ({
-        item: String(t.item).trim(),
-        qty: String(t.qty || '').trim() || '1',
-      }));
+      .map((t) => {
+        const rawItem = (t?.item || '').trim();
+        const resolvedItem = resolveMasterShortcut('medicine', rawItem);
+        return {
+          item: resolvedItem,
+          qty: String(t?.qty || '').trim() || '1',
+        };
+      })
+      .filter((t) => t && t.item && String(t.item).trim());
 
     const validPrescriptions = (form.prescriptions || [])
-      .filter((p) => p && p.medicine && String(p.medicine).trim())
-      .map((p) => ({
-        medicine: String(p.medicine).trim(),
-        qty: String(p.qty || '').trim(),
-        morning: String(p.morning || '').trim() || '1',
-        noon: String(p.noon || '').trim() || '0',
-        evening: String(p.evening || '').trim() || '1',
-        night: String(p.night || '').trim() || '0',
-        timing: p.timing || 'AF',
-      }));
+      .map((p) => {
+        const rawMed = (p?.medicine || '').trim();
+        const resolvedMed = resolveMasterShortcut('medicine', rawMed);
+        return {
+          medicine: resolvedMed,
+          qty: String(p?.qty || '').trim(),
+          morning: String(p?.morning || '').trim() || '1',
+          noon: String(p?.noon || '').trim() || '0',
+          evening: String(p?.evening || '').trim() || '1',
+          night: String(p?.night || '').trim() || '0',
+          timing: p?.timing || 'AF',
+        };
+      })
+      .filter((p) => p && p.medicine && String(p.medicine).trim());
 
     const hasAnyData =
       (form.bp && form.bp.trim()) ||
@@ -1508,10 +1566,17 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                     <label style={styles.miniLabel}>BP</label>
                     <input
                       ref={bpInputRef}
+                      id="case-bp-input"
                       type="text"
                       placeholder="e.g. 120/80"
                       value={visitForm.bp}
                       onChange={(e) => updateFormField('bp', e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          document.getElementById('case-sugar-input')?.focus();
+                        }
+                      }}
                       style={styles.vitalsInput}
                     />
                   </div>
@@ -1519,10 +1584,17 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                   <div style={{ ...styles.fieldCol, width: '68px', flexShrink: 0 }}>
                     <label style={styles.miniLabel}>SUGAR</label>
                     <input
+                      id="case-sugar-input"
                       type="text"
                       placeholder="mg/dL"
                       value={visitForm.sugar}
                       onChange={(e) => updateFormField('sugar', e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          document.getElementById('case-other-input')?.focus();
+                        }
+                      }}
                       style={styles.vitalsInput}
                     />
                   </div>
@@ -1530,10 +1602,17 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                   <div style={{ ...styles.fieldCol, width: '76px', flexShrink: 0 }}>
                     <label style={styles.miniLabel}>OTHER</label>
                     <input
+                      id="case-other-input"
                       type="text"
                       placeholder="Pulse/Temp"
                       value={visitForm.other}
                       onChange={(e) => updateFormField('other', e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          document.getElementById('case-ref-input')?.focus();
+                        }
+                      }}
                       style={styles.vitalsInput}
                     />
                   </div>
@@ -1541,10 +1620,17 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                   <div style={{ ...styles.fieldCol, width: '86px', flexShrink: 0 }}>
                     <label style={styles.miniLabel}>REFERENCE</label>
                     <input
+                      id="case-ref-input"
                       type="text"
                       placeholder="Dr. Ref"
                       value={visitForm.reference}
                       onChange={(e) => updateFormField('reference', e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          document.getElementById('case-inv-input')?.focus();
+                        }
+                      }}
                       style={styles.vitalsInput}
                     />
                   </div>
@@ -1552,10 +1638,12 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                   <div style={{ ...styles.fieldCol, flex: '1 1 130px', minWidth: '120px' }}>
                     <label style={styles.miniLabel}>INVESTIGATION</label>
                     <MasterDataInput
+                      id="case-inv-input"
                       type="investigation"
                       allowMultiple={true}
                       value={visitForm.investigation}
                       onChange={(val) => updateFormField('investigation', val)}
+                      onEnterNext={() => document.getElementById('case-comp-input')?.focus()}
                       placeholder="CBC, X-Ray, etc."
                       inputStyle={styles.vitalsInput}
                     />
@@ -1564,10 +1652,17 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                   <div style={{ ...styles.fieldCol, flex: '1.4 1 150px', minWidth: '130px' }}>
                     <label style={styles.miniLabel}>COMPLAINT</label>
                     <MasterDataInput
+                      id="case-comp-input"
                       type="complaint"
                       allowMultiple={true}
                       value={visitForm.complaint}
                       onChange={(val) => updateFormField('complaint', val)}
+                      onEnterNext={() => {
+                        const firstTr = visitForm.treatments?.[0];
+                        if (firstTr) {
+                          document.getElementById(`tr-item-${firstTr.id}`)?.focus();
+                        }
+                      }}
                       placeholder="Fever, Cough, etc."
                       inputStyle={styles.vitalsInput}
                     />
@@ -1599,11 +1694,19 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                         {/* Data dictionary autocomplete for treatment */}
                         <div style={{ flex: 1, minWidth: '95px' }}>
                           <MasterDataInput
+                            id={`tr-item-${treatment.id}`}
                             type="medicine"
                             value={treatment.item}
                             onChange={(val) =>
                               handleUpdateTreatment(treatment.id, 'item', val)
                             }
+                            onEnterNext={() => {
+                              const qtyEl = document.getElementById(`tr-qty-${treatment.id}`);
+                              if (qtyEl) {
+                                qtyEl.focus();
+                                qtyEl.select?.();
+                              }
+                            }}
                             placeholder="Item (e.g. Dressing, PCM)"
                             inputStyle={styles.tableInput}
                           />
@@ -1611,6 +1714,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
 
                         <div style={{ width: '42px', flexShrink: 0 }}>
                           <input
+                            id={`tr-qty-${treatment.id}`}
                             type="number"
                             min="1"
                             placeholder="Qty"
@@ -1618,6 +1722,27 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                             onChange={(e) =>
                               handleUpdateTreatment(treatment.id, 'qty', e.target.value)
                             }
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                if (idx < visitForm.treatments.length - 1) {
+                                  const nextItem = document.getElementById(`tr-item-${visitForm.treatments[idx + 1].id}`);
+                                  if (nextItem) {
+                                    nextItem.focus();
+                                    return;
+                                  }
+                                }
+                                const firstRx = visitForm.prescriptions?.[0];
+                                if (firstRx) {
+                                  const rxEl = document.getElementById(`rx-med-${firstRx.id}`);
+                                  if (rxEl) {
+                                    rxEl.focus();
+                                    return;
+                                  }
+                                }
+                                document.getElementById('billing-received-input')?.focus();
+                              }
+                            }}
                             style={{ ...styles.tableInput, textAlign: 'center', padding: '0 2px' }}
                           />
                         </div>
@@ -1665,11 +1790,19 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                         {/* Medicine Autocomplete */}
                         <div style={{ flex: '1 1 110px', minWidth: '95px' }}>
                           <MasterDataInput
+                            id={`rx-med-${rx.id}`}
                             type="medicine"
                             value={rx.medicine}
                             onChange={(val) =>
                               handleUpdatePrescription(rx.id, 'medicine', val)
                             }
+                            onEnterNext={() => {
+                              const qtyEl = document.getElementById(`rx-qty-${rx.id}`);
+                              if (qtyEl) {
+                                qtyEl.focus();
+                                qtyEl.select?.();
+                              }
+                            }}
                             placeholder="Medicine name"
                             inputStyle={styles.tableInput}
                           />
@@ -1678,6 +1811,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                         {/* Quantity */}
                         <div style={{ width: '42px', flexShrink: 0 }}>
                           <input
+                            id={`rx-qty-${rx.id}`}
                             type="number"
                             min="1"
                             placeholder="Qty"
@@ -1685,6 +1819,16 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                             onChange={(e) =>
                               handleUpdatePrescription(rx.id, 'qty', e.target.value)
                             }
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                const mEl = document.getElementById(`rx-m-${rx.id}`);
+                                if (mEl) {
+                                  mEl.focus();
+                                  mEl.select?.();
+                                }
+                              }
+                            }}
                             style={{ ...styles.tableInput, textAlign: 'center', padding: '0 2px' }}
                           />
                         </div>
@@ -1692,12 +1836,23 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                         {/* M, N, E, Ng inputs */}
                         <div style={{ width: '26px', flexShrink: 0 }}>
                           <input
+                            id={`rx-m-${rx.id}`}
                             type="text"
                             placeholder="M"
                             value={rx.morning}
                             onChange={(e) =>
                               handleUpdatePrescription(rx.id, 'morning', e.target.value)
                             }
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                const nEl = document.getElementById(`rx-n-${rx.id}`);
+                                if (nEl) {
+                                  nEl.focus();
+                                  nEl.select?.();
+                                }
+                              }
+                            }}
                             style={styles.doseInput}
                             title="Morning dose"
                           />
@@ -1705,12 +1860,23 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
 
                         <div style={{ width: '26px', flexShrink: 0 }}>
                           <input
+                            id={`rx-n-${rx.id}`}
                             type="text"
                             placeholder="N"
                             value={rx.noon}
                             onChange={(e) =>
                               handleUpdatePrescription(rx.id, 'noon', e.target.value)
                             }
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                const eEl = document.getElementById(`rx-e-${rx.id}`);
+                                if (eEl) {
+                                  eEl.focus();
+                                  eEl.select?.();
+                                }
+                              }
+                            }}
                             style={styles.doseInput}
                             title="Noon dose"
                           />
@@ -1718,12 +1884,23 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
 
                         <div style={{ width: '26px', flexShrink: 0 }}>
                           <input
+                            id={`rx-e-${rx.id}`}
                             type="text"
                             placeholder="E"
                             value={rx.evening}
                             onChange={(e) =>
                               handleUpdatePrescription(rx.id, 'evening', e.target.value)
                             }
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                const ngEl = document.getElementById(`rx-ng-${rx.id}`);
+                                if (ngEl) {
+                                  ngEl.focus();
+                                  ngEl.select?.();
+                                }
+                              }
+                            }}
                             style={styles.doseInput}
                             title="Evening dose"
                           />
@@ -1731,12 +1908,30 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
 
                         <div style={{ width: '26px', flexShrink: 0 }}>
                           <input
+                            id={`rx-ng-${rx.id}`}
                             type="text"
                             placeholder="Ng"
                             value={rx.night}
                             onChange={(e) =>
                               handleUpdatePrescription(rx.id, 'night', e.target.value)
                             }
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                if (idx < visitForm.prescriptions.length - 1) {
+                                  const nextRx = document.getElementById(`rx-med-${visitForm.prescriptions[idx + 1].id}`);
+                                  if (nextRx) {
+                                    nextRx.focus();
+                                    return;
+                                  }
+                                }
+                                const recEl = document.getElementById('billing-received-input');
+                                if (recEl) {
+                                  recEl.focus();
+                                  recEl.select?.();
+                                }
+                              }
+                            }}
                             style={styles.doseInput}
                             title="Night dose"
                           />
@@ -1804,10 +1999,21 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                     <div style={styles.billingField}>
                       <label style={styles.billingLabel}>CHARGE</label>
                       <input
+                        id="billing-charge-input"
                         type="number"
                         min="0"
                         value={visitForm.charge}
                         onChange={(e) => updateFormField('charge', e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            const recEl = document.getElementById('billing-received-input');
+                            if (recEl) {
+                              recEl.focus();
+                              recEl.select?.();
+                            }
+                          }
+                        }}
                         style={styles.billingInput}
                       />
                     </div>
@@ -1815,6 +2021,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                     <div style={styles.billingField}>
                       <label style={styles.billingLabel}>RECEIVED</label>
                       <input
+                        id="billing-received-input"
                         type="number"
                         min="0"
                         value={visitForm.received}

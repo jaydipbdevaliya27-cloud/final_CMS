@@ -65,7 +65,7 @@ export const familyAPI = {
 };
 
 export const masterDataAPI = {
-  getItems: async (type = '', search = '', page = 1, limit = 10) => {
+  getItems: async (type = '', search = '', page = 1, limit = 50) => {
     const response = await api.get('/master-data', {
       params: {
         type,

@@ -297,12 +297,12 @@ export const Dashboard = () => {
           selectedPeriod === 'yesterday'
             ? 'Yesterday'
             : selectedPeriod === 'last7days'
-            ? 'Last 7 Days'
-            : selectedPeriod === 'thismonth'
-            ? 'This Month'
-            : selectedPeriod === 'custom'
-            ? formatDisplayDate(selectedDate)
-            : 'Today'
+              ? 'Last 7 Days'
+              : selectedPeriod === 'thismonth'
+                ? 'This Month'
+                : selectedPeriod === 'custom'
+                  ? formatDisplayDate(selectedDate)
+                  : 'Today'
         );
 
         const activeVisitsCount = stats.periodVisitsCount !== undefined ? stats.periodVisitsCount : stats.todayVisitsCount;
@@ -395,7 +395,7 @@ export const Dashboard = () => {
                     </span>
                   </div>
                   <p style={styles.dashHeroSub}>
-                    {doctor?.clinicName || 'Clinic Management System'} &bull; Database: <strong>clinic_management_db</strong> &bull; {todayFormatted}
+                    {doctor?.clinicName || 'Clinic Management System'} &bull; {todayFormatted}
                   </p>
                 </div>
               </div>
@@ -625,8 +625,8 @@ export const Dashboard = () => {
                         {selectedPeriod === 'thismonth'
                           ? 'This Month Consultations & Collections'
                           : selectedPeriod === 'custom'
-                          ? `OPD Trend around ${periodLabel}`
-                          : `${periodLabel} Consultations & Collections`}
+                            ? `OPD Trend around ${periodLabel}`
+                            : `${periodLabel} Consultations & Collections`}
                       </h3>
                     </div>
                     <span style={styles.dashCardBadge}>{periodLabel}</span>
@@ -909,7 +909,7 @@ export const Dashboard = () => {
                 </div>
 
                 {/* Card E: Practice Details & DB Connection */}
-                <div style={styles.clinicCredsCard}>
+                {/* <div style={styles.clinicCredsCard}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                     <Database size={15} color="var(--primary)" />
                     <strong style={{ fontSize: '12px', color: 'var(--text)' }}>Database Persistence</strong>
@@ -932,7 +932,7 @@ export const Dashboard = () => {
                       <span style={styles.credsVal}>Single Doctor OPD</span>
                     </div>
                   </div>
-                </div>
+                </div> */}
               </div>
             </div>
           </div>

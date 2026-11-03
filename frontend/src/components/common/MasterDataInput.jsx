@@ -2,7 +2,86 @@ import React, { useState, useEffect, useRef } from 'react';
 import { masterDataAPI } from '../../services/api';
 import { useDebounce } from '../../hooks/useDebounce';
 
+// Global in-memory cache for fast, zero-latency shortcut matching across all MasterDataInput instances
+export const masterDataCache = {};
+const cacheFetchPromises = {};
+
+export const preloadMasterData = async (type) => {
+  if (masterDataCache[type] && masterDataCache[type].length > 0) {
+    return masterDataCache[type];
+  }
+  if (cacheFetchPromises[type]) {
+    return cacheFetchPromises[type];
+  }
+
+  cacheFetchPromises[type] = masterDataAPI
+    .getItems(type, '', 1, 300)
+    .then((res) => {
+      if (res.success && Array.isArray(res.data)) {
+        masterDataCache[type] = res.data;
+        return res.data;
+      }
+      return [];
+    })
+    .catch((err) => {
+      console.warn(`Could not preload master data for ${type}:`, err);
+      return [];
+    })
+    .finally(() => {
+      delete cacheFetchPromises[type];
+    });
+
+  return cacheFetchPromises[type];
+};
+
+export const resolveMasterShortcut = (type, rawText) => {
+  if (!rawText || typeof rawText !== 'string') return rawText;
+  const token = rawText.trim().toUpperCase();
+  if (!token) return rawText;
+  const cached = masterDataCache[type] || [];
+  const match = cached.find((i) => i.shortcut && i.shortcut.trim().toUpperCase() === token);
+  return match ? match.value : rawText;
+};
+
+// Prioritized filter helper: exact shortcut match ALWAYS first
+export const filterMasterItems = (rawToken, itemsList = []) => {
+  if (!rawToken || !rawToken.trim()) return [];
+  const token = rawToken.trim().toUpperCase();
+
+  // 1. Exact shortcut match
+  const exactShortcut = itemsList.filter(
+    (item) => item.shortcut && item.shortcut.trim().toUpperCase() === token
+  );
+  // 2. Shortcut starts-with
+  const startShortcut = itemsList.filter(
+    (item) =>
+      item.shortcut &&
+      item.shortcut.trim().toUpperCase().startsWith(token) &&
+      item.shortcut.trim().toUpperCase() !== token
+  );
+  // 3. Name/Value starts-with
+  const startValue = itemsList.filter(
+    (item) =>
+      item.value &&
+      item.value.toUpperCase().startsWith(token) &&
+      !exactShortcut.includes(item) &&
+      !startShortcut.includes(item)
+  );
+  // 4. Any other substring match
+  const others = itemsList.filter(
+    (item) =>
+      !exactShortcut.includes(item) &&
+      !startShortcut.includes(item) &&
+      !startValue.includes(item) &&
+      ((item.value && item.value.toUpperCase().includes(token)) ||
+       (item.shortcut && item.shortcut.toUpperCase().includes(token)))
+  );
+
+  return [...exactShortcut, ...startShortcut, ...startValue, ...others].slice(0, 30);
+};
+
 export const MasterDataInput = ({
+  id,
   type, // 'society' | 'area' | 'allergy' | 'complaint' | 'medicine' | 'investigation'
   value,
   onChange,
@@ -11,6 +90,7 @@ export const MasterDataInput = ({
   style = {},
   inputStyle = {},
   onSelectCallback,
+  onEnterNext, // Optional callback when Enter is pressed to navigate to next input
   allowMultiple = false, // When true, supports comma-separated list and space-to-comma
 }) => {
   const [suggestions, setSuggestions] = useState([]);
@@ -19,6 +99,19 @@ export const MasterDataInput = ({
   const wrapperRef = useRef(null);
   const inputRef = useRef(null);
   const listRef = useRef(null);
+
+  // Preload master data cache on mount
+  useEffect(() => {
+    preloadMasterData(type).then((cached) => {
+      const token = getActiveToken(value);
+      if (token && token.trim().length > 0) {
+        const matches = filterMasterItems(token, cached);
+        if (matches.length > 0) {
+          setSuggestions(matches);
+        }
+      }
+    });
+  }, [type]);
 
   // Auto-scroll highlighted suggestion into view
   useEffect(() => {
@@ -56,7 +149,7 @@ export const MasterDataInput = ({
   const currentToken = getActiveToken(value);
   const debouncedToken = useDebounce(currentToken, 200);
 
-  // Fetch suggestions for this type
+  // Fetch suggestions asynchronously as fallback or for un-cached items
   useEffect(() => {
     let active = true;
     const fetchItems = async () => {
@@ -64,15 +157,27 @@ export const MasterDataInput = ({
         const res = await masterDataAPI.getItems(type, debouncedToken || '');
         if (active && res.success) {
           const items = res.data || [];
-          setSuggestions(items);
-          setHighlightedIndex(0); // Automatically pre-select first match
+          // Update global cache with freshly received items
+          if (!masterDataCache[type]) masterDataCache[type] = [];
+          for (const item of items) {
+            if (!masterDataCache[type].some((m) => m._id === item._id || m.value === item.value)) {
+              masterDataCache[type].push(item);
+            }
+          }
+
+          const cached = masterDataCache[type] || [];
+          const sorted = filterMasterItems(debouncedToken, cached.length > 0 ? cached : items);
+          setSuggestions(sorted.length > 0 ? sorted : items);
+          setHighlightedIndex(0);
         }
       } catch (err) {
         console.error(`Error loading master data for ${type}:`, err);
       }
     };
 
-    fetchItems();
+    if (debouncedToken && debouncedToken.trim().length > 0) {
+      fetchItems();
+    }
     return () => {
       active = false;
     };
@@ -107,9 +212,18 @@ export const MasterDataInput = ({
     const token = getActiveToken(val);
     if (!token || token.trim().length === 0) {
       setIsOpen(false);
+      setSuggestions([]);
     } else {
-      setIsOpen(true);
-      setHighlightedIndex(0);
+      // Synchronous instant match from in-memory cache (0ms latency!)
+      const cached = masterDataCache[type] || [];
+      const instantMatches = filterMasterItems(token, cached);
+      if (instantMatches.length > 0) {
+        setSuggestions(instantMatches);
+        setHighlightedIndex(0);
+        setIsOpen(true);
+      } else {
+        setIsOpen(true);
+      }
     }
   };
 
@@ -145,6 +259,32 @@ export const MasterDataInput = ({
   };
 
   const handleKeyDown = (e) => {
+    // Check if this keydown is a save shortcut: Ctrl+S, Ctrl+Enter, Alt+S, Alt+P
+    const isSaveShortcut =
+      ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) ||
+      ((e.ctrlKey || e.metaKey) && e.key === 'Enter') ||
+      (e.altKey && (e.key === 's' || e.key === 'S')) ||
+      (e.altKey && (e.key === 'p' || e.key === 'P'));
+
+    if (isSaveShortcut) {
+      // If there is an active token, auto-commit the matching shortcut or first suggestion before save triggers
+      const currentVal = inputRef.current ? inputRef.current.value : (value || '');
+      const token = getActiveToken(currentVal).trim().toUpperCase();
+      if (token) {
+        const cached = masterDataCache[type] || [];
+        const match =
+          cached.find((i) => i.shortcut && i.shortcut.trim().toUpperCase() === token) ||
+          suggestions[highlightedIndex] ||
+          suggestions[0];
+        if (match) {
+          selectItem(match);
+        } else if (currentVal !== value) {
+          onChange(currentVal);
+        }
+      }
+      return; // allow event to bubble to window handler for handleSaveVisit
+    }
+
     // If Space is pressed and allowMultiple is true:
     if (allowMultiple && e.key === ' ') {
       const val = value || '';
@@ -193,10 +333,64 @@ export const MasterDataInput = ({
       }
     }
 
+    // Tab key: auto-resolve exact shortcut or top match if token is present
+    if (e.key === 'Tab') {
+      const currentVal = inputRef.current ? inputRef.current.value : (value || '');
+      const token = getActiveToken(currentVal).trim().toUpperCase();
+      if (token) {
+        const cached = masterDataCache[type] || [];
+        const shortcutMatch = cached.find(
+          (i) => i.shortcut && i.shortcut.trim().toUpperCase() === token
+        );
+        const itemToUse = shortcutMatch || (isOpen && suggestions.length > 0 ? suggestions[0] : null);
+        if (itemToUse) {
+          selectItem(itemToUse);
+        } else if (currentVal !== value) {
+          onChange(currentVal);
+        }
+      }
+      setIsOpen(false);
+      return;
+    }
+
+    // Enter key: auto-resolve shortcut/suggestion and optionally advance to next input
+    if (e.key === 'Enter') {
+      const currentVal = inputRef.current ? inputRef.current.value : (value || '');
+      const token = getActiveToken(currentVal).trim().toUpperCase();
+      const cached = masterDataCache[type] || [];
+      const shortcutMatch = token
+        ? cached.find((i) => i.shortcut && i.shortcut.trim().toUpperCase() === token)
+        : null;
+
+      const itemToUse = shortcutMatch || (suggestions.length > 0 ? (suggestions[highlightedIndex] || suggestions[0]) : null);
+      if (itemToUse) {
+        e.preventDefault();
+        e.stopPropagation();
+        selectItem(itemToUse);
+        if (!allowMultiple && onEnterNext) {
+          setTimeout(() => onEnterNext(), 40);
+        }
+      } else if (!allowMultiple && onEnterNext) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (currentVal !== value) {
+          onChange(currentVal);
+        }
+        onEnterNext();
+      }
+      return;
+    }
+
     if (!isOpen || suggestions.length === 0) {
       if (e.key === 'ArrowDown') {
-        setIsOpen(true);
-        setHighlightedIndex(0);
+        const token = getActiveToken(value);
+        const cached = masterDataCache[type] || [];
+        const matches = token ? filterMasterItems(token, cached) : cached.slice(0, 20);
+        if (matches.length > 0) {
+          setSuggestions(matches);
+          setHighlightedIndex(0);
+          setIsOpen(true);
+        }
       }
       return;
     }
@@ -211,24 +405,28 @@ export const MasterDataInput = ({
       setHighlightedIndex((prev) =>
         prev > 0 ? prev - 1 : suggestions.length - 1
       );
-    } else if (e.key === 'Enter') {
-      // Allow Ctrl+Enter or Alt+Enter to bubble up for Save & Print shortcuts
-      if (e.ctrlKey || e.metaKey || e.altKey) {
-        return;
-      }
-      // If suggestions are active, automatically use highlighted/first selection on Enter
-      if (suggestions.length > 0) {
-        e.preventDefault();
-        e.stopPropagation();
-        const itemToUse = suggestions[highlightedIndex] || suggestions[0];
-        if (itemToUse) {
-          selectItem(itemToUse);
-        }
-      }
     } else if (e.key === 'Escape') {
       e.preventDefault();
       setIsOpen(false);
     }
+  };
+
+  const handleBlur = () => {
+    // Auto-resolve shortcut if user clicked away or moved focus
+    const currentVal = inputRef.current ? inputRef.current.value : (value || '');
+    const token = getActiveToken(currentVal).trim().toUpperCase();
+    if (token) {
+      const cached = masterDataCache[type] || [];
+      const shortcutMatch = cached.find(
+        (i) => i.shortcut && i.shortcut.trim().toUpperCase() === token
+      );
+      if (shortcutMatch) {
+        selectItem(shortcutMatch);
+      } else if (currentVal !== value) {
+        onChange(currentVal);
+      }
+    }
+    setTimeout(() => setIsOpen(false), 200);
   };
 
   return (

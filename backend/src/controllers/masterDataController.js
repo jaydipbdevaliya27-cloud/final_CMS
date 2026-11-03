@@ -111,10 +111,34 @@ export const getMasterItems = async (req, res) => {
     }
 
     const total = await MasterData.countDocuments(query);
-    const items = await MasterData.find(query)
+    let items = await MasterData.find(query)
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
+
+    if (search && search.trim()) {
+      const term = search.trim().toUpperCase();
+      items.sort((a, b) => {
+        const aShort = (a.shortcut || '').toUpperCase();
+        const bShort = (b.shortcut || '').toUpperCase();
+        const aVal = (a.value || '').toUpperCase();
+        const bVal = (b.value || '').toUpperCase();
+
+        const aExact = aShort === term ? 0 : 1;
+        const bExact = bShort === term ? 0 : 1;
+        if (aExact !== bExact) return aExact - bExact;
+
+        const aShortStarts = aShort.startsWith(term) ? 0 : 1;
+        const bShortStarts = bShort.startsWith(term) ? 0 : 1;
+        if (aShortStarts !== bShortStarts) return aShortStarts - bShortStarts;
+
+        const aValStarts = aVal.startsWith(term) ? 0 : 1;
+        const bValStarts = bVal.startsWith(term) ? 0 : 1;
+        if (aValStarts !== bValStarts) return aValStarts - bValStarts;
+
+        return 0;
+      });
+    }
 
     return res.status(200).json({
       success: true,
