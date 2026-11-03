@@ -44,6 +44,7 @@ import {
   FolderPlus,
   Plus,
   PieChart,
+  Download,
 } from 'lucide-react';
 
 export const Dashboard = () => {
@@ -70,6 +71,49 @@ export const Dashboard = () => {
   const dateInputRef = useRef(null);
   const [dashboardData, setDashboardData] = useState(null);
   const [loadingDashboard, setLoadingDashboard] = useState(false);
+
+  // PWA Install State & Network Status
+  const [installPrompt, setInstallPrompt] = useState(null);
+  const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+    };
+
+    const handleAppInstalled = () => {
+      setInstallPrompt(null);
+    };
+
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  const handleInstallPWA = async () => {
+    if (!installPrompt) return;
+    try {
+      installPrompt.prompt();
+      const choice = await installPrompt.userChoice;
+      if (choice && choice.outcome === 'accepted') {
+        setInstallPrompt(null);
+      }
+    } catch (err) {
+      console.warn('Install prompt error:', err);
+    }
+  };
 
   // Date display helper (e.g. 2026-11-03 -> 03-11-2026)
   const formatDisplayDate = (isoStr) => {
@@ -1145,8 +1189,29 @@ export const Dashboard = () => {
           })()}
         </div>
 
-        {/* Doctor Badge & Sign Out */}
+        {/* Doctor Badge, PWA Install & Sign Out */}
         <div style={styles.navActions}>
+          {/* Offline Status Indicator */}
+          {!isOnline && (
+            <div style={styles.offlineStatusPill} title="No internet connection. App running from offline cache.">
+              <span style={styles.offlineDot} />
+              <span>Offline</span>
+            </div>
+          )}
+
+          {/* PWA App Install Button */}
+          {installPrompt && (
+            <button
+              type="button"
+              onClick={handleInstallPWA}
+              style={styles.pwaInstallNavBtn}
+              title="Install Dhyey Clinic Management System as a desktop/mobile native app"
+            >
+              <Download size={13} />
+              <span>Install App</span>
+            </button>
+          )}
+
           <div style={styles.doctorBadge}>
             <div style={styles.avatarCircle}>
               {doctor?.name?.charAt(0) || 'D'}
@@ -1484,6 +1549,38 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     gap: '10px',
+  },
+  pwaInstallNavBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    backgroundColor: '#E6F4EA',
+    color: '#0E5C4E',
+    border: '1px solid #A7F3D0',
+    borderRadius: '6px',
+    padding: '4px 10px',
+    fontSize: '0.78rem',
+    fontWeight: 700,
+    cursor: 'pointer',
+    transition: 'all 0.15s ease',
+  },
+  offlineStatusPill: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    backgroundColor: '#FEF3C7',
+    color: '#92400E',
+    border: '1px solid #FDE68A',
+    borderRadius: '6px',
+    padding: '3px 8px',
+    fontSize: '0.72rem',
+    fontWeight: 700,
+  },
+  offlineDot: {
+    width: '7px',
+    height: '7px',
+    borderRadius: '50%',
+    backgroundColor: '#D97706',
   },
   doctorBadge: {
     display: 'flex',

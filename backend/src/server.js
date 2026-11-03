@@ -77,6 +77,13 @@ app.get('/api/health', (req, res) => {
 // Serve static frontend assets if built (Production or Single Web Service on Render)
 const frontendDist = path.join(__dirname, '../../frontend/dist');
 if (fs.existsSync(frontendDist)) {
+  // Ensure Service Worker is never cached aggressively by HTTP caching
+  app.get('/sw.js', (req, res) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Content-Type', 'application/javascript');
+    res.sendFile(path.join(frontendDist, 'sw.js'));
+  });
+
   app.use(express.static(frontendDist));
   app.get('{*path}', (req, res, next) => {
     if (req.path.startsWith('/api')) {
