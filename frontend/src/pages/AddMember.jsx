@@ -93,6 +93,22 @@ export const AddMember = ({ initialFamilyId, onProceedToCaseEntry, onNavigateToF
     loadFamilies(debouncedFamilySearch);
   }, [debouncedFamilySearch]);
 
+  // Pre-select family head whenever initialFamilyId is passed from navigation
+  useEffect(() => {
+    if (initialFamilyId) {
+      familyAPI
+        .getById(initialFamilyId)
+        .then((res) => {
+          if (res.success && res.family) {
+            selectFamily(res.family);
+          }
+        })
+        .catch((err) => {
+          console.warn('Could not load family by initialFamilyId:', err);
+        });
+    }
+  }, [initialFamilyId]);
+
   // When a family head is selected, pre-fill common reusable fields (Society, Area, Phone)
   const selectFamily = (fam) => {
     setSelectedFamily(fam);

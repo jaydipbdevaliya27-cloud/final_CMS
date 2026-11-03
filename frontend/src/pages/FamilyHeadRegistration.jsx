@@ -35,7 +35,6 @@ const BLOOD_GROUPS = [
 const REGISTRATION_OPTIONS = [
   'Self (Head of Family)',
   'Family Member',
-  'Clinic Staff',
 ];
 
 export const FamilyHeadRegistration = ({ onNavigateToAddMember, onNavigateToPatient }) => {
@@ -261,8 +260,11 @@ export const FamilyHeadRegistration = ({ onNavigateToAddMember, onNavigateToPati
         // CREATE New Family
         const res = await familyAPI.registerHead(payload);
         if (res.success) {
+          const registeredDoneBy = payload.registrationDoneBy || formData.registrationDoneBy;
+          const isFamilyMember = registeredDoneBy === 'Family Member';
+
           setSuccessMessage(
-            `Family Head "${res.family.headName}" registered as Patient with Family ID ${res.family.familyId}!`
+            `Family Head "${res.family.headName}" registered with Family ID ${res.family.familyId}!`
           );
 
           setFormData({
@@ -278,6 +280,19 @@ export const FamilyHeadRegistration = ({ onNavigateToAddMember, onNavigateToPati
 
           await loadNextId();
           await loadFamilies(debouncedDirectorySearch);
+
+          if (isFamilyMember) {
+            // Registration done by family member -> redirect to Add Member section with selection of that head
+            if (onNavigateToAddMember && res.family?.familyId) {
+              onNavigateToAddMember(res.family.familyId);
+            }
+          } else {
+            // Register as self -> directly redirect that patient to patient dashboard for case entry
+            const targetPatientId = res.patient?.patientId || res.patient?._id;
+            if (onNavigateToPatient && targetPatientId) {
+              onNavigateToPatient(targetPatientId);
+            }
+          }
         }
       }
     } catch (err) {
@@ -290,7 +305,12 @@ export const FamilyHeadRegistration = ({ onNavigateToAddMember, onNavigateToPati
   };
 
   const handleFormKeyDown = (e) => {
-    if (e.key === 'Enter' && e.ctrlKey) {
+    if (e.key === 'Enter') {
+      const target = e.target;
+      if (target && target.tagName === 'TEXTAREA') return;
+      if (target && target.tagName === 'BUTTON') return;
+      // Plain Enter or Ctrl+Enter submits the form
+      e.preventDefault();
       handleSubmit(e);
     }
   };
