@@ -239,7 +239,6 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
     reference: '',
     investigation: '',
     complaint: '',
-    dietary: '',
     treatments: [{ id: Date.now() + '-t1', item: '', qty: '1' }],
     prescriptions: [
       {
@@ -602,7 +601,6 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
       reference: visit.reference || '',
       investigation: visit.investigation || '',
       complaint: visit.complaint || '',
-      dietary: visit.dietary || '',
       treatments:
         visit.treatments && visit.treatments.length > 0
           ? visit.treatments.map((t, idx) => ({
@@ -667,7 +665,6 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
         reference: visitForm.reference,
         investigation: (visitForm.investigation || '').replace(/,\s*$/, '').trim(),
         complaint: (visitForm.complaint || '').replace(/,\s*$/, '').trim(),
-        dietary: (visitForm.dietary || '').replace(/,\s*$/, '').trim(),
         treatments: visitForm.treatments
           .filter((t) => t.item && t.item.trim())
           .map((t) => ({ item: t.item.trim(), qty: t.qty.trim() || '1' })),
@@ -1238,7 +1235,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                     />
                   </div>
 
-                  <div style={{ ...styles.fieldCol, flex: 1.1, minWidth: '130px' }}>
+                  <div style={{ ...styles.fieldCol, flex: 1.2, minWidth: '140px' }}>
                     <label style={styles.miniLabel}>INVESTIGATION</label>
                     <MasterDataInput
                       type="investigation"
@@ -1252,7 +1249,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                     />
                   </div>
 
-                  <div style={{ ...styles.fieldCol, flex: 1.3, minWidth: '140px' }}>
+                  <div style={{ ...styles.fieldCol, flex: 1.6, minWidth: '160px' }}>
                     <label style={styles.miniLabel}>COMPLAINT</label>
                     <MasterDataInput
                       type="complaint"
@@ -1262,20 +1259,6 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                         setVisitForm({ ...visitForm, complaint: val })
                       }
                       placeholder="Fever, Cough, etc."
-                      inputStyle={styles.vitalsInput}
-                    />
-                  </div>
-
-                  <div style={{ ...styles.fieldCol, flex: 1.3, minWidth: '140px' }}>
-                    <label style={styles.miniLabel}>DIETARY / ADVICE</label>
-                    <MasterDataInput
-                      type="dietary"
-                      allowMultiple={true}
-                      value={visitForm.dietary || ''}
-                      onChange={(val) =>
-                        setVisitForm({ ...visitForm, dietary: val })
-                      }
-                      placeholder="Low salt, diabetic diet..."
                       inputStyle={styles.vitalsInput}
                     />
                   </div>
