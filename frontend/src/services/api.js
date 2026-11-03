@@ -143,8 +143,8 @@ export const visitAPI = {
 };
 
 export const reportAPI = {
-  getDashboardSummary: async () => {
-    const response = await api.get('/reports/dashboard-summary');
+  getDashboardSummary: async (params = {}) => {
+    const response = await api.get('/reports/dashboard-summary', { params });
     return response.data;
   },
   getAreaWise: async (params = {}) => {

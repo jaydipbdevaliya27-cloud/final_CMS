@@ -43,6 +43,7 @@ import {
   UserCheck,
   FolderPlus,
   Plus,
+  PieChart,
 } from 'lucide-react';
 
 export const Dashboard = () => {
@@ -59,14 +60,43 @@ export const Dashboard = () => {
   const searchInputRef = useRef(null);
   const searchWrapRef = useRef(null);
 
-  // Live Dashboard Analytics State
+  // Live Dashboard Analytics State with Filter (Today, Yesterday, Last 7 Days, This Month, Custom Date)
+  const [selectedPeriod, setSelectedPeriod] = useState('today'); // 'today' | 'yesterday' | 'last7days' | 'thismonth' | 'custom'
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  });
+  const dateInputRef = useRef(null);
   const [dashboardData, setDashboardData] = useState(null);
   const [loadingDashboard, setLoadingDashboard] = useState(false);
 
-  const fetchDashboardData = async () => {
+  // Date display helper (e.g. 2026-11-03 -> 03-11-2026)
+  const formatDisplayDate = (isoStr) => {
+    if (!isoStr) return '';
+    const parts = isoStr.split('-');
+    if (parts.length === 3) {
+      const [y, m, d] = parts;
+      return `${d}-${m}-${y}`;
+    }
+    return isoStr;
+  };
+
+  const fetchDashboardData = async (overridePeriod, overrideDate) => {
     try {
       setLoadingDashboard(true);
-      const res = await reportAPI.getDashboardSummary();
+      const activePeriod = overridePeriod !== undefined ? overridePeriod : selectedPeriod;
+      const activeDate = overrideDate !== undefined ? overrideDate : selectedDate;
+
+      const params = {};
+      if (activePeriod === 'custom' && activeDate) {
+        params.date = activeDate;
+        params.period = 'custom';
+      } else {
+        params.period = activePeriod;
+      }
+
+      const res = await reportAPI.getDashboardSummary(params);
       if (res?.success) {
         setDashboardData(res);
       }
@@ -75,6 +105,18 @@ export const Dashboard = () => {
     } finally {
       setLoadingDashboard(false);
     }
+  };
+
+  const handleSelectPeriod = (periodKey) => {
+    setSelectedPeriod(periodKey);
+    fetchDashboardData(periodKey, null);
+  };
+
+  const handleSelectCustomDate = (dateVal) => {
+    if (!dateVal) return;
+    setSelectedPeriod('custom');
+    setSelectedDate(dateVal);
+    fetchDashboardData('custom', dateVal);
   };
 
   useEffect(() => {
@@ -207,9 +249,92 @@ export const Dashboard = () => {
           ? Math.min(100, Math.round((stats.overallReceived / stats.overallCharge) * 100))
           : 100;
 
+        const periodLabel = dashboardData?.filter?.periodLabel || (
+          selectedPeriod === 'yesterday'
+            ? 'Yesterday'
+            : selectedPeriod === 'last7days'
+            ? 'Last 7 Days'
+            : selectedPeriod === 'thismonth'
+            ? 'This Month'
+            : selectedPeriod === 'custom'
+            ? formatDisplayDate(selectedDate)
+            : 'Today'
+        );
+
+        const activeVisitsCount = stats.periodVisitsCount !== undefined ? stats.periodVisitsCount : stats.todayVisitsCount;
+        const activeReceived = stats.periodReceived !== undefined ? stats.periodReceived : stats.todayReceived;
+        const activeCharge = stats.periodCharge !== undefined ? stats.periodCharge : stats.todayCharge;
+        const activeDue = stats.periodDue !== undefined ? stats.periodDue : stats.todayDue;
+
         return (
           <div style={{ ...styles.tabContentContainer, overflowY: 'auto', gap: '12px', paddingRight: '2px' }}>
-            {/* 1. HERO GREETING & LIVE STATUS BANNER */}
+            {/* 1. TOP CLINICAL DASHBOARD FILTER STRIP (MATCHING DOCTOR'S FILTER BAR DESIGN) */}
+            <div style={styles.dashFilterCard}>
+              {/* Left: Icon & Title */}
+              <div style={styles.dashFilterTitleRow}>
+                <div style={styles.dashFilterIconBadge}>
+                  <PieChart size={20} color="#0D5C4E" />
+                </div>
+                <span style={styles.dashFilterHeading}>Clinical Dashboard</span>
+              </div>
+
+              {/* Middle: Pill Group Track */}
+              <div style={styles.dashPeriodPillTrack}>
+                {[
+                  { key: 'today', label: 'Today' },
+                  { key: 'yesterday', label: 'Yesterday' },
+                  { key: 'last7days', label: 'Last 7 Days' },
+                  { key: 'thismonth', label: 'This Month' },
+                ].map((item) => {
+                  const isActive = selectedPeriod === item.key;
+                  return (
+                    <button
+                      key={item.key}
+                      type="button"
+                      onClick={() => handleSelectPeriod(item.key)}
+                      style={{
+                        ...styles.dashPeriodPill,
+                        ...(isActive ? styles.dashPeriodPillActive : styles.dashPeriodPillInactive),
+                      }}
+                    >
+                      {item.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Right: Date Picker Pill */}
+              <div style={styles.dashDatePillWrapper}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    try {
+                      dateInputRef.current?.showPicker();
+                    } catch {
+                      dateInputRef.current?.focus();
+                    }
+                  }}
+                  style={{
+                    ...styles.dashDatePillBtn,
+                    borderColor: selectedPeriod === 'custom' ? 'var(--primary)' : '#CBD5E1',
+                    backgroundColor: selectedPeriod === 'custom' ? '#F0FDF4' : '#FFFFFF',
+                  }}
+                  title="Pick a specific date to filter dashboard"
+                >
+                  <span style={styles.dashDatePillText}>{formatDisplayDate(selectedDate)}</span>
+                  <Calendar size={15} color="var(--primary)" />
+                </button>
+                <input
+                  ref={dateInputRef}
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => handleSelectCustomDate(e.target.value)}
+                  style={styles.hiddenNativeDateInput}
+                />
+              </div>
+            </div>
+
+            {/* 2. HERO GREETING & LIVE STATUS BANNER */}
             <section style={styles.dashHeroBanner}>
               <div style={styles.dashHeroLeft}>
                 <div style={styles.dashHeroIcon}>
@@ -250,23 +375,23 @@ export const Dashboard = () => {
               </div>
             </section>
 
-            {/* 2. 5 TOP KPI METRICS STRIP */}
+            {/* 3. 5 TOP KPI METRICS STRIP */}
             <div style={styles.dashKpiGrid}>
-              {/* Metric 1: Today's Consultations */}
+              {/* Metric 1: Selected Period's Consultations */}
               <div style={styles.dashKpiCard}>
                 <div style={styles.dashKpiTop}>
-                  <span style={styles.dashKpiLabel}>TODAY'S VISITS</span>
+                  <span style={styles.dashKpiLabel}>{periodLabel.toUpperCase()} VISITS</span>
                   <div style={{ ...styles.dashKpiIconWrap, backgroundColor: '#DCEFEA', color: '#0E4F44' }}>
                     <Stethoscope size={18} />
                   </div>
                 </div>
                 <div style={styles.dashKpiValueRow}>
-                  <h2 style={styles.dashKpiValue}>{stats.todayVisitsCount}</h2>
+                  <h2 style={styles.dashKpiValue}>{activeVisitsCount}</h2>
                   <span style={styles.dashKpiUnit}>OPD Cases</span>
                 </div>
                 <div style={styles.dashKpiFooter}>
                   <Clock size={12} color="var(--text-muted)" />
-                  <span>Queue today &bull; Total visits: {stats.totalVisits}</span>
+                  <span>{periodLabel} cases &bull; Total visits: {stats.totalVisits}</span>
                 </div>
               </div>
 
@@ -314,23 +439,23 @@ export const Dashboard = () => {
                 </div>
               </div>
 
-              {/* Metric 4: Today's Collections */}
+              {/* Metric 4: Selected Period's Collections */}
               <div
                 style={{ ...styles.dashKpiCard, cursor: 'pointer' }}
                 onClick={() => setActiveTab('reports')}
                 title="Open Revenue Reports"
               >
                 <div style={styles.dashKpiTop}>
-                  <span style={styles.dashKpiLabel}>TODAY'S COLLECTIONS</span>
+                  <span style={styles.dashKpiLabel}>{periodLabel.toUpperCase()} COLLECTIONS</span>
                   <div style={{ ...styles.dashKpiIconWrap, backgroundColor: '#FEF3C7', color: '#B45309' }}>
                     <IndianRupee size={18} />
                   </div>
                 </div>
                 <div style={styles.dashKpiValueRow}>
-                  <h2 style={styles.dashKpiValue}>₹{stats.todayReceived.toLocaleString('en-IN')}</h2>
+                  <h2 style={styles.dashKpiValue}>₹{activeReceived.toLocaleString('en-IN')}</h2>
                 </div>
                 <div style={styles.dashKpiFooter}>
-                  <span>Billed: ₹{stats.todayCharge} &bull; Due: ₹{stats.todayDue}</span>
+                  <span>Billed: ₹{activeCharge.toLocaleString('en-IN')} &bull; Due: ₹{activeDue.toLocaleString('en-IN')}</span>
                 </div>
               </div>
 
@@ -441,20 +566,26 @@ export const Dashboard = () => {
             <div style={styles.dashWorkspaceGrid}>
               {/* LEFT COLUMN: 7-DAY TREND & RECENT OPD VISITS */}
               <div style={styles.dashLeftCol}>
-                {/* Card A: 7-Day Patient Volume & Collections Trend */}
+                {/* Card A: Consultations & Collections Trend */}
                 <div style={styles.dashCard}>
                   <div style={styles.dashCardHeader}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <TrendingUp size={16} color="var(--primary)" />
-                      <h3 style={styles.dashCardTitle}>7-Day OPD Consultations & Collections</h3>
+                      <h3 style={styles.dashCardTitle}>
+                        {selectedPeriod === 'thismonth'
+                          ? 'This Month Consultations & Collections'
+                          : selectedPeriod === 'custom'
+                          ? `OPD Trend around ${periodLabel}`
+                          : `${periodLabel} Consultations & Collections`}
+                      </h3>
                     </div>
-                    <span style={styles.dashCardBadge}>Last 7 Days</span>
+                    <span style={styles.dashCardBadge}>{periodLabel}</span>
                   </div>
 
                   <div style={styles.trendChartWrap}>
                     {last7Days.map((day, idx) => {
                       const heightPercent = Math.max(12, Math.round((day.count / maxDayCount) * 100));
-                      const isToday = idx === last7Days.length - 1;
+                      const isHighlighted = idx === last7Days.length - 1;
                       return (
                         <div key={day.date} style={styles.trendCol}>
                           <div style={styles.trendBarContainer}>
@@ -462,7 +593,7 @@ export const Dashboard = () => {
                               style={{
                                 ...styles.trendBar,
                                 height: `${heightPercent}%`,
-                                backgroundColor: isToday ? 'var(--primary)' : '#99D5C9',
+                                backgroundColor: isHighlighted ? 'var(--primary)' : '#99D5C9',
                               }}
                               title={`${day.date}: ${day.count} visits, ₹${day.received} collected`}
                             >
@@ -472,8 +603,8 @@ export const Dashboard = () => {
                           <span
                             style={{
                               ...styles.trendDayLabel,
-                              fontWeight: isToday ? 800 : 600,
-                              color: isToday ? 'var(--primary-dark)' : 'var(--text-muted)',
+                              fontWeight: isHighlighted ? 800 : 600,
+                              color: isHighlighted ? 'var(--primary-dark)' : 'var(--text-muted)',
                             }}
                           >
                             {day.dayName}
@@ -485,12 +616,12 @@ export const Dashboard = () => {
                   </div>
                 </div>
 
-                {/* Card B: Recent OPD Consultations Queue */}
+                {/* Card B: OPD Consultations Queue for Selected Filter */}
                 <div style={{ ...styles.dashCard, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
                   <div style={styles.dashCardHeader}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <Stethoscope size={16} color="var(--primary)" />
-                      <h3 style={styles.dashCardTitle}>Recent OPD Consultations</h3>
+                      <h3 style={styles.dashCardTitle}>OPD Consultations ({periodLabel})</h3>
                       <span style={styles.dashCountBadge}>{recentVisits.length} Visits</span>
                     </div>
 
@@ -509,9 +640,9 @@ export const Dashboard = () => {
                       <div style={styles.dashEmptyIcon}>
                         <Stethoscope size={28} color="var(--border)" strokeWidth={1.5} />
                       </div>
-                      <p style={styles.dashEmptyTitle}>No OPD Consultations Recorded Yet</p>
+                      <p style={styles.dashEmptyTitle}>No Consultations Recorded for {periodLabel}</p>
                       <p style={styles.dashEmptyDesc}>
-                        Start today's OPD session by selecting a registered patient or registering a new patient.
+                        No patient case entries were found for this selected period filter.
                       </p>
                       <button
                         type="button"
@@ -536,11 +667,11 @@ export const Dashboard = () => {
                         </thead>
                         <tbody>
                           {recentVisits.map((v) => {
-                            const pName = v.patient?.name || v.patientName || 'Walk-in Patient';
-                            const pId = v.patient?.patientId || v.patientId || '-';
-                            const feePaid = v.fees?.amountReceived || 0;
-                            const feeDue = v.fees?.balanceDue || 0;
-                            const complaint = v.clinicalNotes?.chiefComplaints || v.diagnosis || 'General OPD Consultation';
+                            const pName = v.patientName || v.patient?.name || 'Walk-in Patient';
+                            const pId = v.patientId || v.patient?.patientId || '-';
+                            const feePaid = v.received !== undefined ? v.received : (v.fees?.amountReceived || 0);
+                            const feeDue = v.due !== undefined ? v.due : (v.fees?.balanceDue || 0);
+                            const complaint = v.complaint || v.clinicalNotes?.chiefComplaints || v.diagnosis || 'General OPD Consultation';
                             const dateStr = v.visitDate
                               ? new Date(v.visitDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
                               : '-';
@@ -577,8 +708,8 @@ export const Dashboard = () => {
                                   <button
                                     type="button"
                                     onClick={() => {
-                                      if (v.patient?._id || v.patient?.patientId) {
-                                        setSelectedPatientId(v.patient.patientId || v.patient._id);
+                                      if (v.patient?._id || v.patient?.patientId || v.patientId) {
+                                        setSelectedPatientId(v.patientId || v.patient?.patientId || v.patient?._id);
                                       }
                                       setActiveTab('patient-record');
                                     }}
@@ -586,7 +717,7 @@ export const Dashboard = () => {
                                     title="Open Patient Record"
                                   >
                                     <span>Open Case</span>
-                                    <ArrowRight size={12} />
+                                    <ArrowUpRight size={12} />
                                   </button>
                                 </td>
                               </tr>
@@ -1446,6 +1577,95 @@ const styles = {
     overflow: 'hidden',
   },
   // --- DYNAMIC LIVE CLINICAL DASHBOARD STYLES ---
+  dashFilterCard: {
+    backgroundColor: '#FFFFFF',
+    border: '1px solid #E2E8F0',
+    borderRadius: '12px',
+    padding: '8px 16px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: '12px',
+    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
+  },
+  dashFilterTitleRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  dashFilterIconBadge: {
+    width: '28px',
+    height: '28px',
+    borderRadius: '6px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dashFilterHeading: {
+    fontSize: '1.02rem',
+    fontWeight: 800,
+    color: '#0D5C4E',
+    letterSpacing: '-0.01em',
+  },
+  dashPeriodPillTrack: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+    backgroundColor: '#EDF5F2',
+    borderRadius: '24px',
+    padding: '3px 4px',
+    border: '1px solid #E2EBE7',
+  },
+  dashPeriodPill: {
+    border: 'none',
+    fontSize: '0.82rem',
+    cursor: 'pointer',
+    borderRadius: '20px',
+    padding: '4px 14px',
+    transition: 'all 0.15s ease',
+  },
+  dashPeriodPillActive: {
+    backgroundColor: '#FFFFFF',
+    color: '#0D5C4E',
+    fontWeight: 700,
+    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
+  },
+  dashPeriodPillInactive: {
+    backgroundColor: 'transparent',
+    color: '#475569',
+    fontWeight: 600,
+  },
+  dashDatePillWrapper: {
+    position: 'relative',
+    display: 'flex',
+    alignItems: 'center',
+  },
+  dashDatePillBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    padding: '4px 12px',
+    borderRadius: '20px',
+    border: '1px solid #CBD5E1',
+    backgroundColor: '#FFFFFF',
+    cursor: 'pointer',
+    fontSize: '0.82rem',
+    fontWeight: 700,
+    color: '#1E293B',
+    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)',
+    transition: 'all 0.15s ease',
+  },
+  dashDatePillText: {
+    fontVariantNumeric: 'tabular-nums',
+  },
+  hiddenNativeDateInput: {
+    position: 'absolute',
+    opacity: 0,
+    width: 0,
+    height: 0,
+    pointerEvents: 'none',
+  },
   dashHeroBanner: {
     backgroundColor: '#FFFFFF',
     border: '1px solid var(--border)',

@@ -536,20 +536,61 @@ export const getDueReport = async (req, res) => {
   }
 };
 
-// 7. DASHBOARD LIVE ANALYTICS & SUMMARY
+// 7. DASHBOARD LIVE ANALYTICS & SUMMARY (WITH PERIOD & DATE FILTERING)
 // @route   GET /api/reports/dashboard-summary
 // @access  Private
 export const getDashboardSummary = async (req, res) => {
   try {
-    const todayStr = new Date().toISOString().split('T')[0];
+    const { period = 'today', date: customDate } = req.query;
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+
+    let startDate = todayStr;
+    let endDate = todayStr;
+    let periodKey = (period || 'today').toLowerCase();
+    let periodLabel = 'Today';
+
+    if (customDate && customDate.trim()) {
+      startDate = customDate.trim();
+      endDate = customDate.trim();
+      periodKey = 'custom';
+      const parts = startDate.split('-');
+      if (parts.length === 3) {
+        periodLabel = `${parts[2]}-${parts[1]}-${parts[0]}`;
+      } else {
+        periodLabel = startDate;
+      }
+    } else if (periodKey === 'yesterday') {
+      const yDate = new Date();
+      yDate.setDate(yDate.getDate() - 1);
+      startDate = `${yDate.getFullYear()}-${pad(yDate.getMonth() + 1)}-${pad(yDate.getDate())}`;
+      endDate = startDate;
+      periodLabel = 'Yesterday';
+    } else if (periodKey === 'last7days') {
+      const d7 = new Date();
+      d7.setDate(d7.getDate() - 6);
+      startDate = `${d7.getFullYear()}-${pad(d7.getMonth() + 1)}-${pad(d7.getDate())}`;
+      endDate = todayStr;
+      periodLabel = 'Last 7 Days';
+    } else if (periodKey === 'thismonth') {
+      startDate = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-01`;
+      endDate = todayStr;
+      periodLabel = 'This Month';
+    } else {
+      periodKey = 'today';
+      startDate = todayStr;
+      endDate = todayStr;
+      periodLabel = 'Today';
+    }
 
     const [
       totalPatients,
       totalFamilies,
       totalVisits,
       totalCertificates,
+      periodVisitsList,
       todayVisitsList,
-      recentVisitsList,
       allVisitsAgg,
       recentPatientsList,
     ] = await Promise.all([
@@ -557,8 +598,8 @@ export const getDashboardSummary = async (req, res) => {
       Family.countDocuments(),
       Visit.countDocuments(),
       Certificate.countDocuments(),
+      Visit.find({ visitDate: { $gte: startDate, $lte: endDate } }).sort({ createdAt: -1 }).lean(),
       Visit.find({ visitDate: todayStr }).lean(),
-      Visit.find().sort({ createdAt: -1 }).limit(8).lean(),
       Visit.aggregate([
         {
           $group: {
@@ -572,6 +613,16 @@ export const getDashboardSummary = async (req, res) => {
       Patient.find().sort({ createdAt: -1 }).limit(5).lean(),
     ]);
 
+    // Financials for selected period
+    let periodCharge = 0;
+    let periodReceived = 0;
+    let periodDue = 0;
+    periodVisitsList.forEach((v) => {
+      periodCharge += Number(v.charge) || 0;
+      periodReceived += Number(v.received) || 0;
+      periodDue += Number(v.due) || 0;
+    });
+
     // Today's financials
     let todayCharge = 0;
     let todayReceived = 0;
@@ -582,15 +633,15 @@ export const getDashboardSummary = async (req, res) => {
       todayDue += Number(v.due) || 0;
     });
 
-    // Populate patient info for recent visits
-    const recentPatientIds = [...new Set(recentVisitsList.map((v) => v.patientId))];
-    const patients = await Patient.find({ patientId: { $in: recentPatientIds } }).lean();
+    // Populate patient info for visits in selected period
+    const periodPatientIds = [...new Set(periodVisitsList.map((v) => v.patientId))];
+    const patients = await Patient.find({ patientId: { $in: periodPatientIds } }).lean();
     const patientMap = {};
     patients.forEach((p) => {
       patientMap[p.patientId] = p;
     });
 
-    const populatedRecentVisits = recentVisitsList.map((v) => {
+    const populatedPeriodVisits = periodVisitsList.map((v) => {
       const p = patientMap[v.patientId];
       return {
         ...v,
@@ -602,14 +653,19 @@ export const getDashboardSummary = async (req, res) => {
       };
     });
 
-    // Last 7 days trend
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
-    const sevenDaysAgoStr = sevenDaysAgo.toISOString().split('T')[0];
+    // Compute Trend Bars
+    const trendStartDate = periodKey === 'thismonth' ? startDate : (() => {
+      const d = new Date(endDate);
+      d.setDate(d.getDate() - 6);
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    })();
 
-    const weekVisits = await Visit.find({ visitDate: { $gte: sevenDaysAgoStr } }).lean();
+    const trendVisits = await Visit.find({
+      visitDate: { $gte: trendStartDate, $lte: endDate },
+    }).lean();
+
     const dayMap = {};
-    weekVisits.forEach((v) => {
+    trendVisits.forEach((v) => {
       if (!dayMap[v.visitDate]) {
         dayMap[v.visitDate] = { count: 0, received: 0, charge: 0 };
       }
@@ -618,28 +674,55 @@ export const getDashboardSummary = async (req, res) => {
       dayMap[v.visitDate].charge += Number(v.charge) || 0;
     });
 
-    const last7Days = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const dateStr = d.toISOString().split('T')[0];
-      const stats = dayMap[dateStr] || { count: 0, received: 0, charge: 0 };
-      last7Days.push({
-        date: dateStr,
-        dayName: d.toLocaleDateString('en-US', { weekday: 'short' }),
-        count: stats.count,
-        received: stats.received,
-        charge: stats.charge,
-      });
+    const trendData = [];
+    if (periodKey === 'thismonth') {
+      const endD = new Date(endDate);
+      const daysCount = endD.getDate();
+      for (let dayNum = 1; dayNum <= daysCount; dayNum++) {
+        const dStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(dayNum)}`;
+        const stats = dayMap[dStr] || { count: 0, received: 0, charge: 0 };
+        trendData.push({
+          date: dStr,
+          dayName: `${dayNum}`,
+          count: stats.count,
+          received: stats.received,
+          charge: stats.charge,
+        });
+      }
+    } else {
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(endDate);
+        d.setDate(d.getDate() - i);
+        const dateStr = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+        const stats = dayMap[dateStr] || { count: 0, received: 0, charge: 0 };
+        trendData.push({
+          date: dateStr,
+          dayName: d.toLocaleDateString('en-US', { weekday: 'short' }),
+          count: stats.count,
+          received: stats.received,
+          charge: stats.charge,
+        });
+      }
     }
 
     return res.status(200).json({
       success: true,
+      filter: {
+        period: periodKey,
+        periodLabel,
+        startDate,
+        endDate,
+        customDate: customDate || null,
+      },
       stats: {
         totalPatients,
         totalFamilies,
         totalVisits,
         totalCertificates,
+        periodVisitsCount: periodVisitsList.length,
+        periodCharge,
+        periodReceived,
+        periodDue,
         todayVisitsCount: todayVisitsList.length,
         todayCharge,
         todayReceived,
@@ -648,9 +731,10 @@ export const getDashboardSummary = async (req, res) => {
         overallReceived: allVisitsAgg[0]?.totalReceived || 0,
         overallDue: allVisitsAgg[0]?.totalDue || 0,
       },
-      recentVisits: populatedRecentVisits,
+      recentVisits: populatedPeriodVisits,
       recentPatients: recentPatientsList,
-      last7Days,
+      last7Days: trendData,
+      trendData,
     });
   } catch (error) {
     console.error('Dashboard summary error:', error);
