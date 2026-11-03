@@ -1105,7 +1105,7 @@ const styles = {
   // Top Header Bar
   headerBar: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(3, 1fr)',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
     gap: '8px 16px',
     backgroundColor: '#F8FAF9',
     padding: '12px 18px',
@@ -1182,12 +1182,14 @@ const styles = {
     display: 'flex',
     gap: '16px',
     alignItems: 'stretch',
+    flexWrap: 'wrap',
   },
   cardsGrid: {
     flex: 1,
     display: 'grid',
-    gridTemplateColumns: 'repeat(2, 1fr)',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
     gap: '14px',
+    minWidth: '280px',
   },
   paramCard: {
     backgroundColor: '#FFFFFF',

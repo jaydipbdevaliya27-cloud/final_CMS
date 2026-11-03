@@ -172,6 +172,8 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
   const [isDraggingV, setIsDraggingV] = useState(false);
   const splitContainerRef = useRef(null);
   const bpInputRef = useRef(null);
+  const caseFormPaneRef = useRef(null);
+  const [isNarrowForm, setIsNarrowForm] = useState(false);
 
   // --- Modals State ---
   const [showEditModal, setShowEditModal] = useState(false);
@@ -332,6 +334,18 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
     }
   }, [showNewCaseForm]);
 
+  // --- Track Form Width for Dynamic Responsive Layout ---
+  useEffect(() => {
+    if (!caseFormPaneRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setIsNarrowForm(entry.contentRect.width < 720);
+      }
+    });
+    observer.observe(caseFormPaneRef.current);
+    return () => observer.disconnect();
+  }, [showNewCaseForm, layoutMode]);
+
   // --- Global Keyboard Shortcuts: Alt+N/F3 for New Case, Ctrl+S for Save Case, Ctrl+Enter for Save & Print ---
   useEffect(() => {
     const handleGlobalShortcuts = (e) => {
@@ -387,7 +401,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
       if (isDraggingV && splitContainerRef.current) {
         const rect = splitContainerRef.current.getBoundingClientRect();
         const offsetX = e.clientX - rect.left;
-        const newPercent = Math.max(35, Math.min(80, (offsetX / rect.width) * 100));
+        const newPercent = Math.max(42, Math.min(78, (offsetX / rect.width) * 100));
         setSplitWidthPercent(newPercent);
       } else if (isDraggingH) {
         // Dragging horizontal splitter to change history pane height
@@ -1287,6 +1301,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
           {/* LEFT / TOP PANE: THE CASE ENTRY FORM (SHOWN WHEN showNewCaseForm IS TRUE) */}
           {showNewCaseForm && (
             <div
+              ref={caseFormPaneRef}
               style={{
                 ...styles.visitFormPane,
                 width: layoutMode === 'side-by-side' ? `${splitWidthPercent}%` : '100%',
@@ -1371,9 +1386,9 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                   </div>
                 </div>
 
-                {/* Vitals Grid: BP, Sugar, Other, Reference, Investigation, Complaint, Dietary */}
+                {/* Vitals Grid: BP, Sugar, Other, Reference, Investigation, Complaint */}
                 <div style={styles.vitalsRowGrid}>
-                  <div style={{ ...styles.fieldCol, width: '74px', flex: 'none' }}>
+                  <div style={{ ...styles.fieldCol, width: '68px', flexShrink: 0 }}>
                     <label style={styles.miniLabel}>BP</label>
                     <input
                       ref={bpInputRef}
@@ -1385,7 +1400,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                     />
                   </div>
 
-                  <div style={{ ...styles.fieldCol, width: '70px', flex: 'none' }}>
+                  <div style={{ ...styles.fieldCol, width: '68px', flexShrink: 0 }}>
                     <label style={styles.miniLabel}>SUGAR</label>
                     <input
                       type="text"
@@ -1396,7 +1411,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                     />
                   </div>
 
-                  <div style={{ ...styles.fieldCol, width: '80px', flex: 'none' }}>
+                  <div style={{ ...styles.fieldCol, width: '76px', flexShrink: 0 }}>
                     <label style={styles.miniLabel}>OTHER</label>
                     <input
                       type="text"
@@ -1407,7 +1422,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                     />
                   </div>
 
-                  <div style={{ ...styles.fieldCol, width: '90px', flex: 'none' }}>
+                  <div style={{ ...styles.fieldCol, width: '86px', flexShrink: 0 }}>
                     <label style={styles.miniLabel}>REFERENCE</label>
                     <input
                       type="text"
@@ -1418,7 +1433,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                     />
                   </div>
 
-                  <div style={{ ...styles.fieldCol, flex: 1.2, minWidth: '140px' }}>
+                  <div style={{ ...styles.fieldCol, flex: '1 1 130px', minWidth: '120px' }}>
                     <label style={styles.miniLabel}>INVESTIGATION</label>
                     <MasterDataInput
                       type="investigation"
@@ -1430,7 +1445,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                     />
                   </div>
 
-                  <div style={{ ...styles.fieldCol, flex: 1.6, minWidth: '160px' }}>
+                  <div style={{ ...styles.fieldCol, flex: '1.4 1 150px', minWidth: '130px' }}>
                     <label style={styles.miniLabel}>COMPLAINT</label>
                     <MasterDataInput
                       type="complaint"
@@ -1444,7 +1459,14 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                 </div>
 
                 {/* TREATMENT AND PRESCRIPTION BOTH SECTION IN THE SAME ROW */}
-                <div style={styles.treatmentPrescriptionGrid}>
+                <div
+                  style={{
+                    ...styles.treatmentPrescriptionGrid,
+                    gridTemplateColumns: isNarrowForm
+                      ? '1fr'
+                      : 'minmax(220px, 1fr) minmax(380px, 1.7fr)',
+                  }}
+                >
                   {/* Left Column: TREATMENT (CLINIC) with Data Dictionary */}
                   <div style={styles.halfSectionBlock}>
                     <div style={styles.subSectionHeader}>
@@ -1454,7 +1476,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                     {visitForm.treatments.map((treatment, idx) => (
                       <div key={treatment.id} style={styles.treatmentRow}>
                         {/* Data dictionary autocomplete for treatment */}
-                        <div style={{ flex: 1 }}>
+                        <div style={{ flex: 1, minWidth: '95px' }}>
                           <MasterDataInput
                             type="medicine"
                             value={treatment.item}
@@ -1466,7 +1488,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                           />
                         </div>
 
-                        <div style={{ width: '48px', flexShrink: 0 }}>
+                        <div style={{ width: '42px', flexShrink: 0 }}>
                           <input
                             type="number"
                             min="1"
@@ -1513,7 +1535,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                     {visitForm.prescriptions.map((rx, idx) => (
                       <div key={rx.id} style={styles.prescriptionRow}>
                         {/* Medicine Autocomplete */}
-                        <div style={{ flex: 1.8, minWidth: '120px' }}>
+                        <div style={{ flex: '1 1 110px', minWidth: '95px' }}>
                           <MasterDataInput
                             type="medicine"
                             value={rx.medicine}
@@ -1526,7 +1548,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                         </div>
 
                         {/* Quantity */}
-                        <div style={{ width: '48px', flexShrink: 0 }}>
+                        <div style={{ width: '42px', flexShrink: 0 }}>
                           <input
                             type="number"
                             min="1"
@@ -1540,7 +1562,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                         </div>
 
                         {/* M, N, E, Ng inputs */}
-                        <div style={{ width: '30px' }}>
+                        <div style={{ width: '26px', flexShrink: 0 }}>
                           <input
                             type="text"
                             placeholder="M"
@@ -1553,7 +1575,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                           />
                         </div>
 
-                        <div style={{ width: '30px' }}>
+                        <div style={{ width: '26px', flexShrink: 0 }}>
                           <input
                             type="text"
                             placeholder="N"
@@ -1566,7 +1588,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                           />
                         </div>
 
-                        <div style={{ width: '30px' }}>
+                        <div style={{ width: '26px', flexShrink: 0 }}>
                           <input
                             type="text"
                             placeholder="E"
@@ -1579,7 +1601,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                           />
                         </div>
 
-                        <div style={{ width: '30px' }}>
+                        <div style={{ width: '26px', flexShrink: 0 }}>
                           <input
                             type="text"
                             placeholder="Ng"
@@ -1941,7 +1963,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                           style={{
                             display: 'grid',
                             gridTemplateColumns:
-                              visit.complaint && visit.investigation ? '1fr 1fr' : '1fr',
+                              visit.complaint && visit.investigation && !isNarrowForm ? '1fr 1fr' : '1fr',
                             gap: '6px',
                           }}
                         >
@@ -1994,9 +2016,9 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                             style={{
                               display: 'grid',
                               gridTemplateColumns:
-                                visit.treatments?.length > 0 && visit.prescriptions?.length > 0
-                                  ? 'minmax(180px, 1fr) minmax(260px, 1.4fr)'
-                                  : '1fr',
+                                isNarrowForm || !visit.treatments?.length || !visit.prescriptions?.length
+                                  ? '1fr'
+                                  : 'minmax(180px, 1fr) minmax(260px, 1.4fr)',
                               gap: '6px',
                             }}
                           >
@@ -3709,7 +3731,7 @@ const styles = {
   visitFormPane: {
     display: 'flex',
     flexDirection: 'column',
-    minWidth: '320px',
+    minWidth: '360px',
     overflowY: 'auto',
   },
 
@@ -3869,7 +3891,7 @@ const styles = {
   treatmentPrescriptionGrid: {
     display: 'grid',
     gridTemplateColumns: '1fr 1.3fr',
-    gap: '6px',
+    gap: '8px',
     paddingTop: '2px',
     borderTop: '1px dashed #E5CDAF',
   },
@@ -3881,6 +3903,7 @@ const styles = {
     padding: '4px 6px',
     borderRadius: '4px',
     border: '1px solid #F1DAC2',
+    minWidth: 0,
   },
   shortcutCaseTag: {
     fontSize: '9px',
@@ -3894,7 +3917,7 @@ const styles = {
 
   vitalsRowGrid: {
     display: 'flex',
-    gap: '5px',
+    gap: '6px',
     alignItems: 'flex-end',
     flexWrap: 'wrap',
   },
@@ -3902,6 +3925,7 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     gap: '1px',
+    minWidth: 0,
   },
   miniLabel: {
     fontSize: '8.5px',
@@ -3948,14 +3972,20 @@ const styles = {
   },
   treatmentRow: {
     display: 'flex',
-    gap: '5px',
+    gap: '4px',
     alignItems: 'center',
+    flexWrap: 'nowrap',
+    minWidth: 0,
+    width: '100%',
   },
   prescriptionRow: {
     display: 'flex',
-    gap: '4px',
+    gap: '3px',
     alignItems: 'center',
-    flexWrap: 'wrap',
+    flexWrap: 'nowrap',
+    minWidth: 0,
+    width: '100%',
+    overflowX: 'auto',
   },
   tableInput: {
     width: '100%',
@@ -3973,7 +4003,7 @@ const styles = {
     backgroundColor: '#FFFFFF',
     border: '1px solid #D6C2AC',
     borderRadius: '4px',
-    padding: '0 2px',
+    padding: '0 1px',
     fontSize: '11px',
     textAlign: 'center',
     fontWeight: 600,
@@ -3982,12 +4012,13 @@ const styles = {
   timingRadioGroup: {
     display: 'flex',
     alignItems: 'center',
-    gap: '4px',
+    gap: '3px',
     backgroundColor: '#FFFFFF',
     height: '24px',
     border: '1px solid #D6C2AC',
     borderRadius: '4px',
     padding: '0 4px',
+    flexShrink: 0,
   },
   radioLabel: {
     display: 'flex',
@@ -4001,6 +4032,7 @@ const styles = {
   actionBtnCol: {
     display: 'flex',
     alignItems: 'center',
+    flexShrink: 0,
   },
   addRowBtn: {
     width: '24px',
@@ -4028,17 +4060,17 @@ const styles = {
   billingActionsRow: {
     display: 'flex',
     justifyContent: 'space-between',
-    alignItems: 'flex-end',
+    alignItems: 'center',
     flexWrap: 'wrap',
-    gap: '6px',
-    paddingTop: '3px',
+    gap: '8px',
+    paddingTop: '4px',
     borderTop: '1px solid #EAD2B8',
   },
   billingInputsGroup: {
     display: 'flex',
-    alignItems: 'flex-end',
+    alignItems: 'center',
     gap: '6px',
-    flexWrap: 'wrap',
+    flexWrap: 'nowrap',
   },
   billingField: {
     display: 'flex',
@@ -4860,7 +4892,8 @@ const styles = {
     overflowY: 'auto',
     backgroundColor: '#FFFFFF',
     color: '#000000',
-    minHeight: '480px',
+    minHeight: 0,
+    flex: 1,
     display: 'flex',
     flexDirection: 'column',
     gap: '10px',

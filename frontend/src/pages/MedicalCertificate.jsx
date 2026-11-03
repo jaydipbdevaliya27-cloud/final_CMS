@@ -614,7 +614,7 @@ export const MedicalCertificate = () => {
       {/* 2. TAB: STUDIO (FORM + LIVE PREVIEW) */}
       {activeTab === 'studio' && (
         <div style={styles.studioContainer} className="no-print">
-          <div style={styles.mainSplit}>
+          <div className="med-cert-split" style={styles.mainSplit}>
             {/* LEFT PANE: CERTIFICATE ISSUE FORM */}
             <div style={styles.formPane}>
               <div style={styles.paneHeader}>

@@ -943,12 +943,12 @@ const styles = {
   },
   grid2: {
     display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
     gap: '10px',
   },
   grid3: {
     display: 'grid',
-    gridTemplateColumns: '1fr 1fr 1.6fr',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(95px, 1fr))',
     gap: '10px',
   },
   grid1: {

@@ -607,7 +607,7 @@ export const Dashboard = () => {
             </div>
 
             {/* 4. DYNAMIC 2-COLUMN PRACTICE WORKSPACE */}
-            <div style={styles.dashWorkspaceGrid}>
+            <div className="dash-workspace-grid" style={styles.dashWorkspaceGrid}>
               {/* LEFT COLUMN: 7-DAY TREND & RECENT OPD VISITS */}
               <div style={styles.dashLeftCol}>
                 {/* Card A: Consultations & Collections Trend */}
@@ -1286,6 +1286,7 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
+    flexShrink: 0,
   },
   brandIcon: {
     width: '30px',
@@ -1310,8 +1311,10 @@ const styles = {
     position: 'relative',
     display: 'flex',
     alignItems: 'center',
-    width: '420px',
-    maxWidth: '100%',
+    flex: '1 1 200px',
+    maxWidth: '420px',
+    minWidth: '160px',
+    margin: '0 12px',
   },
   searchIcon: {
     position: 'absolute',
@@ -1548,7 +1551,8 @@ const styles = {
   navActions: {
     display: 'flex',
     alignItems: 'center',
-    gap: '10px',
+    gap: '8px',
+    flexShrink: 0,
   },
   pwaInstallNavBtn: {
     display: 'flex',
@@ -2103,6 +2107,7 @@ const styles = {
     flex: 1,
     minHeight: 0,
     overflowY: 'auto',
+    overflowX: 'auto',
   },
   dashTable: {
     width: '100%',

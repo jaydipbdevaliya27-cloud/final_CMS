@@ -200,3 +200,64 @@ input:focus, select:focus, textarea:focus {
     background-color: transparent !important;
   }
 }
+
+/* =========================================================
+   RESPONSIVE LAYOUT & DESKTOP SYSTEM STYLING ENHANCEMENTS
+   ========================================================= */
+
+/* Custom sleek scrollbar for clinic management tables and prescription rows */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(20, 107, 92, 0.22);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(20, 107, 92, 0.45);
+}
+
+/* Responsive Practice Workspace Grid */
+.dash-workspace-grid {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
+}
+
+@media screen and (max-width: 1100px) {
+  .dash-workspace-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Responsive Medical Certificate Split View */
+.med-cert-split {
+  display: grid;
+  grid-template-columns: 1.08fr 0.92fr;
+  gap: 12px;
+  flex: 1;
+  height: 100%;
+  min-height: 0;
+}
+
+@media screen and (max-width: 1050px) {
+  .med-cert-split {
+    grid-template-columns: 1fr !important;
+    overflow-y: auto !important;
+  }
+}
+
+/* Ensure no text-selection interference during split resizing */
+.resizing-active {
+  user-select: none !important;
+}
