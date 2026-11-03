@@ -169,11 +169,23 @@ input:focus, select:focus, textarea:focus {
     top: 0 !important;
     width: 100% !important;
     margin: 0 !important;
-    padding: 12mm !important;
+    padding: 10mm 12mm !important;
     background: #FFFFFF !important;
     color: #000000 !important;
     box-shadow: none !important;
     z-index: 99999999 !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Support for Pre-printed Stationery Pad Feed */
+  #printable-rx.pad-only-mode .letterpad-preprinted-header {
+    visibility: hidden !important;
+  }
+  #printable-rx.pad-only-mode .letterpad-watermark {
+    display: none !important;
+  }
+  #printable-rx.pad-only-mode .letterpad-preprinted-footer {
+    visibility: hidden !important;
   }
 
   #printable-rx table,

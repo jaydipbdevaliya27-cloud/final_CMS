@@ -1270,12 +1270,12 @@ export const Reports = ({ onNavigateToPatient }) => {
         {/* Print Header */}
         <div style={styles.printHeader}>
           <div style={styles.printClinicBrand}>
-            <h1 style={styles.printClinicName}>{doctor?.clinicName || 'CLINIC MANAGEMENT SYSTEM'}</h1>
+            <h1 style={styles.printClinicName}>{doctor?.clinicName || 'DHYEY CLINIC & NURSING HOME'}</h1>
             <p style={styles.printDoctorName}>
-              {doctor?.name || 'Dr. Dhyey Patel'}, {doctor?.specialization || 'Consulting Physician'}
+              {doctor?.name || 'Dr. Chirag Paghdal'}, {doctor?.specialization || 'FAMILY PHYSICIAN (B.H.M.S.)'}
             </p>
             <p style={styles.printClinicInfo}>
-              Reg. No: G-14285 &bull; Phone: +91 98765 43210 &bull; Ahmedabad, Gujarat
+              Reg. No: {doctor?.regNo || 'G-9035'} &bull; Phone: {doctor?.phone || '+91 98793 80508'} &bull; Surat, Gujarat
             </p>
           </div>
           <div style={styles.printMeta}>
@@ -1576,7 +1576,7 @@ export const Reports = ({ onNavigateToPatient }) => {
         <div style={styles.printSignOff}>
           <div style={styles.printSignLine} />
           <div style={styles.printSignText}>Authorized Medical Practitioner Signature</div>
-          <div style={styles.printSignSub}>Dr. Dhyey Patel &bull; Consulting Physician</div>
+          <div style={styles.printSignSub}>{doctor?.name || 'Dr. Chirag Paghdal'} &bull; {doctor?.specialization || 'FAMILY PHYSICIAN (B.H.M.S.)'}</div>
         </div>
       </div>
 

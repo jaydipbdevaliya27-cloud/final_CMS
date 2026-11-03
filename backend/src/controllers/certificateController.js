@@ -223,9 +223,9 @@ export const issueCertificate = async (req, res) => {
 
     // 2. Fetch doctor profile details for branding
     const doctor = await Doctor.findOne();
-    const clinicName = doctor?.clinicName || 'Dhyey Main Clinic';
-    const doctorName = doctor?.name || 'Dr. Dhyey Patel';
-    const doctorQualifications = doctor?.specialization || 'M.B.B.S., Consulting Physician';
+    const clinicName = doctor?.clinicName || 'Dhyey Clinic & Nursing Home';
+    const doctorName = doctor?.name || 'Dr. Chirag Paghdal';
+    const doctorQualifications = doctor?.specialization || 'FAMILY PHYSICIAN (B.H.M.S.)';
 
     // 3. Atomically generate unique Certificate ID (collision-safe)
     const currentYear = new Date().getFullYear();

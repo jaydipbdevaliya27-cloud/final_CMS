@@ -183,6 +183,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
   const [printVisit, setPrintVisit] = useState(null);
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [printLanguage, setPrintLanguage] = useState('en'); // 'en' | 'hi' | 'gu'
+  const [printMode, setPrintMode] = useState('full'); // 'full' (plain paper/PDF with letterhead) | 'padOnly' (physical pre-printed letterpad)
   const [printDietary, setPrintDietary] = useState('');
   const [masterDietaryList, setMasterDietaryList] = useState([]);
 
@@ -2177,9 +2178,9 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                 </div>
               </div>
 
-              {/* CONTROLS BAR: LANGUAGE SELECTION & DIETARY SUGGESTIONS (NON-PRINTABLE) */}
+              {/* CONTROLS BAR: LANGUAGE SELECTION, STATIONERY MODE & DIETARY SUGGESTIONS (NON-PRINTABLE) */}
               <div style={styles.printControlPanel} className="no-print">
-                {/* 1. Language Preference Selector */}
+                {/* 1. Language Preference & Stationery Mode Selector */}
                 <div style={styles.printOptionRow}>
                   <div style={styles.printOptionLabelCol}>
                     <Languages size={15} color="var(--primary)" />
@@ -2214,7 +2215,45 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                   </div>
                 </div>
 
-                {/* 2. Dietary Suggestions Selection from Master Data */}
+                {/* 2. Letterpad Paper Print Mode Selector */}
+                <div style={styles.printOptionRow}>
+                  <div style={styles.printOptionLabelCol}>
+                    <Printer size={15} color="var(--primary)" />
+                    <span style={styles.printOptionHeading}>Print Stationery Mode:</span>
+                  </div>
+                  <div style={styles.langPillsGroup}>
+                    <button
+                      type="button"
+                      onClick={() => setPrintMode('full')}
+                      style={{
+                        ...styles.langPillBtn,
+                        backgroundColor: printMode === 'full' ? 'var(--primary)' : 'var(--surface)',
+                        color: printMode === 'full' ? '#FFFFFF' : 'var(--text)',
+                        borderColor: printMode === 'full' ? 'var(--primary-dark)' : 'var(--border)',
+                        fontWeight: printMode === 'full' ? 700 : 500,
+                      }}
+                      title="Prints full Dr. Chirag Paghdal letterhead with address, Caduceus watermark & medical store footer"
+                    >
+                      <span>📄 Full Letterhead (Plain Paper / PDF)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPrintMode('padOnly')}
+                      style={{
+                        ...styles.langPillBtn,
+                        backgroundColor: printMode === 'padOnly' ? 'var(--accent)' : 'var(--surface)',
+                        color: printMode === 'padOnly' ? '#FFFFFF' : 'var(--text)',
+                        borderColor: printMode === 'padOnly' ? '#B87428' : 'var(--border)',
+                        fontWeight: printMode === 'padOnly' ? 700 : 500,
+                      }}
+                      title="Hides printed letterhead graphics so you can feed your physical clinic letterpad into the printer"
+                    >
+                      <span>🖨️ Feed Pre-Printed Pad (Stationery Mode)</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* 3. Dietary Suggestions Selection from Master Data */}
                 <div style={styles.dietaryControlBox}>
                   <div style={styles.dietaryControlHeader}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -2242,7 +2281,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                     inputStyle={styles.dietarySearchInput}
                   />
 
-                  {/* Quick Master Data Chips (Loaded from final_cms_clinic DB) */}
+                  {/* Quick Master Data Chips (Loaded from clinic_management_db) */}
                   {masterDietaryList.length > 0 && (
                     <div style={styles.quickChipsWrapper}>
                       <span style={styles.quickChipsLabel}>Click Master Data items to add/remove:</span>
@@ -2298,50 +2337,140 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                 </div>
 
                 <div style={styles.printHelpNotice}>
-                  <span>ℹ️ Clean Print Mode: Strictly prints <strong>Patient Name</strong>, <strong>Date</strong>, <strong>Prescription</strong>, and <strong>Dietary Suggestions</strong> (ready for doctor letterhead pad).</span>
+                  {printMode === 'full' ? (
+                    <span>ℹ️ <strong>Full Letterhead Mode</strong>: Prints complete <strong>Dr. Chirag Paghdal</strong> letterpad with watermark, patient details, converted Rx dosage, dietary advice & Harsh Medical footer.</span>
+                  ) : (
+                    <span>🖨️ <strong>Pre-Printed Pad Mode</strong>: Letterhead graphics are hidden during print so you can insert your <strong>physical printed paper pad</strong> directly into printer!</span>
+                  )}
                 </div>
               </div>
 
               {/* PRINTABLE PRESCRIPTION PAPER (#printable-rx) */}
-              <div style={styles.cleanRxPaper} id="printable-rx">
-                {/* 1. DOCTOR'S LETTERPAD HEADER */}
-                <div style={styles.letterpadHeader}>
-                  <div style={styles.letterpadClinicTitle}>
-                    {doctor?.clinicName || 'CLINIC MANAGEMENT SYSTEM'}
-                  </div>
-                  <div style={styles.letterpadClinicSub}>
-                    {doctor?.address || 'Shop No. 1, Mahavir Heights, New Kosad Road, Amroli, Surat'} &bull; Phone: {doctor?.phone || '+91 98765 43210'}
-                  </div>
-                  <div style={styles.letterpadDoctorLine}>
-                    <strong>{doctor?.name || 'Dr. Dhyey Patel'}</strong>, {doctor?.specialization || 'Consulting Physician'} &bull; Reg. No: G-14285
-                  </div>
-                  <div style={styles.letterpadDividerLine} />
+              <div
+                style={styles.cleanRxPaper}
+                id="printable-rx"
+                className={printMode === 'padOnly' ? 'pad-only-mode' : 'full-pad-mode'}
+              >
+                {/* WATERMARK: CADUCEUS SEAL OF DR. CHIRAG PAGHDAL (DHYEY CLINIC) */}
+                <div
+                  className="letterpad-watermark"
+                  style={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    pointerEvents: 'none',
+                    zIndex: 0,
+                    opacity: 0.08,
+                    display: printMode === 'padOnly' ? 'none' : 'block',
+                  }}
+                >
+                  <svg width="270" height="270" viewBox="0 0 300 300">
+                    <defs>
+                      <path id="watermarkTopArc" d="M 45,150 A 105,105 0 0,1 255,150" fill="none" />
+                      <path id="watermarkBottomArc" d="M 255,150 A 105,105 0 0,1 45,150" fill="none" />
+                    </defs>
+                    <circle cx="150" cy="150" r="138" fill="none" stroke="#0B63AC" strokeWidth="2.5" />
+                    <circle cx="150" cy="150" r="128" fill="none" stroke="#0B63AC" strokeWidth="1" strokeDasharray="4 3" />
+                    <circle cx="150" cy="150" r="86" fill="none" stroke="#0B63AC" strokeWidth="1.5" />
+                    <text fill="#0B63AC" fontSize="13" fontWeight="900" letterSpacing="3.5" textAnchor="middle">
+                      <textPath href="#watermarkTopArc" startOffset="50%">
+                        DR. CHIRAG PAGHDAL
+                      </textPath>
+                    </text>
+                    <text fill="#0B63AC" fontSize="12" fontWeight="800" letterSpacing="4" textAnchor="middle">
+                      <textPath href="#watermarkBottomArc" startOffset="50%">
+                        ★ DHYEY CLINIC ★
+                      </textPath>
+                    </text>
+                    <g transform="translate(150, 150) scale(0.9) translate(-50, -60)" stroke="#0B63AC" fill="none" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="50" y1="15" x2="50" y2="105" strokeWidth="3" />
+                      <circle cx="50" cy="12" r="4.5" fill="#0B63AC" />
+                      <polygon points="50,110 47,104 53,104" fill="#0B63AC" />
+                      <path d="M 50,25 C 32,15 15,18 8,28 C 18,32 30,34 50,38" fill="none" strokeWidth="2.2" />
+                      <path d="M 50,25 C 68,15 85,18 92,28 C 82,32 70,34 50,38" fill="none" strokeWidth="2.2" />
+                      <path d="M 50,32 C 36,25 22,27 16,35 C 25,38 36,40 50,44" fill="none" strokeWidth="1.8" />
+                      <path d="M 50,32 C 64,25 78,27 84,35 C 75,38 64,40 50,44" fill="none" strokeWidth="1.8" />
+                      <path d="M 50,42 C 30,48 28,62 50,68 C 72,74 70,88 50,96" strokeWidth="2.2" />
+                      <path d="M 50,42 C 70,48 72,62 50,68 C 28,74 30,88 50,96" strokeWidth="2.2" />
+                      <circle cx="43" cy="40" r="2" fill="#0B63AC" />
+                      <circle cx="57" cy="40" r="2" fill="#0B63AC" />
+                    </g>
+                  </svg>
                 </div>
 
-                {/* 2. PATIENT INFO BAR */}
-                <div style={styles.letterpadPatientGrid}>
-                  <div>
-                    <span style={styles.cleanLabel}>{t.patientLabel} </span>
-                    <strong style={styles.cleanPatientName}>
-                      {printVisit.patientName || currentPatient?.name}
-                    </strong>
-                    {currentPatient?.age && (
-                      <span style={styles.cleanAge}>
-                        {' '}({currentPatient.age} Yrs{currentPatient.gender ? ` / ${currentPatient.gender}` : ''})
-                      </span>
-                    )}
+                {/* 1. DOCTOR'S LETTERPAD HEADER (MATCHING CLINIC STATIONERY) */}
+                <div
+                  className="letterpad-preprinted-header"
+                  style={{
+                    position: 'relative',
+                    zIndex: 1,
+                    visibility: printMode === 'padOnly' ? 'hidden' : 'visible',
+                    marginBottom: '4px',
+                  }}
+                >
+                  <div style={styles.letterpadTopRow}>
+                    <div>
+                      <div style={styles.letterpadDocName}>
+                        {doctor?.name || 'Dr. Chirag Paghdal'}
+                      </div>
+                      <div style={styles.letterpadDocSubRow}>
+                        <span style={styles.letterpadDocSpecialty}>
+                          {doctor?.specialization?.includes('B.H.M.S') ? 'FAMILY PHYSICIAN' : (doctor?.specialization || 'FAMILY PHYSICIAN')}
+                        </span>
+                        <span style={styles.letterpadDocDegree}>
+                          ({doctor?.degree || 'B.H.M.S.'})
+                        </span>
+                      </div>
+                    </div>
+
+                    <div style={styles.letterpadRightContact}>
+                      <div style={styles.letterpadContactLine}>
+                        <span>Mo.: </span>
+                        <strong>{doctor?.phone || '98793 80508'}</strong>
+                      </div>
+                      <div style={styles.letterpadContactLine}>
+                        <span>Reg. No. </span>
+                        <strong>{doctor?.regNo || 'G-9035'}</strong>
+                      </div>
+                    </div>
                   </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <span style={styles.cleanLabel}>{t.dateLabel} </span>
-                    <strong style={styles.cleanDateValue}>{formattedDate}</strong>
-                    {currentPatient?.patientId && (
-                      <span style={{ fontSize: '11px', color: '#4B5563', marginLeft: '8px' }}>
-                        [{currentPatient.patientId}]
-                      </span>
-                    )}
+
+                  {/* Sleek Grey Clinic Address Banner */}
+                  <div style={styles.letterpadAddressBar}>
+                    {doctor?.clinicName || 'Dhyey Clinic & Nursing Home'} : {doctor?.address || 'Shop No. 1, Mahavir Heights, New Kosad Road, Amroli, Surat.'}
                   </div>
                 </div>
-                <div style={styles.letterpadPatientDivider} />
+
+                {/* 2. PATIENT INFO BAR (FOR, ________  DATE : _________) */}
+                <div style={styles.letterpadPatientRow}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', flex: 1, minWidth: 0, paddingRight: '12px' }}>
+                    <span style={{ fontWeight: '900', letterSpacing: '0.5px', fontSize: '13px', color: '#000000' }}>
+                      FOR,
+                    </span>
+                    <span style={styles.letterpadForUnderline}>
+                      {printVisit.patientName || currentPatient?.name}
+                      {currentPatient?.age && (
+                        <span style={{ fontWeight: '700', color: '#1F2937' }}>
+                          {' '}({currentPatient.age} Yrs{currentPatient.gender ? ` / ${currentPatient.gender}` : ''})
+                        </span>
+                      )}
+                      {currentPatient?.patientId && (
+                        <span style={{ fontSize: '11px', color: '#475569', marginLeft: '6px', fontWeight: '600' }}>
+                          [{currentPatient.patientId}]
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', flexShrink: 0 }}>
+                    <span style={{ fontWeight: '900', letterSpacing: '0.5px', fontSize: '13px', color: '#000000' }}>
+                      DATE :
+                    </span>
+                    <span style={styles.letterpadDateUnderline}>
+                      {formattedDate}
+                    </span>
+                  </div>
+                </div>
 
                 {/* 3. PRESCRIPTION BODY */}
                 <div style={styles.cleanRxBody}>
@@ -2360,7 +2489,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                           <th style={{ ...styles.cleanTh, textAlign: 'left', minWidth: '160px' }}>
                             {t.colMedicine}
                           </th>
-                          <th style={{ ...styles.cleanTh, width: '70px', textAlign: 'center' }}>
+                          <th style={{ ...styles.cleanTh, width: '65px', textAlign: 'center' }}>
                             {t.colQty}
                           </th>
                           <th style={{ ...styles.cleanTh, textAlign: 'left' }}>
@@ -2441,16 +2570,31 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                   </div>
                   <div style={styles.letterpadSignCol}>
                     <div style={styles.letterpadCursiveSignature}>
-                      {doctor?.name || 'Dr. Dhyey Patel'}
+                      {doctor?.name || 'Dr. Chirag Paghdal'}
                     </div>
                     <div style={styles.letterpadSignLine} />
                     <div style={styles.letterpadSignName}>
-                      {doctor?.name || 'Dr. Dhyey Patel'}
+                      {doctor?.name || 'Dr. Chirag Paghdal'}
                     </div>
                     <div style={styles.letterpadSignRole}>
-                      {doctor?.specialization || 'Consulting Physician (Reg. No. G-14285)'}
+                      FAMILY PHYSICIAN (B.H.M.S.) &bull; Reg. No. {doctor?.regNo || 'G-9035'}
                     </div>
                   </div>
+                </div>
+
+                {/* 6. BOTTOM PHARMACY SPONSOR BAR (+ HARSH MEDICAL & GENERAL STORES +) */}
+                <div
+                  className="letterpad-preprinted-footer"
+                  style={{
+                    ...styles.letterpadPharmacyBar,
+                    visibility: printMode === 'padOnly' ? 'hidden' : 'visible',
+                  }}
+                >
+                  <span style={styles.letterpadPharmacyPlus}>+</span>
+                  <span style={styles.letterpadPharmacyText}>
+                    {doctor?.medicalStore || 'Harsh Medical & General Stores'}
+                  </span>
+                  <span style={styles.letterpadPharmacyPlus}>+</span>
                 </div>
               </div>
             </div>
@@ -2462,7 +2606,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
         isOpen={showAddReportModal}
         onClose={() => setShowAddReportModal(false)}
         patient={currentPatient}
-        doctor={{ name: doctor?.name || 'Dr. Dhyey Patel' }}
+        doctor={{ name: doctor?.name || 'Dr. Chirag Paghdal' }}
         initialReport={attachedReport}
         onReportSaved={(reportData) => {
           setAttachedReport(reportData);
@@ -4482,6 +4626,117 @@ const styles = {
     flexDirection: 'column',
     gap: '10px',
     fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    position: 'relative',
+  },
+  letterpadTopRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: '12px',
+  },
+  letterpadDocName: {
+    fontSize: '27px',
+    fontWeight: '900',
+    color: '#0B63AC',
+    letterSpacing: '0.4px',
+    lineHeight: 1.1,
+    fontFamily: "'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif",
+    textShadow: '0.5px 0.5px 0px rgba(11,99,172,0.15)',
+  },
+  letterpadDocSubRow: {
+    display: 'flex',
+    alignItems: 'baseline',
+    gap: '6px',
+    marginTop: '2px',
+  },
+  letterpadDocSpecialty: {
+    fontSize: '12.5px',
+    fontWeight: '800',
+    color: '#0088CC',
+    letterSpacing: '0.6px',
+    textTransform: 'uppercase',
+  },
+  letterpadDocDegree: {
+    fontSize: '11.5px',
+    fontWeight: '700',
+    color: '#334155',
+  },
+  letterpadRightContact: {
+    textAlign: 'right',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px',
+    flexShrink: 0,
+  },
+  letterpadContactLine: {
+    fontSize: '12px',
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  letterpadAddressBar: {
+    backgroundColor: '#DCE2E6',
+    border: '1px solid #CBD5E1',
+    padding: '3px 8px',
+    margin: '6px 0 8px 0',
+    textAlign: 'center',
+    fontSize: '11px',
+    fontWeight: '600',
+    color: '#1E293B',
+    letterSpacing: '0.2px',
+  },
+  letterpadPatientRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    padding: '4px 0 8px 0',
+    borderBottom: '1px solid #94A3B8',
+    marginBottom: '8px',
+    position: 'relative',
+    zIndex: 1,
+  },
+  letterpadForUnderline: {
+    fontWeight: '800',
+    fontSize: '14px',
+    color: '#000000',
+    borderBottom: '1px dashed #64748B',
+    paddingBottom: '1px',
+    flex: 1,
+    textTransform: 'uppercase',
+  },
+  letterpadDateUnderline: {
+    fontWeight: '800',
+    fontSize: '13px',
+    color: '#000000',
+    borderBottom: '1px dashed #64748B',
+    paddingBottom: '1px',
+    minWidth: '95px',
+    textAlign: 'center',
+  },
+  letterpadPharmacyBar: {
+    marginTop: '22px',
+    padding: '6px 12px',
+    borderTop: '1.5px solid #CBD5E1',
+    backgroundColor: '#F8FAFC',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: '12px',
+    position: 'relative',
+    zIndex: 1,
+  },
+  letterpadPharmacyPlus: {
+    fontSize: '18px',
+    fontWeight: '900',
+    color: '#0B63AC',
+    lineHeight: 1,
+  },
+  letterpadPharmacyText: {
+    fontSize: '13.5px',
+    fontWeight: '800',
+    color: '#0B63AC',
+    letterSpacing: '0.5px',
+    textTransform: 'uppercase',
+    fontFamily: "'Segoe UI', -apple-system, Roboto, sans-serif",
   },
   letterpadHeader: {
     textAlign: 'center',

@@ -52,7 +52,7 @@ export const MedicalCertificate = () => {
   const [bodyText, setBodyText] = useState('');
 
   // Doctor Digital Signature
-  const [digitalSignature, setDigitalSignature] = useState('Dr. Dhyey Patel');
+  const [digitalSignature, setDigitalSignature] = useState('Dr. Chirag Paghdal');
   const [isCanvasSignature, setIsCanvasSignature] = useState(false);
 
   // Certificates Registry State
@@ -465,10 +465,10 @@ export const MedicalCertificate = () => {
     restDays,
     issuePlace: issuePlace || 'Ahmedabad',
     bodyText: currentFormattedBody,
-    clinicName: doctor?.clinicName || 'Clinic Management System',
-    doctorName: doctor?.name || 'Dr. Dhyey Patel',
-    doctorQualifications: doctor?.specialization || 'Consulting Physician',
-    doctorRegNo: 'G-14285',
+    clinicName: doctor?.clinicName || 'Dhyey Clinic & Nursing Home',
+    doctorName: doctor?.name || 'Dr. Chirag Paghdal',
+    doctorQualifications: doctor?.specialization || 'FAMILY PHYSICIAN (B.H.M.S.)',
+    doctorRegNo: doctor?.regNo || 'G-9035',
     issueDate: todayStr,
     digitalSignature,
   };
@@ -998,16 +998,16 @@ export const MedicalCertificate = () => {
                           />
                         ) : (
                           <span style={styles.cursiveSignature}>
-                            {digitalSignature || 'Dr. Dhyey Patel'}
+                            {digitalSignature || 'Dr. Chirag Paghdal'}
                           </span>
                         )}
                       </div>
                       <div style={styles.a4SignRule} />
-                      <p style={styles.a4DocName}>{doctor?.name || 'Dr. Dhyey Patel'}</p>
+                      <p style={styles.a4DocName}>{doctor?.name || 'Dr. Chirag Paghdal'}</p>
                       <p style={styles.a4DocRole}>
-                        {doctor?.specialization || 'Consulting Physician'}
+                        {doctor?.specialization || 'FAMILY PHYSICIAN (B.H.M.S.)'}
                       </p>
-                      <p style={styles.a4DocReg}>Reg. No. G-14285</p>
+                      <p style={styles.a4DocReg}>Reg. No. {doctor?.regNo || 'G-9035'}</p>
                     </div>
                   </div>
                 </div>
@@ -1180,14 +1180,14 @@ export const MedicalCertificate = () => {
                     />
                   ) : (
                     <span style={styles.printCursiveSig}>
-                      {activePrintCert.digitalSignature || 'Dr. Dhyey Patel'}
+                      {activePrintCert.digitalSignature || 'Dr. Chirag Paghdal'}
                     </span>
                   )}
                 </div>
                 <div style={styles.printSignLine} />
-                <p style={styles.printDocName}>{activePrintCert.doctorName || 'Dr. Dhyey Patel'}</p>
+                <p style={styles.printDocName}>{activePrintCert.doctorName || 'Dr. Chirag Paghdal'}</p>
                 <p style={styles.printDocRole}>
-                  {activePrintCert.doctorQualifications || 'Consulting Physician'}
+                  {activePrintCert.doctorQualifications || 'FAMILY PHYSICIAN (B.H.M.S.)'}
                 </p>
               </div>
             </div>
@@ -1386,7 +1386,7 @@ export const MedicalCertificate = () => {
                 <button
                   type="button"
                   onClick={() => {
-                    setDigitalSignature('Dr. Dhyey Patel');
+                    setDigitalSignature('Dr. Chirag Paghdal');
                     setIsCanvasSignature(false);
                     setShowSignatureModal(false);
                   }}

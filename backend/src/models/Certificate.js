@@ -63,7 +63,7 @@ const certificateSchema = new mongoose.Schema(
     },
     clinicName: {
       type: String,
-      default: 'Dhyey Main Clinic',
+      default: 'Dhyey Clinic & Nursing Home',
     },
     clinicAddress: {
       type: String,
@@ -71,15 +71,15 @@ const certificateSchema = new mongoose.Schema(
     },
     doctorName: {
       type: String,
-      default: 'Dr. Dhyey Patel',
+      default: 'Dr. Chirag Paghdal',
     },
     doctorRegNo: {
       type: String,
-      default: 'G-14285',
+      default: 'G-9035',
     },
     doctorQualifications: {
       type: String,
-      default: 'M.B.B.S., Consulting Physician',
+      default: 'FAMILY PHYSICIAN (B.H.M.S.)',
     },
     digitalSignature: {
       type: String,
