@@ -263,12 +263,15 @@ export const MasterDataInput = ({
         required={required}
         style={{
           width: '100%',
-          padding: '11px 14px',
-          fontSize: '0.92rem',
+          boxSizing: 'border-box',
+          height: '34px',
+          padding: '0 10px',
+          fontSize: '12.5px',
           backgroundColor: 'var(--surface-alt)',
           border: '1px solid var(--border)',
-          borderRadius: 'var(--radius-md)',
+          borderRadius: '6px',
           color: 'var(--text)',
+          outline: 'none',
           ...inputStyle,
         }}
       />

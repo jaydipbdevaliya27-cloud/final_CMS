@@ -362,7 +362,7 @@ export const FamilyHeadRegistration = ({ onNavigateToAddMember, onNavigateToPati
           >
             <div style={styles.idCardHeader}>
               <span style={styles.idCardLabel}>
-                {editingFamily ? 'EDITING ASSIGNED FAMILY ID' : '% AUTO-GENERATED FAMILY ID'}
+                {editingFamily ? 'EDITING ASSIGNED FAMILY ID' : 'AUTO-GENERATED FAMILY ID'}
               </span>
               <div style={styles.badgeRow}>
                 <span
@@ -492,6 +492,7 @@ export const FamilyHeadRegistration = ({ onNavigateToAddMember, onNavigateToPati
                 placeholder="e.g. PEN -> Penicillin"
                 value={formData.allergy}
                 onChange={(val) => handleInputChange('allergy', val)}
+                inputStyle={styles.input}
               />
             </div>
 
@@ -504,6 +505,7 @@ export const FamilyHeadRegistration = ({ onNavigateToAddMember, onNavigateToPati
                   placeholder="e.g. Shanti Niketan"
                   value={formData.society}
                   onChange={(val) => handleInputChange('society', val)}
+                  inputStyle={styles.input}
                 />
               </div>
 
@@ -516,6 +518,7 @@ export const FamilyHeadRegistration = ({ onNavigateToAddMember, onNavigateToPati
                   placeholder="e.g. Vastrapur"
                   value={formData.area}
                   onChange={(val) => handleInputChange('area', val)}
+                  inputStyle={styles.input}
                 />
               </div>
             </div>
@@ -1037,33 +1040,37 @@ const styles = {
   },
   input: {
     width: '100%',
-    padding: '0 8px',
-    height: '30px',
-    fontSize: '12px',
+    boxSizing: 'border-box',
+    padding: '0 10px',
+    height: '34px',
+    fontSize: '12.5px',
     backgroundColor: 'var(--surface-alt)',
     border: '1px solid var(--border)',
-    borderRadius: '5px',
+    borderRadius: '6px',
     color: 'var(--text)',
+    outline: 'none',
   },
   select: {
     width: '100%',
-    padding: '0 8px',
-    height: '30px',
-    fontSize: '12px',
+    boxSizing: 'border-box',
+    padding: '0 10px',
+    height: '34px',
+    fontSize: '12.5px',
     backgroundColor: 'var(--surface-alt)',
     border: '1px solid var(--border)',
-    borderRadius: '5px',
+    borderRadius: '6px',
     color: 'var(--text)',
     cursor: 'pointer',
+    outline: 'none',
   },
   grid3: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(95px, 1fr))',
+    gridTemplateColumns: 'repeat(3, 1fr)',
     gap: '8px',
   },
   grid2: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+    gridTemplateColumns: '1fr 1fr',
     gap: '8px',
   },
   buttonRow: {
