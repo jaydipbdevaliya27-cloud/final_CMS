@@ -307,7 +307,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
   useEffect(() => {
     const handleGlobalShortcuts = (e) => {
       // Don't intercept if an overlay modal is open
-      if (showAddReportModal || showTotalDueModal || showFamilyDueModal || showPrintPreview) {
+      if (showAddReportModal || showTotalDueModal || showFamilyDueModal || showPrintModal) {
         return;
       }
 
@@ -330,7 +330,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
 
     window.addEventListener('keydown', handleGlobalShortcuts);
     return () => window.removeEventListener('keydown', handleGlobalShortcuts);
-  }, [showNewCaseForm, showAddReportModal, showTotalDueModal, showFamilyDueModal, showPrintPreview]);
+  }, [showNewCaseForm, showAddReportModal, showTotalDueModal, showFamilyDueModal, showPrintModal]);
 
   // --- Dragger Event Handlers ---
   useEffect(() => {
