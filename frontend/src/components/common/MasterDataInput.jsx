@@ -212,6 +212,10 @@ export const MasterDataInput = ({
         prev > 0 ? prev - 1 : suggestions.length - 1
       );
     } else if (e.key === 'Enter') {
+      // Allow Ctrl+Enter or Alt+Enter to bubble up for Save & Print shortcuts
+      if (e.ctrlKey || e.metaKey || e.altKey) {
+        return;
+      }
       // If suggestions are active, automatically use highlighted/first selection on Enter
       if (suggestions.length > 0) {
         e.preventDefault();

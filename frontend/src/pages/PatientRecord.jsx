@@ -165,18 +165,13 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
   const [loadingVisits, setLoadingVisits] = useState(false);
   const [toastMessage, setToastMessage] = useState({ text: '', type: 'success' });
 
-  // --- Layout Mode & Dragger State ---
+  // --- Layout Mode State ---
   // 'stacked' = Top Case Entry + Bottom History
   // 'side-by-side' = Left Case Entry + Right History
   const [layoutMode, setLayoutMode] = useState('stacked');
-  const [splitWidthPercent, setSplitWidthPercent] = useState(62); // Side-by-side Left %
-  const [historyHeight, setHistoryHeight] = useState(340); // Stacked Bottom History px - fits at least 3 past visit cards
-  const [isDraggingH, setIsDraggingH] = useState(false);
-  const [isDraggingV, setIsDraggingV] = useState(false);
   const splitContainerRef = useRef(null);
   const bpInputRef = useRef(null);
   const caseFormPaneRef = useRef(null);
-  const [isNarrowForm, setIsNarrowForm] = useState(false);
 
   // --- Modals State ---
   const [showEditModal, setShowEditModal] = useState(false);
@@ -310,14 +305,14 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
   showNewCaseFormRef.current = showNewCaseForm;
 
   const handleSaveVisitRef = useRef();
+  const isSavingVisitRef = useRef(false);
 
   // Helper to reliably update form field and sync ref immediately
   const updateFormField = (field, value) => {
-    setVisitForm((prev) => {
-      const updated = { ...prev, [field]: value };
-      visitFormRef.current = updated;
-      return updated;
-    });
+    const current = visitFormRef.current || visitForm;
+    const updated = { ...current, [field]: value };
+    visitFormRef.current = updated;
+    setVisitForm(updated);
   };
 
   const showToast = (text, type = 'success') => {
@@ -337,18 +332,6 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
     }
   }, [showNewCaseForm]);
 
-  // --- Track Form Width for Dynamic Responsive Layout ---
-  useEffect(() => {
-    if (!caseFormPaneRef.current) return;
-    const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        setIsNarrowForm(entry.contentRect.width < 720);
-      }
-    });
-    observer.observe(caseFormPaneRef.current);
-    return () => observer.disconnect();
-  }, [showNewCaseForm, layoutMode]);
-
   // --- Global Keyboard Shortcuts: Alt+N/F3 for New Case, Ctrl+S for Save Case, Ctrl+Enter for Save & Print ---
   useEffect(() => {
     const handleGlobalShortcuts = (e) => {
@@ -360,9 +343,20 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
       // 1. Open New Case: Alt+N or F3
       const isAltN = e.altKey && (e.key === 'n' || e.key === 'N');
       const isF3 = e.key === 'F3';
-      if (isAltN || (isF3 && !showNewCaseFormRef.current)) {
-        e.preventDefault();
-        handleOpenNewCase();
+      if (isAltN || isF3) {
+        if (!showNewCaseFormRef.current) {
+          e.preventDefault();
+          e.stopPropagation();
+          handleOpenNewCase();
+        } else {
+          // If already open, focus BP without wiping data
+          e.preventDefault();
+          e.stopPropagation();
+          if (bpInputRef.current) {
+            bpInputRef.current.focus();
+            bpInputRef.current.select?.();
+          }
+        }
         return;
       }
 
@@ -374,7 +368,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
         if (isCtrlS || isAltS) {
           e.preventDefault();
           e.stopPropagation();
-          if (handleSaveVisitRef.current) {
+          if (handleSaveVisitRef.current && !isSavingVisitRef.current) {
             handleSaveVisitRef.current(false);
           }
           return;
@@ -386,7 +380,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
         if (isCtrlEnter || isAltP) {
           e.preventDefault();
           e.stopPropagation();
-          if (handleSaveVisitRef.current) {
+          if (handleSaveVisitRef.current && !isSavingVisitRef.current) {
             handleSaveVisitRef.current(true);
           }
           return;
@@ -397,45 +391,6 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
     window.addEventListener('keydown', handleGlobalShortcuts);
     return () => window.removeEventListener('keydown', handleGlobalShortcuts);
   }, [showAddReportModal, showTotalDueModal, showFamilyDueModal, showPrintModal]);
-
-  // --- Dragger Event Handlers ---
-  useEffect(() => {
-    const handleMouseMove = (e) => {
-      if (isDraggingV && splitContainerRef.current) {
-        const rect = splitContainerRef.current.getBoundingClientRect();
-        const offsetX = e.clientX - rect.left;
-        const newPercent = Math.max(42, Math.min(78, (offsetX / rect.width) * 100));
-        setSplitWidthPercent(newPercent);
-      } else if (isDraggingH) {
-        // Dragging horizontal splitter to change history pane height
-        const windowHeight = window.innerHeight;
-        const newHeight = Math.max(160, Math.min(750, windowHeight - e.clientY - 20));
-        setHistoryHeight(newHeight);
-      }
-    };
-
-    const handleMouseUp = () => {
-      setIsDraggingV(false);
-      setIsDraggingH(false);
-    };
-
-    if (isDraggingV || isDraggingH) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
-      document.body.style.cursor = isDraggingV ? 'col-resize' : 'row-resize';
-      document.body.style.userSelect = 'none';
-    } else {
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-    }
-
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-    };
-  }, [isDraggingV, isDraggingH]);
 
   // --- 1. Load Initial / Pre-selected Patient ---
   useEffect(() => {
@@ -584,89 +539,60 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
 
   // --- Treatment Row Handlers (with Auto-Add on typing) ---
   const handleAddTreatment = () => {
-    setVisitForm((prev) => {
-      const updated = {
-        ...prev,
-        treatments: [
-          ...prev.treatments,
-          { id: Date.now() + '-' + Math.random(), item: '', qty: '1' },
-        ],
-      };
-      visitFormRef.current = updated;
-      return updated;
-    });
+    const current = visitFormRef.current || visitForm;
+    const updated = {
+      ...current,
+      treatments: [
+        ...(current.treatments || []),
+        { id: Date.now() + '-' + Math.random(), item: '', qty: '1' },
+      ],
+    };
+    visitFormRef.current = updated;
+    setVisitForm(updated);
   };
 
   const handleUpdateTreatment = (id, field, value) => {
-    setVisitForm((prev) => {
-      const idx = prev.treatments.findIndex((t) => t.id === id);
-      const isLast = idx === prev.treatments.length - 1;
-      const updated = prev.treatments.map((t) =>
-        t.id === id ? { ...t, [field]: value } : t
-      );
+    const current = visitFormRef.current || visitForm;
+    const treatments = current.treatments || [];
+    const idx = treatments.findIndex((t) => t.id === id);
+    const isLast = idx === treatments.length - 1;
+    const updated = treatments.map((t) =>
+      t.id === id ? { ...t, [field]: value } : t
+    );
 
-      // Auto add new row when writing in the item field of the last row
-      if (isLast && field === 'item' && value && String(value).trim().length > 0) {
-        updated.push({
-          id: Date.now() + '-' + Math.random(),
-          item: '',
-          qty: '1',
-        });
-      }
+    // Auto add new row when writing in the item field of the last row
+    if (isLast && field === 'item' && value && String(value).trim().length > 0) {
+      updated.push({
+        id: Date.now() + '-' + Math.random(),
+        item: '',
+        qty: '1',
+      });
+    }
 
-      const res = { ...prev, treatments: updated };
-      visitFormRef.current = res;
-      return res;
-    });
+    const res = { ...current, treatments: updated };
+    visitFormRef.current = res;
+    setVisitForm(res);
   };
 
   const handleRemoveTreatment = (id) => {
-    setVisitForm((prev) => {
-      const filtered = prev.treatments.filter((t) => t.id !== id);
-      const res = {
-        ...prev,
-        treatments: filtered.length > 0 ? filtered : [{ id: Date.now() + '-t1', item: '', qty: '1' }],
-      };
-      visitFormRef.current = res;
-      return res;
-    });
+    const current = visitFormRef.current || visitForm;
+    const filtered = (current.treatments || []).filter((t) => t.id !== id);
+    const res = {
+      ...current,
+      treatments: filtered.length > 0 ? filtered : [{ id: Date.now() + '-t1', item: '', qty: '1' }],
+    };
+    visitFormRef.current = res;
+    setVisitForm(res);
   };
 
   // --- Prescription Row Handlers (with Auto-Add on typing) ---
   const handleAddPrescription = () => {
-    setVisitForm((prev) => {
-      const updated = {
-        ...prev,
-        prescriptions: [
-          ...prev.prescriptions,
-          {
-            id: Date.now() + '-' + Math.random(),
-            medicine: '',
-            qty: '',
-            morning: '1',
-            noon: '0',
-            evening: '1',
-            night: '0',
-            timing: 'AF',
-          },
-        ],
-      };
-      visitFormRef.current = updated;
-      return updated;
-    });
-  };
-
-  const handleUpdatePrescription = (id, field, value) => {
-    setVisitForm((prev) => {
-      const idx = prev.prescriptions.findIndex((p) => p.id === id);
-      const isLast = idx === prev.prescriptions.length - 1;
-      const updated = prev.prescriptions.map((p) =>
-        p.id === id ? { ...p, [field]: value } : p
-      );
-
-      // Auto add new row when writing in the medicine field of the last row
-      if (isLast && field === 'medicine' && value && String(value).trim().length > 0) {
-        updated.push({
+    const current = visitFormRef.current || visitForm;
+    const updated = {
+      ...current,
+      prescriptions: [
+        ...(current.prescriptions || []),
+        {
           id: Date.now() + '-' + Math.random(),
           medicine: '',
           qty: '',
@@ -675,44 +601,69 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
           evening: '1',
           night: '0',
           timing: 'AF',
-        });
-      }
+        },
+      ],
+    };
+    visitFormRef.current = updated;
+    setVisitForm(updated);
+  };
 
-      const res = { ...prev, prescriptions: updated };
-      visitFormRef.current = res;
-      return res;
-    });
+  const handleUpdatePrescription = (id, field, value) => {
+    const current = visitFormRef.current || visitForm;
+    const prescriptions = current.prescriptions || [];
+    const idx = prescriptions.findIndex((p) => p.id === id);
+    const isLast = idx === prescriptions.length - 1;
+    const updated = prescriptions.map((p) =>
+      p.id === id ? { ...p, [field]: value } : p
+    );
+
+    // Auto add new row when writing in the medicine field of the last row
+    if (isLast && field === 'medicine' && value && String(value).trim().length > 0) {
+      updated.push({
+        id: Date.now() + '-' + Math.random(),
+        medicine: '',
+        qty: '',
+        morning: '1',
+        noon: '0',
+        evening: '1',
+        night: '0',
+        timing: 'AF',
+      });
+    }
+
+    const res = { ...current, prescriptions: updated };
+    visitFormRef.current = res;
+    setVisitForm(res);
   };
 
   const handleRemovePrescription = (id) => {
-    setVisitForm((prev) => {
-      const filtered = prev.prescriptions.filter((p) => p.id !== id);
-      const res = {
-        ...prev,
-        prescriptions:
-          filtered.length > 0
-            ? filtered
-            : [
-              {
-                id: Date.now() + '-p1',
-                medicine: '',
-                qty: '',
-                morning: '1',
-                noon: '0',
-                evening: '1',
-                night: '0',
-                timing: 'AF',
-              },
-            ],
-      };
-      visitFormRef.current = res;
-      return res;
-    });
+    const current = visitFormRef.current || visitForm;
+    const filtered = (current.prescriptions || []).filter((p) => p.id !== id);
+    const res = {
+      ...current,
+      prescriptions:
+        filtered.length > 0
+          ? filtered
+          : [
+            {
+              id: Date.now() + '-p1',
+              medicine: '',
+              qty: '',
+              morning: '1',
+              noon: '0',
+              evening: '1',
+              night: '0',
+              timing: 'AF',
+            },
+          ],
+    };
+    visitFormRef.current = res;
+    setVisitForm(res);
   };
 
   // --- Open New Case Form ---
   const handleOpenNewCase = (targetPatient = null) => {
-    const patientToUse = targetPatient || currentPatient;
+    const patientToUse = targetPatient || currentPatientRef.current || currentPatient;
     if (!patientToUse) {
       showToast('Please search and select a patient first to start a new case visit.', 'error');
       return;
@@ -742,8 +693,8 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
       received: '0',
       due: '0',
     };
-    setVisitForm(freshForm);
     visitFormRef.current = freshForm;
+    setVisitForm(freshForm);
     setShowNewCaseForm(true);
     showNewCaseFormRef.current = true;
     setTimeout(() => {
@@ -817,6 +768,8 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
 
   // --- Save / Update Visit & Optional Print ---
   const handleSaveVisit = async (andPrint = false) => {
+    if (isSavingVisitRef.current) return;
+
     const patient = currentPatientRef.current || currentPatient;
     if (!patient) {
       showToast('Please select a patient first', 'error');
@@ -825,13 +778,52 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
 
     // Always read from the synchronous ref to guarantee the freshest user-entered values
     const form = visitFormRef.current || visitForm;
-    const editingId = editingVisitIdRef.current !== undefined ? editingVisitIdRef.current : editingVisitId;
+    const editingId = editingVisitIdRef.current !== undefined && editingVisitIdRef.current !== null
+      ? editingVisitIdRef.current
+      : editingVisitId;
     const labReport = attachedReportRef.current || attachedReport;
 
     const formCharge = Math.max(0, Number(form.charge) || 0);
     const formReceived = Math.max(0, Number(form.received) || 0);
 
+    const validTreatments = (form.treatments || [])
+      .filter((t) => t && t.item && String(t.item).trim())
+      .map((t) => ({
+        item: String(t.item).trim(),
+        qty: String(t.qty || '').trim() || '1',
+      }));
+
+    const validPrescriptions = (form.prescriptions || [])
+      .filter((p) => p && p.medicine && String(p.medicine).trim())
+      .map((p) => ({
+        medicine: String(p.medicine).trim(),
+        qty: String(p.qty || '').trim(),
+        morning: String(p.morning || '').trim() || '1',
+        noon: String(p.noon || '').trim() || '0',
+        evening: String(p.evening || '').trim() || '1',
+        night: String(p.night || '').trim() || '0',
+        timing: p.timing || 'AF',
+      }));
+
+    const hasAnyData =
+      (form.bp && form.bp.trim()) ||
+      (form.sugar && form.sugar.trim()) ||
+      (form.other && form.other.trim()) ||
+      (form.reference && form.reference.trim()) ||
+      (form.investigation && form.investigation.trim()) ||
+      (form.complaint && form.complaint.trim()) ||
+      validTreatments.length > 0 ||
+      validPrescriptions.length > 0 ||
+      formCharge > 0 ||
+      labReport;
+
+    if (!hasAnyData) {
+      showToast('Please enter at least one clinical detail, complaint, or prescription before saving.', 'error');
+      return;
+    }
+
     try {
+      isSavingVisitRef.current = true;
       setIsSavingVisit(true);
       const payload = {
         patientId: patient.patientId,
@@ -844,23 +836,8 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
         reference: form.reference || '',
         investigation: (form.investigation || '').replace(/,\s*$/, '').trim(),
         complaint: (form.complaint || '').replace(/,\s*$/, '').trim(),
-        treatments: (form.treatments || [])
-          .filter((t) => t && t.item && String(t.item).trim())
-          .map((t) => ({
-            item: String(t.item).trim(),
-            qty: String(t.qty || '').trim() || '1'
-          })),
-        prescriptions: (form.prescriptions || [])
-          .filter((p) => p && p.medicine && String(p.medicine).trim())
-          .map((p) => ({
-            medicine: String(p.medicine).trim(),
-            qty: String(p.qty || '').trim(),
-            morning: String(p.morning || '').trim() || '1',
-            noon: String(p.noon || '').trim() || '0',
-            evening: String(p.evening || '').trim() || '1',
-            night: String(p.night || '').trim() || '0',
-            timing: p.timing || 'AF',
-          })),
+        treatments: validTreatments,
+        prescriptions: validPrescriptions,
         charge: formCharge,
         received: formReceived,
         labReport: labReport || null,
@@ -923,6 +900,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
       showToast(err.response?.data?.message || 'Failed to save visit record', 'error');
     } finally {
       setIsSavingVisit(false);
+      isSavingVisitRef.current = false;
     }
   };
 
@@ -1442,7 +1420,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
               ref={caseFormPaneRef}
               style={{
                 ...styles.visitFormPane,
-                width: layoutMode === 'side-by-side' ? `${splitWidthPercent}%` : '100%',
+                width: layoutMode === 'side-by-side' ? '56%' : '100%',
                 flexShrink: 0,
               }}
             >
@@ -1600,9 +1578,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                 <div
                   style={{
                     ...styles.treatmentPrescriptionGrid,
-                    gridTemplateColumns: isNarrowForm
-                      ? '1fr'
-                      : 'minmax(220px, 1fr) minmax(380px, 1.7fr)',
+                    gridTemplateColumns: 'minmax(220px, 1fr) minmax(360px, 1.7fr)',
                   }}
                 >
                   {/* Left Column: TREATMENT (CLINIC) with Data Dictionary */}
@@ -1915,48 +1891,11 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
             </div>
           )}
 
-          {/* DRAGGER HANDLE: WHEN showNewCaseForm IS ACTIVE */}
-          {showNewCaseForm && (
-            layoutMode === 'side-by-side' ? (
-              <div
-                onMouseDown={() => setIsDraggingV(true)}
-                style={{
-                  ...styles.verticalDraggerBar,
-                  backgroundColor: isDraggingV ? 'var(--primary)' : 'var(--border)',
-                }}
-                title="Drag border to resize Case Entry vs History width"
-              >
-                <div style={styles.draggerGripV}>
-                  <GripVertical size={14} color="var(--text-muted)" />
-                </div>
-              </div>
-            ) : (
-              <div
-                onMouseDown={() => setIsDraggingH(true)}
-                style={{
-                  ...styles.horizontalDraggerBar,
-                  backgroundColor: isDraggingH ? 'var(--primary)' : 'var(--border)',
-                }}
-                title="Drag border to resize Case Entry vs History height"
-              >
-                <div style={styles.draggerGripH}>
-                  <GripHorizontal size={14} color="var(--text-muted)" />
-                  <span style={styles.draggerHintText}>
-                    Drag border to resize sections
-                  </span>
-                </div>
-              </div>
-            )
-          )}
-
           {/* RIGHT / BOTTOM PANE: PREVIOUS RECORDED VISITS LIST */}
           <div
             style={{
               ...styles.visitHistoryPane,
-              width: showNewCaseForm && layoutMode === 'side-by-side' ? `${100 - splitWidthPercent}%` : '100%',
-              height: showNewCaseForm && layoutMode === 'stacked' ? `${historyHeight}px` : '100%',
-              maxHeight: showNewCaseForm && layoutMode === 'stacked' ? `${historyHeight}px` : 'none',
-              minHeight: showNewCaseForm && layoutMode === 'stacked' ? '280px' : 0,
+              width: showNewCaseForm && layoutMode === 'side-by-side' ? '44%' : '100%',
               flex: 1,
               overflowY: 'auto',
             }}
@@ -2115,7 +2054,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                           style={{
                             display: 'grid',
                             gridTemplateColumns:
-                              visit.complaint && visit.investigation && !isNarrowForm ? '1fr 1fr' : '1fr',
+                              visit.complaint && visit.investigation ? '1fr 1fr' : '1fr',
                             gap: '6px',
                           }}
                         >
@@ -2168,9 +2107,9 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                             style={{
                               display: 'grid',
                               gridTemplateColumns:
-                                isNarrowForm || !visit.treatments?.length || !visit.prescriptions?.length
-                                  ? '1fr'
-                                  : 'minmax(180px, 1fr) minmax(260px, 1.4fr)',
+                                visit.treatments?.length > 0 && visit.prescriptions?.length > 0
+                                  ? 'minmax(180px, 1fr) minmax(260px, 1.4fr)'
+                                  : '1fr',
                               gap: '6px',
                             }}
                           >
