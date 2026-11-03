@@ -6,11 +6,25 @@ import { autoSaveMasterItem } from './masterDataController.js';
 // Helper: Get or initialize next 5-digit sequence starting with 00001
 export const getNextFamilyIdValue = async () => {
   let counter = await Counter.findOne({ id: 'familyId' });
-  if (!counter) {
-    counter = await Counter.create({ id: 'familyId', seq: 1 });
-    return '00001';
+  let nextSeq = counter ? counter.seq : 1;
+  let familyId = String(nextSeq).padStart(5, '0');
+
+  // Verify next familyId is truly available in database
+  while (await Family.exists({ familyId })) {
+    nextSeq += 1;
+    familyId = String(nextSeq).padStart(5, '0');
   }
-  return String(counter.seq).padStart(5, '0');
+
+  // Keep counter aligned
+  if (!counter || counter.seq !== nextSeq) {
+    await Counter.findOneAndUpdate(
+      { id: 'familyId' },
+      { $set: { seq: nextSeq } },
+      { upsert: true, returnDocument: 'after' }
+    );
+  }
+
+  return familyId;
 };
 
 // @desc    Preview the next available 5-digit Family ID
@@ -55,19 +69,32 @@ export const registerFamilyHead = async (req, res) => {
       });
     }
 
-    // Atomically increment counter for unique 5-digit family ID starting with 00001
-    const counter = await Counter.findOneAndUpdate(
+    // Atomically find next non-conflicting 5-digit family ID starting with 00001
+    let counter = await Counter.findOne({ id: 'familyId' });
+    let currentSeq = counter ? counter.seq : 1;
+    let familyId = String(currentSeq).padStart(5, '0');
+
+    // Auto-advance if familyId is already taken
+    while (await Family.exists({ familyId })) {
+      currentSeq += 1;
+      familyId = String(currentSeq).padStart(5, '0');
+    }
+
+    // Persist counter forward for next registration
+    await Counter.findOneAndUpdate(
       { id: 'familyId' },
-      { $inc: { seq: 1 } },
-      { new: true, upsert: true, setDefaultsOnInsert: true }
+      { $set: { seq: currentSeq + 1 } },
+      { upsert: true, returnDocument: 'after' }
     );
 
-    // Current assigned family ID padded to 5 digits (e.g. 00001)
-    const currentSeq = counter.seq - 1;
-    const familyId = String(currentSeq).padStart(5, '0');
-
     // 1. Create the Family Head as a Patient directly in MongoDB
-    const patientId = `P-${familyId}-1`;
+    let patientSeq = 1;
+    let patientId = `P-${familyId}-${patientSeq}`;
+    while (await Patient.exists({ patientId })) {
+      patientSeq += 1;
+      patientId = `P-${familyId}-${patientSeq}`;
+    }
+
     const patientAllergies = Array.isArray(allergies)
       ? allergies
       : allergies ? [allergies] : [];
@@ -122,7 +149,7 @@ export const registerFamilyHead = async (req, res) => {
     console.error('Error registering family head:', error);
     return res.status(500).json({
       success: false,
-      message: 'Failed to register family head',
+      message: error.message || 'Failed to register family head',
       error: error.message,
     });
   }

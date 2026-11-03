@@ -45,10 +45,14 @@ export const addPatientMember = async (req, res) => {
       });
     }
 
-    // Determine sequence number for this family
+    // Determine sequence number for this family with collision-safe check
     const existingCount = await Patient.countDocuments({ familyId: familyId.trim() });
-    const nextSeq = existingCount + 1;
-    const patientId = `P-${familyId.trim()}-${nextSeq}`;
+    let nextSeq = existingCount + 1;
+    let patientId = `P-${familyId.trim()}-${nextSeq}`;
+    while (await Patient.exists({ patientId })) {
+      nextSeq += 1;
+      patientId = `P-${familyId.trim()}-${nextSeq}`;
+    }
 
     // Normalize allergies
     let patientAllergies = [];

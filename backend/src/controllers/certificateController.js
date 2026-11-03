@@ -44,16 +44,21 @@ const ensureDefaultTemplates = async () => {
   }
 };
 
-// Helper: Get next certificate ID (e.g. CERT-2026-0001)
+// Helper: Get next certificate ID (e.g. CERT-2026-0001) with collision-safe preview
 export const getNextCertificateIdValue = async () => {
   const currentYear = new Date().getFullYear();
   const counterKey = `certId_${currentYear}`;
 
-  const counter = await Counter.findOne({ id: counterKey });
-  if (!counter) {
-    return `CERT-${currentYear}-0001`;
+  let counter = await Counter.findOne({ id: counterKey });
+  let nextSeq = counter ? counter.seq : 1;
+  let certificateId = `CERT-${currentYear}-${String(nextSeq).padStart(4, '0')}`;
+
+  while (await Certificate.exists({ certificateId })) {
+    nextSeq += 1;
+    certificateId = `CERT-${currentYear}-${String(nextSeq).padStart(4, '0')}`;
   }
-  return `CERT-${currentYear}-${String(counter.seq).padStart(4, '0')}`;
+
+  return certificateId;
 };
 
 // Helper: Increment and commit next certificate ID
@@ -61,13 +66,22 @@ export const incrementCertificateSeq = async () => {
   const currentYear = new Date().getFullYear();
   const counterKey = `certId_${currentYear}`;
 
-  const counter = await Counter.findOneAndUpdate(
+  let counter = await Counter.findOne({ id: counterKey });
+  let currentSeq = counter ? counter.seq : 1;
+  let certificateId = `CERT-${currentYear}-${String(currentSeq).padStart(4, '0')}`;
+
+  while (await Certificate.exists({ certificateId })) {
+    currentSeq += 1;
+    certificateId = `CERT-${currentYear}-${String(currentSeq).padStart(4, '0')}`;
+  }
+
+  await Counter.findOneAndUpdate(
     { id: counterKey },
-    { $inc: { seq: 1 } },
-    { new: true, upsert: true }
+    { $set: { seq: currentSeq + 1 } },
+    { upsert: true, returnDocument: 'after' }
   );
 
-  return `CERT-${currentYear}-${String(counter.seq - 1).padStart(4, '0')}`;
+  return certificateId;
 };
 
 // @desc    Preview next Certificate ID
@@ -213,22 +227,23 @@ export const issueCertificate = async (req, res) => {
     const doctorName = doctor?.name || 'Dr. Dhyey Patel';
     const doctorQualifications = doctor?.specialization || 'M.B.B.S., Consulting Physician';
 
-    // 3. Atomically generate unique Certificate ID
+    // 3. Atomically generate unique Certificate ID (collision-safe)
     const currentYear = new Date().getFullYear();
     const counterKey = `certId_${currentYear}`;
     let counter = await Counter.findOne({ id: counterKey });
-    let currentSeq = 1;
+    let currentSeq = counter ? counter.seq : 1;
+    let certificateId = `CERT-${currentYear}-${String(currentSeq).padStart(4, '0')}`;
 
-    if (!counter) {
-      counter = await Counter.create({ id: counterKey, seq: 2 });
-      currentSeq = 1;
-    } else {
-      currentSeq = counter.seq;
-      counter.seq += 1;
-      await counter.save();
+    while (await Certificate.exists({ certificateId })) {
+      currentSeq += 1;
+      certificateId = `CERT-${currentYear}-${String(currentSeq).padStart(4, '0')}`;
     }
 
-    const certificateId = `CERT-${currentYear}-${String(currentSeq).padStart(4, '0')}`;
+    await Counter.findOneAndUpdate(
+      { id: counterKey },
+      { $set: { seq: currentSeq + 1 } },
+      { upsert: true, returnDocument: 'after' }
+    );
 
     // 4. Create Certificate Record
     const certificate = await Certificate.create({
@@ -265,7 +280,7 @@ export const issueCertificate = async (req, res) => {
     console.error('Issue certificate error:', error);
     return res.status(500).json({
       success: false,
-      message: 'Failed to issue medical certificate',
+      message: error.message || 'Failed to issue medical certificate',
       error: error.message,
     });
   }
