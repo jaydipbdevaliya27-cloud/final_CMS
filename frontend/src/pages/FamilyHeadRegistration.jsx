@@ -440,7 +440,7 @@ export const FamilyHeadRegistration = ({ onNavigateToAddMember, onNavigateToPati
 
               <div style={styles.inputGroup}>
                 <label style={styles.label}>
-                  KNOWN ALLERGIES <span style={styles.hintText}>(SHORTCUT + ENTER)</span>
+                  KNOWN ALLERGIES <span style={styles.hintText}></span>
                 </label>
                 <MasterDataInput
                   type="allergy"
@@ -466,7 +466,7 @@ export const FamilyHeadRegistration = ({ onNavigateToAddMember, onNavigateToPati
 
               <div style={styles.inputGroup}>
                 <label style={styles.label}>
-                  AREA / LOCATION <span style={styles.hintText}>(ENTER TO MATCH)</span>
+                  AREA / LOCATION <span style={styles.hintText}></span>
                 </label>
                 <MasterDataInput
                   type="area"
@@ -644,15 +644,15 @@ export const FamilyHeadRegistration = ({ onNavigateToAddMember, onNavigateToPati
                       border: isCurrentEdit
                         ? '2px solid var(--accent)'
                         : isHighlighted
-                        ? '2px solid var(--primary)'
-                        : isExpanded
-                        ? '1px solid #146B5C'
-                        : '1px solid var(--border)',
+                          ? '2px solid var(--primary)'
+                          : isExpanded
+                            ? '1px solid #146B5C'
+                            : '1px solid var(--border)',
                       backgroundColor: isCurrentEdit
                         ? 'var(--accent-soft)'
                         : isHighlighted
-                        ? 'var(--primary-soft)'
-                        : '#FFFFFF',
+                          ? 'var(--primary-soft)'
+                          : '#FFFFFF',
                       cursor: 'pointer',
                     }}
                   >

@@ -968,7 +968,6 @@ export const Dashboard = () => {
                                   fontWeight: 700,
                                   marginLeft: '4px',
                                 }}>
-                                  ↵ Enter to Select
                                 </span>
                               )}
                             </div>
