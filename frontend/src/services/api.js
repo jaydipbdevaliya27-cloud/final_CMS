@@ -1,7 +1,10 @@
 import axios from 'axios';
 
+// Support both single-origin ('/api') and separate-service deployment (e.g. VITE_API_URL=https://my-backend.onrender.com/api)
+const baseURL = import.meta.env.VITE_API_URL || '/api';
+
 const api = axios.create({
-  baseURL: '/api',
+  baseURL,
   withCredentials: true, // Ensures cookies are automatically included with requests
   headers: {
     'Content-Type': 'application/json',
