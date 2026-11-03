@@ -74,7 +74,7 @@ export const filterMasterItems = (rawToken, itemsList = []) => {
       !startShortcut.includes(item) &&
       !startValue.includes(item) &&
       ((item.value && item.value.toUpperCase().includes(token)) ||
-       (item.shortcut && item.shortcut.toUpperCase().includes(token)))
+        (item.shortcut && item.shortcut.toUpperCase().includes(token)))
   );
 
   return [...exactShortcut, ...startShortcut, ...startValue, ...others].slice(0, 30);
@@ -497,9 +497,11 @@ export const MasterDataInput = ({
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span>{item.value}</span>
-                  {isHighlighted && (
-                    <span style={styles.autoSelectHint}>↵ Enter</span>
-                  )}
+                  {isHighlighted
+                    // && (
+                    //   <span style={styles.autoSelectHint}>↵ Enter</span>
+                    // )
+                  }
                 </div>
                 {item.shortcut && (
                   <span style={styles.shortcutBadge}>{item.shortcut}</span>

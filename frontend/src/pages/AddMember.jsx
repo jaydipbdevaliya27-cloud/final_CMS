@@ -350,18 +350,20 @@ export const AddMember = ({ initialFamilyId, onProceedToCaseEntry, onNavigateToF
                       <div style={styles.familyCardLeft}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <h4 style={styles.familyCardHeadName}>{fam.headName}</h4>
-                          {isHighlighted && (
-                            <span style={{
-                              fontSize: '0.68rem',
-                              backgroundColor: 'var(--primary)',
-                              color: '#FFFFFF',
-                              padding: '1px 6px',
-                              borderRadius: '4px',
-                              fontWeight: 700,
-                            }}>
-                              ↵ Enter
-                            </span>
-                          )}
+                          {isHighlighted
+                            // && (
+                            // <span style={{
+                            //   fontSize: '0.68rem',
+                            //   backgroundColor: 'var(--primary)',
+                            //   color: '#FFFFFF',
+                            //   padding: '1px 6px',
+                            //   borderRadius: '4px',
+                            //   fontWeight: 700,
+                            // }}>
+                            //   ↵ Enter
+                            // </span>
+                            // )
+                          }
                         </div>
                         <div style={styles.familyCardMetaRow}>
                           <span>&bull; {fam.membersCount || 1} Member(s)</span>

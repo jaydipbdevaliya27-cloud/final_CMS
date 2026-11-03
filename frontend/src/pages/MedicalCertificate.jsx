@@ -729,8 +729,8 @@ export const MedicalCertificate = () => {
                         borderColor: isPatientValid
                           ? '#15803D'
                           : patientInput.trim()
-                          ? 'var(--danger)'
-                          : 'var(--border)',
+                            ? 'var(--danger)'
+                            : 'var(--border)',
                         backgroundColor: isPatientValid ? '#F0FDF4' : '#FFFFFF',
                       }}
                     />
@@ -760,9 +760,11 @@ export const MedicalCertificate = () => {
                                     {p.name}
                                   </strong>
                                   <span style={styles.pidBadgeMini}>PID: {p.patientId}</span>
-                                  {isHighlighted && (
-                                    <span style={styles.enterBadgeMini}>↵ Enter</span>
-                                  )}
+                                  {isHighlighted
+                                    // && (
+                                    //   <span style={styles.enterBadgeMini}>↵ Enter</span>
+                                    // )
+                                  }
                                 </div>
                                 <span style={{ fontSize: '11px', color: '#64748B' }}>
                                   Age: {p.age || '-'} &bull; Gender: {p.gender || '-'} &bull; Area: {p.area || '-'}

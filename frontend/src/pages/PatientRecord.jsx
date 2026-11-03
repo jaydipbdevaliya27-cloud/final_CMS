@@ -1166,19 +1166,21 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                         </span>
                         <span style={styles.dropdownItemBadge}>{p.patientId}</span>
                         {p.isHead && <span style={styles.headTag}>HEAD</span>}
-                        {isHighlighted && (
-                          <span style={{
-                            fontSize: '0.68rem',
-                            backgroundColor: 'var(--primary)',
-                            color: '#FFFFFF',
-                            padding: '1px 6px',
-                            borderRadius: '4px',
-                            fontWeight: 700,
-                            marginLeft: '4px',
-                          }}>
-                            ↵ Enter
-                          </span>
-                        )}
+                        {isHighlighted
+                          // && (
+                          //   <span style={{
+                          //     fontSize: '0.68rem',
+                          //     backgroundColor: 'var(--primary)',
+                          //     color: '#FFFFFF',
+                          //     padding: '1px 6px',
+                          //     borderRadius: '4px',
+                          //     fontWeight: 700,
+                          //     marginLeft: '4px',
+                          //   }}>
+                          //     ↵ Enter
+                          //   </span>
+                          // )
+                        }
                       </div>
                       <div style={styles.dropdownItemSub}>
                         <span>
