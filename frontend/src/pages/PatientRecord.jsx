@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { patientAPI, visitAPI, masterDataAPI, familyAPI } from '../services/api';
 import { MasterDataInput } from '../components/common/MasterDataInput';
 import { useDebounce } from '../hooks/useDebounce';
@@ -31,81 +32,106 @@ import {
   UtensilsCrossed,
 } from 'lucide-react';
 
+// Format human-readable dosage instructions in selected language
+const formatDoseInstruction = (m, n, e, ng, timing, langKey) => {
+  const mVal = String(m ?? '').trim();
+  const nVal = String(n ?? '').trim();
+  const eVal = String(e ?? '').trim();
+  const ngVal = String(ng ?? '').trim();
+  const isBf = timing === 'BF';
+
+  const parts = [];
+
+  if (langKey === 'hi') {
+    if (mVal && mVal !== '0') parts.push(`${mVal} सुबह (Morning)`);
+    if (nVal && nVal !== '0') parts.push(`${nVal} दोपहर (Afternoon)`);
+    if (eVal && eVal !== '0') parts.push(`${eVal} शाम (Evening)`);
+    if (ngVal && ngVal !== '0') parts.push(`${ngVal} रात (Night)`);
+    const timingStr = isBf ? 'खाने से पहले (भूखे पेट) - BF' : 'खाने के बाद - AF';
+    const doseText = parts.length > 0 ? parts.join(', ') : 'डॉक्टर के निर्देशानुसार';
+    return `${doseText} — ${timingStr}`;
+  }
+
+  if (langKey === 'gu') {
+    if (mVal && mVal !== '0') parts.push(`${mVal} સવારે (Morning)`);
+    if (nVal && nVal !== '0') parts.push(`${nVal} બપોરે (Afternoon)`);
+    if (eVal && eVal !== '0') parts.push(`${eVal} સાંજે (Evening)`);
+    if (ngVal && ngVal !== '0') parts.push(`${ngVal} રાત્રે (Night)`);
+    const timingStr = isBf ? 'જમ્યા પહેલાં (ભૂખ્યા પેટે) - BF' : 'જમ્યા પછી - AF';
+    const doseText = parts.length > 0 ? parts.join(', ') : 'ડોક્ટરની સલાહ મુજબ';
+    return `${doseText} — ${timingStr}`;
+  }
+
+  // English default
+  if (mVal && mVal !== '0') parts.push(`${mVal} Morning`);
+  if (nVal && nVal !== '0') parts.push(`${nVal} Afternoon`);
+  if (eVal && eVal !== '0') parts.push(`${eVal} Evening`);
+  if (ngVal && ngVal !== '0') parts.push(`${ngVal} Night`);
+  const timingStr = isBf ? 'Before Food (BF)' : 'After Food (AF)';
+  const doseText = parts.length > 0 ? parts.join(', ') : 'As Directed';
+  return `${doseText} — ${timingStr}`;
+};
+
 const RX_TRANSLATIONS = {
   en: {
     langKey: 'en',
     langName: 'English',
     patientLabel: 'PATIENT NAME:',
+    ageGenderLabel: 'AGE / GENDER:',
     dateLabel: 'DATE:',
+    caseNoLabel: 'CASE / PID:',
     rxTitle: 'PRESCRIPTION (Rx)',
     colNum: '#',
     colMedicine: 'MEDICINE NAME',
-    colDosage: 'DOSAGE (M - N - E - Ng)',
-    colTiming: 'TIMING / INSTRUCTIONS',
-    colQty: 'QTY / DAYS',
+    colQty: 'QTY',
+    colDosageInstructions: 'DOSAGE & WHEN TO TAKE',
     bfLabel: 'Before Food (BF)',
     afLabel: 'After Food (AF)',
     dietaryTitle: 'DIETARY SUGGESTIONS & LIFESTYLE ADVICE:',
     noPrescription: 'No medical store prescription prescribed for this visit.',
-    timingHelp: (m, n, e, ng, timing) => {
-      const parts = [];
-      if (m && m !== '0') parts.push(`Morning: ${m}`);
-      if (n && n !== '0') parts.push(`Noon: ${n}`);
-      if (e && e !== '0') parts.push(`Evening: ${e}`);
-      if (ng && ng !== '0') parts.push(`Night: ${ng}`);
-      const t = timing === 'BF' ? 'Before Food' : 'After Food';
-      return parts.length > 0 ? `${parts.join(', ')} (${t})` : t;
-    },
+    footerAdvice: '* Please take medicines on time as prescribed. Keep this prescription for follow-up.',
+    opdTimings: 'OPD Hours: Mon - Sat (9:00 AM - 1:00 PM, 5:00 PM - 9:00 PM)',
+    timingHelp: (m, n, e, ng, timing) => formatDoseInstruction(m, n, e, ng, timing, 'en'),
   },
   hi: {
     langKey: 'hi',
     langName: 'हिंदी',
     patientLabel: 'मरीज़ का नाम:',
+    ageGenderLabel: 'उम्र / लिंग:',
     dateLabel: 'दिनांक:',
+    caseNoLabel: 'केस नंबर:',
     rxTitle: 'दवाइयों की पर्ची (Rx)',
     colNum: 'क्र.',
     colMedicine: 'दवा का नाम (Medicine Name)',
-    colDosage: 'खुराक (सुबह - दोपहर - शाम - रात)',
-    colTiming: 'लेने का समय / निर्देश',
-    colQty: 'मात्रा / दिन',
+    colQty: 'मात्रा',
+    colDosageInstructions: 'खुराक और लेने का समय (When to Take)',
     bfLabel: 'खाने से पहले (भूखे पेट) - BF',
     afLabel: 'खाने के बाद - AF',
     dietaryTitle: 'आहार एवं परहेज़ संबंधी सलाह:',
     noPrescription: 'इस विज़िट के लिए कोई दवा नहीं लिखी गई है।',
-    timingHelp: (m, n, e, ng, timing) => {
-      const parts = [];
-      if (m && m !== '0') parts.push(`सुबह: ${m}`);
-      if (n && n !== '0') parts.push(`दोपहर: ${n}`);
-      if (e && e !== '0') parts.push(`शाम: ${e}`);
-      if (ng && ng !== '0') parts.push(`रात: ${ng}`);
-      const t = timing === 'BF' ? 'खाने से पहले' : 'खाने के बाद';
-      return parts.length > 0 ? `${parts.join(', ')} (${t})` : t;
-    },
+    footerAdvice: '* कृपया दवाइयाँ समय पर और निर्देशानुसार लें। अगली जांच के लिए यह पर्ची साथ लाएं।',
+    opdTimings: 'ओपीडी समय: सोम - शनि (सुबह 9:00 - 1:00, शाम 5:00 - 9:00)',
+    timingHelp: (m, n, e, ng, timing) => formatDoseInstruction(m, n, e, ng, timing, 'hi'),
   },
   gu: {
     langKey: 'gu',
     langName: 'ગુજરાતી',
     patientLabel: 'દર્દીનું નામ:',
+    ageGenderLabel: 'ઉંમર / જાતિ:',
     dateLabel: 'તારીખ:',
+    caseNoLabel: 'કેસ નં.:',
     rxTitle: 'દવાઓની યાદી (Rx)',
     colNum: 'ક્ર.',
     colMedicine: 'દવાનું નામ (Medicine Name)',
-    colDosage: 'માત્રા (સવારે - બપોરે - સાંજે - રાત્રે)',
-    colTiming: 'લેવાનો સમય / સૂચના',
-    colQty: 'દિવસ / સંખ્યા',
+    colQty: 'જથ્થો',
+    colDosageInstructions: 'માત્રા અને ક્યારે લેવી (When to Take)',
     bfLabel: 'જમ્યા પહેલાં (ભૂખ્યા પેટે) - BF',
     afLabel: 'જમ્યા પછી - AF',
     dietaryTitle: 'ખોરાક અને પરેજી અંગેની સૂચનાઓ:',
     noPrescription: 'આ મુલાકાત માટે કોઈ દવા લખેલ નથી.',
-    timingHelp: (m, n, e, ng, timing) => {
-      const parts = [];
-      if (m && m !== '0') parts.push(`સવારે: ${m}`);
-      if (n && n !== '0') parts.push(`બપોરે: ${n}`);
-      if (e && e !== '0') parts.push(`સાંજે: ${e}`);
-      if (ng && ng !== '0') parts.push(`રાત્રે: ${ng}`);
-      const t = timing === 'BF' ? 'જમ્યા પહેલાં' : 'જમ્યા પછી';
-      return parts.length > 0 ? `${parts.join(', ')} (${t})` : t;
-    },
+    footerAdvice: '* કૃપા કરીને દવાઓ સમયસર અને સૂચના મુજબ લો. ફરી મુલાકાતે આવો ત્યારે આ યાદી સાથે લાવવી.',
+    opdTimings: 'ઓપીડી સમય: સોમ - શનિ (સવારે 9:00 - 1:00, સાંજે 5:00 - 9:00)',
+    timingHelp: (m, n, e, ng, timing) => formatDoseInstruction(m, n, e, ng, timing, 'gu'),
   },
 };
 
@@ -121,6 +147,7 @@ const formatRxDate = (dateVal) => {
 };
 
 export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
+  const { doctor } = useAuth();
   // --- Search & Patient State ---
   const [patientSearch, setPatientSearch] = useState('');
   const debouncedSearch = useDebounce(patientSearch, 250);
@@ -2277,29 +2304,46 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
 
               {/* PRINTABLE PRESCRIPTION PAPER (#printable-rx) */}
               <div style={styles.cleanRxPaper} id="printable-rx">
-                {/* 1. TOP HEADER ROW: PATIENT NAME & DATE */}
-                <div style={styles.cleanHeaderRow}>
-                  <div style={styles.cleanPatientBlock}>
-                    <span style={styles.cleanLabel}>{t.patientLabel}</span>
-                    <span style={styles.cleanPatientName}>
+                {/* 1. DOCTOR'S LETTERPAD HEADER */}
+                <div style={styles.letterpadHeader}>
+                  <div style={styles.letterpadClinicTitle}>
+                    {doctor?.clinicName || 'CLINIC MANAGEMENT SYSTEM'}
+                  </div>
+                  <div style={styles.letterpadClinicSub}>
+                    {doctor?.address || 'Shop No. 1, Mahavir Heights, New Kosad Road, Amroli, Surat'} &bull; Phone: {doctor?.phone || '+91 98765 43210'}
+                  </div>
+                  <div style={styles.letterpadDoctorLine}>
+                    <strong>{doctor?.name || 'Dr. Dhyey Patel'}</strong>, {doctor?.specialization || 'Consulting Physician'} &bull; Reg. No: G-14285
+                  </div>
+                  <div style={styles.letterpadDividerLine} />
+                </div>
+
+                {/* 2. PATIENT INFO BAR */}
+                <div style={styles.letterpadPatientGrid}>
+                  <div>
+                    <span style={styles.cleanLabel}>{t.patientLabel} </span>
+                    <strong style={styles.cleanPatientName}>
                       {printVisit.patientName || currentPatient?.name}
-                    </span>
+                    </strong>
                     {currentPatient?.age && (
                       <span style={styles.cleanAge}>
-                        ({currentPatient.age}{currentPatient.gender ? ` / ${currentPatient.gender}` : ''})
+                        {' '}({currentPatient.age} Yrs{currentPatient.gender ? ` / ${currentPatient.gender}` : ''})
                       </span>
                     )}
                   </div>
-
-                  <div style={styles.cleanDateBlock}>
-                    <span style={styles.cleanLabel}>{t.dateLabel}</span>
-                    <span style={styles.cleanDateValue}>
-                      {formattedDate}
-                    </span>
+                  <div style={{ textAlign: 'right' }}>
+                    <span style={styles.cleanLabel}>{t.dateLabel} </span>
+                    <strong style={styles.cleanDateValue}>{formattedDate}</strong>
+                    {currentPatient?.patientId && (
+                      <span style={{ fontSize: '11px', color: '#4B5563', marginLeft: '8px' }}>
+                        [{currentPatient.patientId}]
+                      </span>
+                    )}
                   </div>
                 </div>
+                <div style={styles.letterpadPatientDivider} />
 
-                {/* 2. PRESCRIPTION BODY */}
+                {/* 3. PRESCRIPTION BODY */}
                 <div style={styles.cleanRxBody}>
                   <div style={styles.cleanRxTitleRow}>
                     <span style={styles.cleanRxSymbol}>&#8478;</span>
@@ -2310,27 +2354,25 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                     <table style={styles.cleanRxTable}>
                       <thead>
                         <tr>
-                          <th style={{ ...styles.cleanTh, width: '38px', textAlign: 'center' }}>
+                          <th style={{ ...styles.cleanTh, width: '36px', textAlign: 'center' }}>
                             {t.colNum}
                           </th>
-                          <th style={{ ...styles.cleanTh, textAlign: 'left' }}>
+                          <th style={{ ...styles.cleanTh, textAlign: 'left', minWidth: '160px' }}>
                             {t.colMedicine}
                           </th>
-                          <th style={{ ...styles.cleanTh, width: '170px', textAlign: 'center' }}>
-                            {t.colDosage}
-                          </th>
-                          <th style={{ ...styles.cleanTh, width: '160px', textAlign: 'center' }}>
-                            {t.colTiming}
-                          </th>
-                          <th style={{ ...styles.cleanTh, width: '85px', textAlign: 'center' }}>
+                          <th style={{ ...styles.cleanTh, width: '70px', textAlign: 'center' }}>
                             {t.colQty}
+                          </th>
+                          <th style={{ ...styles.cleanTh, textAlign: 'left' }}>
+                            {t.colDosageInstructions}
                           </th>
                         </tr>
                       </thead>
                       <tbody>
                         {printVisit.prescriptions.map((rx, idx) => {
                           const doseNumbers = `${rx.morning || '0'} - ${rx.noon || '0'} - ${rx.evening || '0'} - ${rx.night || '0'}`;
-                          const timingText = rx.timing === 'BF' ? t.bfLabel : t.afLabel;
+                          const isBf = rx.timing === 'BF';
+                          const humanDose = formatDoseInstruction(rx.morning, rx.noon, rx.evening, rx.night, rx.timing, printLanguage);
 
                           return (
                             <tr key={idx}>
@@ -2340,19 +2382,26 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                               <td style={styles.cleanTd}>
                                 <strong style={styles.cleanMedName}>{rx.medicine}</strong>
                               </td>
-                              <td style={{ ...styles.cleanTd, textAlign: 'center' }}>
-                                <div style={styles.cleanDoseNumber}>{doseNumbers}</div>
-                                <div style={styles.cleanDoseSub}>
-                                  {t.timingHelp(rx.morning, rx.noon, rx.evening, rx.night, rx.timing)}
-                                </div>
-                              </td>
-                              <td style={{ ...styles.cleanTd, textAlign: 'center' }}>
-                                <span style={styles.cleanTimingBadge}>
-                                  {timingText}
-                                </span>
-                              </td>
-                              <td style={{ ...styles.cleanTd, textAlign: 'center', fontWeight: 'bold' }}>
+                              <td style={{ ...styles.cleanTd, textAlign: 'center', fontWeight: 'bold', fontSize: '12.5px' }}>
                                 {rx.qty || '-'}
+                              </td>
+                              <td style={styles.cleanTd}>
+                                <div style={styles.dosageCellWrapper}>
+                                  <div style={styles.dosageHeaderRow}>
+                                    <span style={styles.dosePillBadge}>{doseNumbers}</span>
+                                    <span style={{
+                                      ...styles.timingPillBadge,
+                                      backgroundColor: isBf ? '#FEF3C7' : '#DCFCE7',
+                                      color: isBf ? '#92400E' : '#166534',
+                                      borderColor: isBf ? '#FDE68A' : '#BBF7D0',
+                                    }}>
+                                      {isBf ? t.bfLabel : t.afLabel}
+                                    </span>
+                                  </div>
+                                  <div style={styles.humanDoseInstruction}>
+                                    {humanDose}
+                                  </div>
+                                </div>
                               </td>
                             </tr>
                           );
@@ -2365,7 +2414,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                     </p>
                   )}
 
-                  {/* 3. DIETARY SUGGESTIONS (IF SELECTED / ADDED) */}
+                  {/* 4. DIETARY SUGGESTIONS (IF SELECTED / ADDED) */}
                   {dietaryItems.length > 0 && (
                     <div style={styles.cleanDietaryBox} className="clean-dietary-box">
                       <strong style={styles.cleanDietaryTitle}>{t.dietaryTitle}</strong>
@@ -2379,17 +2428,41 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                     </div>
                   )}
                 </div>
+
+                {/* 5. DOCTOR LETTERPAD FOOTER WITH DIGITAL SIGNATURE */}
+                <div style={styles.letterpadFooterRow}>
+                  <div style={styles.letterpadFooterAdviceCol}>
+                    <p style={styles.letterpadFooterAdviceText}>
+                      {t.footerAdvice}
+                    </p>
+                    <p style={styles.letterpadFooterTimingsText}>
+                      {t.opdTimings}
+                    </p>
+                  </div>
+                  <div style={styles.letterpadSignCol}>
+                    <div style={styles.letterpadCursiveSignature}>
+                      {doctor?.name || 'Dr. Dhyey Patel'}
+                    </div>
+                    <div style={styles.letterpadSignLine} />
+                    <div style={styles.letterpadSignName}>
+                      {doctor?.name || 'Dr. Dhyey Patel'}
+                    </div>
+                    <div style={styles.letterpadSignRole}>
+                      {doctor?.specialization || 'Consulting Physician (Reg. No. G-14285)'}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         );
       })()}
-      {/* MODAL 4: INVESTIGATION & LAB REPORT FORM (Matches Images 1 & 2) */}
+      {/* MODAL 4: INVESTIGATION & LAB REPORT FORM */}
       <InvestigationReportModal
         isOpen={showAddReportModal}
         onClose={() => setShowAddReportModal(false)}
         patient={currentPatient}
-        doctor={{ name: 'Dr. Chirag Paghdal' }}
+        doctor={{ name: doctor?.name || 'Dr. Dhyey Patel' }}
         initialReport={attachedReport}
         onReportSaved={(reportData) => {
           setAttachedReport(reportData);
@@ -4398,26 +4471,62 @@ const styles = {
     gap: '4px',
   },
 
-  // Ultra-Clean Printable Paper Document (#printable-rx)
+  // Doctor's Letterpad Printable Paper Document (#printable-rx)
   cleanRxPaper: {
     padding: '24px 30px',
     overflowY: 'auto',
     backgroundColor: '#FFFFFF',
     color: '#000000',
-    minHeight: '360px',
+    minHeight: '480px',
     display: 'flex',
     flexDirection: 'column',
-    gap: '12px',
+    gap: '10px',
     fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
   },
-  cleanHeaderRow: {
+  letterpadHeader: {
+    textAlign: 'center',
+    paddingBottom: '8px',
+    marginBottom: '4px',
+  },
+  letterpadClinicTitle: {
+    fontSize: '22px',
+    fontWeight: '900',
+    color: '#0D483E',
+    letterSpacing: '1px',
+    textTransform: 'uppercase',
+    margin: '0 0 3px 0',
+  },
+  letterpadClinicSub: {
+    fontSize: '11px',
+    fontWeight: '500',
+    color: '#4B5563',
+    margin: '0 0 3px 0',
+  },
+  letterpadDoctorLine: {
+    fontSize: '12px',
+    fontWeight: '600',
+    color: '#1F2937',
+    margin: '0 0 8px 0',
+  },
+  letterpadDividerLine: {
+    height: '2.5px',
+    backgroundColor: '#146B5C',
+    width: '100%',
+    margin: '0 auto',
+  },
+  letterpadPatientGrid: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'baseline',
-    paddingBottom: '8px',
-    borderBottom: '2px solid #000000',
+    padding: '6px 0',
     flexWrap: 'wrap',
     gap: '8px',
+  },
+  letterpadPatientDivider: {
+    height: '1px',
+    backgroundColor: '#CBD5E1',
+    width: '100%',
+    marginBottom: '6px',
   },
   cleanPatientBlock: {
     display: 'flex',
@@ -4433,7 +4542,7 @@ const styles = {
     textTransform: 'uppercase',
   },
   cleanPatientName: {
-    fontSize: '18px',
+    fontSize: '16px',
     fontWeight: 800,
     color: '#000000',
     textTransform: 'uppercase',
@@ -4450,7 +4559,7 @@ const styles = {
     gap: '6px',
   },
   cleanDateValue: {
-    fontSize: '14px',
+    fontSize: '13.5px',
     fontWeight: 700,
     color: '#000000',
   },
@@ -4458,7 +4567,7 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     gap: '8px',
-    marginTop: '4px',
+    marginTop: '2px',
   },
   cleanRxTitleRow: {
     display: 'flex',
@@ -4469,15 +4578,15 @@ const styles = {
   cleanRxSymbol: {
     fontSize: '24px',
     fontWeight: 900,
-    color: '#000000',
+    color: '#146B5C',
     fontFamily: 'serif',
     lineHeight: 1,
   },
   cleanRxTitle: {
     fontSize: '13px',
     fontWeight: 800,
-    color: '#000000',
-    letterSpacing: '0.3px',
+    color: '#0D483E',
+    letterSpacing: '0.4px',
   },
   cleanRxTable: {
     width: '100%',
@@ -4506,17 +4615,95 @@ const styles = {
     fontWeight: 800,
     color: '#000000',
   },
-  cleanDoseNumber: {
-    fontSize: '12.5px',
-    fontWeight: 800,
-    color: '#000000',
+  dosageCellWrapper: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '3px',
+  },
+  dosageHeaderRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    flexWrap: 'wrap',
+  },
+  dosePillBadge: {
+    fontSize: '11px',
+    fontWeight: '800',
+    color: '#0F172A',
+    backgroundColor: '#F1F5F9',
+    padding: '1px 6px',
+    borderRadius: '4px',
+    border: '1px solid #CBD5E1',
     letterSpacing: '0.6px',
   },
-  cleanDoseSub: {
-    fontSize: '9.5px',
-    color: '#222222',
-    marginTop: '2px',
-    fontWeight: 600,
+  timingPillBadge: {
+    fontSize: '10px',
+    fontWeight: '700',
+    padding: '1px 6px',
+    borderRadius: '4px',
+    border: '1px solid transparent',
+  },
+  humanDoseInstruction: {
+    fontSize: '11px',
+    fontWeight: '700',
+    color: '#0D483E',
+    marginTop: '1px',
+  },
+  letterpadFooterRow: {
+    marginTop: '20px',
+    paddingTop: '14px',
+    borderTop: '1px dashed #CBD5E1',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    flexWrap: 'wrap',
+    gap: '14px',
+  },
+  letterpadFooterAdviceCol: {
+    flex: 1,
+    minWidth: '200px',
+  },
+  letterpadFooterAdviceText: {
+    margin: 0,
+    fontSize: '11px',
+    fontWeight: '600',
+    color: '#4B5563',
+  },
+  letterpadFooterTimingsText: {
+    margin: '3px 0 0 0',
+    fontSize: '10.5px',
+    fontWeight: '500',
+    color: '#64748B',
+  },
+  letterpadSignCol: {
+    textAlign: 'center',
+    minWidth: '170px',
+  },
+  letterpadCursiveSignature: {
+    fontFamily: '"Brush Script MT", cursive, sans-serif',
+    fontSize: '22px',
+    color: '#0D483E',
+    display: 'block',
+    lineHeight: 1,
+    marginBottom: '2px',
+  },
+  letterpadSignLine: {
+    height: '1px',
+    backgroundColor: '#0D483E',
+    width: '140px',
+    margin: '2px auto 4px auto',
+  },
+  letterpadSignName: {
+    fontSize: '12px',
+    fontWeight: '800',
+    color: '#111827',
+    display: 'block',
+  },
+  letterpadSignRole: {
+    fontSize: '10px',
+    fontWeight: '600',
+    color: '#4B5563',
+    display: 'block',
   },
   cleanTimingBadge: {
     display: 'inline-block',
@@ -4529,31 +4716,31 @@ const styles = {
     border: '1px solid #000000',
   },
   cleanDietaryBox: {
-    marginTop: '16px',
-    padding: '10px 14px',
-    border: '1.5px solid #000000',
+    marginTop: '14px',
+    padding: '9px 12px',
+    border: '1.5px solid #0D483E',
     borderRadius: '6px',
-    backgroundColor: '#FAFAFA',
+    backgroundColor: '#F0FDF4',
   },
   cleanDietaryTitle: {
-    fontSize: '12px',
+    fontSize: '11.5px',
     fontWeight: 800,
-    color: '#000000',
+    color: '#0D483E',
     letterSpacing: '0.3px',
-    marginBottom: '6px',
+    marginBottom: '5px',
     display: 'block',
   },
   cleanDietaryList: {
     margin: 0,
-    paddingLeft: '20px',
+    paddingLeft: '18px',
     display: 'flex',
     flexDirection: 'column',
-    gap: '4px',
+    gap: '3px',
   },
   cleanDietaryItem: {
-    fontSize: '12px',
+    fontSize: '11.5px',
     fontWeight: 600,
-    color: '#000000',
+    color: '#166534',
     lineHeight: '1.4',
   },
 
