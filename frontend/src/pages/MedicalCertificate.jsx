@@ -152,16 +152,22 @@ export const MedicalCertificate = () => {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Handle Patient Quick Selection & Validation (STRICT REQUIREMENT)
+  // Handle Patient Quick Selection & Validation
   const handleSelectPatient = (inputVal) => {
     setPatientInput(inputVal);
+    const clean = inputVal.trim().toLowerCase();
+    if (!clean) {
+      setSelectedPatient(null);
+      setIsPatientValid(false);
+      return;
+    }
 
     // Look for matching patient by patientId or name in the registered list
-    const clean = inputVal.trim().toLowerCase();
     const matched = registeredPatients.find(
       (p) =>
         p.patientId?.toLowerCase() === clean ||
         p.name?.toLowerCase() === clean ||
+        p.name?.toLowerCase().includes(clean) ||
         `[${p.patientId?.toLowerCase()}] ${p.name?.toLowerCase()}`.includes(clean)
     );
 
@@ -176,13 +182,28 @@ export const MedicalCertificate = () => {
       setSelectedPatient(null);
       setIsPatientValid(false);
       setPatientFullName(inputVal);
-      if (inputVal.trim().length > 0) {
-        setErrorMsg(
-          '⚠️ Unregistered Patient: Certificate cannot be issued. Patient must be selected from the registered records.'
-        );
-      } else {
-        setErrorMsg('');
-      }
+      setErrorMsg('');
+    }
+  };
+
+  const handlePatientNameChange = (val) => {
+    setPatientFullName(val);
+    const clean = val.trim().toLowerCase();
+    if (!clean) {
+      setSelectedPatient(null);
+      setIsPatientValid(false);
+      return;
+    }
+    const matched = registeredPatients.find(
+      (p) =>
+        p.name?.toLowerCase() === clean ||
+        p.patientId?.toLowerCase() === clean
+    );
+    if (matched) {
+      setSelectedPatient(matched);
+      setIsPatientValid(true);
+      if (!age && matched.age) setAge(matched.age);
+      if (matched.gender) setGender(matched.gender);
     }
   };
 
@@ -236,15 +257,13 @@ export const MedicalCertificate = () => {
   const handleIssueAndPrint = async (e) => {
     if (e) e.preventDefault();
 
-    if (!isPatientValid || !selectedPatient) {
-      setErrorMsg(
-        '⚠️ Patient Validation Required: Patient must be selected from the registered records list before issuing a certificate.'
-      );
+    if (!patientFullName || !patientFullName.trim()) {
+      setErrorMsg('Please enter or select the Patient Name.');
       return;
     }
 
-    if (!medicalDiagnosis.trim()) {
-      setErrorMsg('Please specify the diagnosis.');
+    if (!medicalDiagnosis || !medicalDiagnosis.trim()) {
+      setErrorMsg('Please specify the Diagnosis / Illness.');
       return;
     }
 
@@ -261,7 +280,7 @@ export const MedicalCertificate = () => {
       const activeTmpl = templates.find((t) => t.templateKey === selectedTemplateKey);
 
       const payload = {
-        patientId: selectedPatient.patientId,
+        patientId: selectedPatient?.patientId || 'P-OPD',
         patientName: patientFullName.trim(),
         age: age ? Number(age) : undefined,
         gender,
@@ -660,12 +679,24 @@ export const MedicalCertificate = () => {
                   </div>
 
                   <div style={{ flex: 1 }}>
-                    <label style={styles.label}>Patient Name *</label>
+                    <div style={styles.fieldHeader}>
+                      <label style={styles.label}>Patient Name *</label>
+                      {selectedPatient ? (
+                        <span style={styles.verifiedTagMini}>
+                          <CheckCircle2 size={11} color="#15803D" />
+                          <span>Linked (PID: {selectedPatient.patientId})</span>
+                        </span>
+                      ) : patientFullName.trim() ? (
+                        <span style={{ fontSize: '10px', color: '#64748B', fontStyle: 'italic' }}>
+                          Direct / OPD
+                        </span>
+                      ) : null}
+                    </div>
                     <input
                       type="text"
                       placeholder="Patient Full Name"
                       value={patientFullName}
-                      onChange={(e) => setPatientFullName(e.target.value)}
+                      onChange={(e) => handlePatientNameChange(e.target.value)}
                       style={styles.input}
                       required
                     />
@@ -699,7 +730,9 @@ export const MedicalCertificate = () => {
                   </div>
 
                   <div style={{ flex: 1 }}>
-                    <label style={styles.label}>Diagnosis / Illness *</label>
+                    <div style={styles.fieldHeader}>
+                      <label style={styles.label}>Diagnosis / Illness *</label>
+                    </div>
                     <input
                       type="text"
                       placeholder="e.g. Acute Viral Pyrexia, Gastroenteritis..."
@@ -708,6 +741,34 @@ export const MedicalCertificate = () => {
                       style={styles.input}
                       required
                     />
+                    {/* Quick Clinical Diagnosis Chips */}
+                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '4px' }}>
+                      {[
+                        'Acute Viral Pyrexia',
+                        'Gastroenteritis',
+                        'Viral Bronchitis',
+                        'Typhoid Fever',
+                        'Acute Lumbar Strain',
+                      ].map((diag) => (
+                        <button
+                          key={diag}
+                          type="button"
+                          onClick={() => setMedicalDiagnosis(diag)}
+                          style={{
+                            fontSize: '10px',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            border: '1px solid var(--border)',
+                            backgroundColor: medicalDiagnosis === diag ? 'var(--primary-soft)' : '#FFFFFF',
+                            color: medicalDiagnosis === diag ? 'var(--primary-dark)' : 'var(--text-muted)',
+                            cursor: 'pointer',
+                            fontWeight: medicalDiagnosis === diag ? 700 : 500,
+                          }}
+                        >
+                          {diag}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
@@ -821,17 +882,13 @@ export const MedicalCertificate = () => {
 
                   <button
                     type="submit"
-                    disabled={formSubmitting || !isPatientValid}
+                    disabled={formSubmitting}
                     style={{
                       ...styles.submitBtn,
-                      opacity: isPatientValid ? 1 : 0.6,
-                      cursor: isPatientValid ? 'pointer' : 'not-allowed',
+                      opacity: formSubmitting ? 0.7 : 1,
+                      cursor: formSubmitting ? 'not-allowed' : 'pointer',
                     }}
-                    title={
-                      !isPatientValid
-                        ? 'Select patient from registered records to issue certificate'
-                        : 'Issue & Print Medical Certificate'
-                    }
+                    title="Issue & Print Medical Certificate"
                   >
                     <Printer size={15} />
                     <span>

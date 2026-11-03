@@ -168,26 +168,30 @@ export const issueCertificate = async (req, res) => {
       digitalSignature,
     } = req.body;
 
-    // 1. Strict Validation: Patient must exist in registered patient database
-    if (!patientId || !patientName) {
+    // 1. Validation
+    if (!patientName || !patientName.trim()) {
       return res.status(400).json({
         success: false,
-        message: 'Patient ID and Name are required.',
+        message: 'Patient Name is required.',
       });
     }
 
-    // Verify patient in MongoDB records
-    const patientExists = await Patient.findOne({
-      $or: [{ patientId: patientId.trim() }, { name: patientName.trim() }],
-    });
-
-    if (!patientExists) {
-      return res.status(400).json({
-        success: false,
-        message:
-          'Certificate cannot be issued: Patient is not registered in the clinic database. Please register the patient first.',
+    // Check if patient exists in MongoDB records (by ID or case-insensitive Name)
+    let patientExists = null;
+    if (patientId && patientId.trim()) {
+      patientExists = await Patient.findOne({ patientId: patientId.trim() });
+    }
+    if (!patientExists && patientName.trim()) {
+      const escaped = patientName.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      patientExists = await Patient.findOne({
+        name: { $regex: new RegExp(`^${escaped}$`, 'i') },
       });
     }
+
+    // Assign registered patientId or generate OPD ID for walk-in
+    const assignedPatientId =
+      patientExists?.patientId ||
+      (patientId && patientId.trim() ? patientId.trim() : `P-OPD-${Date.now().toString().slice(-4)}`);
 
     if (!medicalDiagnosis || !medicalDiagnosis.trim()) {
       return res.status(400).json({
@@ -229,10 +233,10 @@ export const issueCertificate = async (req, res) => {
     // 4. Create Certificate Record
     const certificate = await Certificate.create({
       certificateId,
-      patientId: patientExists.patientId,
-      patientName: patientName.trim() || patientExists.name,
-      age: age || patientExists.age || '',
-      gender: gender || patientExists.gender || 'Male',
+      patientId: assignedPatientId,
+      patientName: patientName.trim(),
+      age: age || patientExists?.age || '',
+      gender: gender || patientExists?.gender || 'Male',
       templateId: templateId || 'fitness',
       templateName: templateName || 'Medical Fitness Certificate',
       medicalDiagnosis: medicalDiagnosis.trim(),
