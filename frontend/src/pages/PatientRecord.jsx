@@ -90,11 +90,11 @@ const RX_TRANSLATIONS = {
     colMedicine: 'MEDICINE NAME',
     colQty: 'QTY',
     colDosageInstructions: 'DOSAGE & WHEN TO TAKE',
-    bfLabel: 'Before Food (BF)',
-    afLabel: 'After Food (AF)',
-    dietaryTitle: 'DIETARY SUGGESTIONS & LIFESTYLE ADVICE:',
+    bfLabel: 'Before Food',
+    afLabel: 'After Food',
+    dietaryTitle: 'DIETARY SUGGESTIONS',
     noPrescription: 'No medical store prescription prescribed for this visit.',
-    footerAdvice: '* Please take medicines on time as prescribed. Keep this prescription for follow-up.',
+    footerAdvice: '* Please take medicines on time as prescribed.',
     opdTimings: 'OPD Hours: Mon - Sat (9:00 AM - 1:00 PM, 5:00 PM - 9:00 PM)',
     timingHelp: (m, n, e, ng, timing) => formatDoseInstruction(m, n, e, ng, timing, 'en'),
   },
@@ -110,11 +110,11 @@ const RX_TRANSLATIONS = {
     colMedicine: 'दवा का नाम (Medicine Name)',
     colQty: 'मात्रा',
     colDosageInstructions: 'खुराक और लेने का समय (When to Take)',
-    bfLabel: 'खाने से पहले (भूखे पेट) - BF',
-    afLabel: 'खाने के बाद - AF',
+    bfLabel: 'खाने से पहले (भूखे पेट)',
+    afLabel: 'खाने के बाद ',
     dietaryTitle: 'आहार एवं परहेज़ संबंधी सलाह:',
     noPrescription: 'इस विज़िट के लिए कोई दवा नहीं लिखी गई है।',
-    footerAdvice: '* कृपया दवाइयाँ समय पर और निर्देशानुसार लें। अगली जांच के लिए यह पर्ची साथ लाएं।',
+    footerAdvice: '* कृपया दवाइयाँ समय पर और निर्देशानुसार लें।',
     opdTimings: 'ओपीडी समय: सोम - शनि (सुबह 9:00 - 1:00, शाम 5:00 - 9:00)',
     timingHelp: (m, n, e, ng, timing) => formatDoseInstruction(m, n, e, ng, timing, 'hi'),
   },
@@ -130,11 +130,11 @@ const RX_TRANSLATIONS = {
     colMedicine: 'દવાનું નામ (Medicine Name)',
     colQty: 'જથ્થો',
     colDosageInstructions: 'માત્રા અને ક્યારે લેવી (When to Take)',
-    bfLabel: 'જમ્યા પહેલાં (ભૂખ્યા પેટે) - BF',
-    afLabel: 'જમ્યા પછી - AF',
+    bfLabel: 'જમ્યા પહેલાં (ભૂખ્યા પેટે)',
+    afLabel: 'જમ્યા પછી',
     dietaryTitle: 'ખોરાક અને પરેજી અંગેની સૂચનાઓ:',
     noPrescription: 'આ મુલાકાત માટે કોઈ દવા લખેલ નથી.',
-    footerAdvice: '* કૃપા કરીને દવાઓ સમયસર અને સૂચના મુજબ લો. ફરી મુલાકાતે આવો ત્યારે આ યાદી સાથે લાવવી.',
+    footerAdvice: '* કૃપા કરીને દવાઓ સમયસર અને સૂચના મુજબ લો.',
     opdTimings: 'ઓપીડી સમય: સોમ - શનિ (સવારે 9:00 - 1:00, સાંજે 5:00 - 9:00)',
     timingHelp: (m, n, e, ng, timing) => formatDoseInstruction(m, n, e, ng, timing, 'gu'),
   },
@@ -2968,26 +2968,26 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                       <span style={styles.clinicalValueUnderline}>{dateTimeDisplay}</span>
                     </div>
 
-                    <div style={styles.letterpadVitalsItem}>
+                    {/* <div style={styles.letterpadVitalsItem}>
                       <span style={styles.clinicalHeaderLabel}>BP :</span>
                       <span style={styles.clinicalValueUnderline}>{printVisit.bp || '--'}</span>
-                    </div>
+                    </div> */}
 
-                    <div style={styles.letterpadVitalsItem}>
+                    {/* <div style={styles.letterpadVitalsItem}>
                       <span style={styles.clinicalHeaderLabel}>Sugar :</span>
                       <span style={styles.clinicalValueUnderline}>
                         {printVisit.sugar ? `${printVisit.sugar} mg/dL` : '--'}
                       </span>
-                    </div>
+                    </div> */}
 
-                    <div style={styles.letterpadVitalsItem}>
+                    {/* <div style={styles.letterpadVitalsItem}>
                       <span style={styles.clinicalHeaderLabel}>Other :</span>
                       <span style={styles.clinicalValueUnderline}>{printVisit.other || '--'}</span>
-                    </div>
+                    </div> */}
                   </div>
 
                   {/* Row 2: Reference & Investigation (when available) */}
-                  {(printVisit.reference || printVisit.investigation) && (
+                  {/* {(printVisit.reference || printVisit.investigation) && (
                     <div style={styles.letterpadClinicalRow}>
                       {printVisit.reference && (
                         <div style={styles.letterpadVitalsItem}>
@@ -3002,12 +3002,12 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                         </div>
                       )}
                     </div>
-                  )}
+                  )} */}
 
                   {/* Row 3: [ T ] Treatments in Clinic & • Complaints */}
                   {(hasTreatments || printVisit.complaint) && (
                     <div style={styles.letterpadTreatmentsComplaintsRow}>
-                      {hasTreatments && (
+                      {/* {hasTreatments && (
                         <div style={styles.letterpadTreatmentGroup}>
                           <span style={styles.letterpadTBox}>[ T ]</span>
                           <span style={styles.letterpadTreatmentText}>
@@ -3016,7 +3016,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                               .join(', ')}
                           </span>
                         </div>
-                      )}
+                      )} */}
 
                       {printVisit.complaint && (
                         <div style={styles.letterpadComplaintGroup}>
@@ -3073,7 +3073,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                               </td>
                               <td style={styles.cleanTd}>
                                 <div style={styles.dosageCellWrapper}>
-                                  <div style={styles.dosageHeaderRow}>
+                                  {/* <div style={styles.dosageHeaderRow}>
                                     <span style={styles.dosePillBadge}>{doseNumbers}</span>
                                     <span style={{
                                       ...styles.timingPillBadge,
@@ -3083,7 +3083,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                                     }}>
                                       {isBf ? t.bfLabel : t.afLabel}
                                     </span>
-                                  </div>
+                                  </div> */}
                                   <div style={styles.humanDoseInstruction}>
                                     {humanDose}
                                   </div>
