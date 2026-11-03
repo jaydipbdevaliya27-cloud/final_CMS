@@ -300,8 +300,8 @@ export const AddMember = ({ initialFamilyId, onProceedToCaseEntry, onNavigateToF
           <div style={styles.recentSection}>
             <span style={styles.recentLabel}>
               {familySearch.trim()
-                ? 'MATCHING FAMILIES (USE ↑/↓ & ENTER TO SELECT):'
-                : 'RECENT FAMILIES (CLICK OR ENTER TO SELECT):'}
+                ? ''
+                : 'RECENT FAMILIES:'}
             </span>
 
             {loadingFamilies ? (
@@ -334,13 +334,13 @@ export const AddMember = ({ initialFamilyId, onProceedToCaseEntry, onNavigateToF
                         borderColor: isHighlighted
                           ? 'var(--primary)'
                           : isSelected
-                          ? 'var(--primary)'
-                          : 'var(--border)',
+                            ? 'var(--primary)'
+                            : 'var(--border)',
                         backgroundColor: isHighlighted
                           ? 'var(--primary-soft)'
                           : isSelected
-                          ? 'var(--primary-soft)'
-                          : '#FFFFFF',
+                            ? 'var(--primary-soft)'
+                            : '#FFFFFF',
                         borderLeft: isHighlighted
                           ? '4px solid var(--primary)'
                           : '1px solid var(--border)',

@@ -52,7 +52,7 @@ const formatDoseInstruction = (m, n, e, ng, timing, langKey) => {
     if (nVal && nVal !== '0') parts.push(`${nVal} दोपहर (Afternoon)`);
     if (eVal && eVal !== '0') parts.push(`${eVal} शाम (Evening)`);
     if (ngVal && ngVal !== '0') parts.push(`${ngVal} रात (Night)`);
-    const timingStr = isBf ? 'खाने से पहले (भूखे पेट) - BF' : 'खाने के बाद - AF';
+    const timingStr = isBf ? 'खाने से पहले (भूखे पेट)' : 'खाने के बाद';
     const doseText = parts.length > 0 ? parts.join(', ') : 'डॉक्टर के निर्देशानुसार';
     return `${doseText} — ${timingStr}`;
   }
@@ -62,7 +62,7 @@ const formatDoseInstruction = (m, n, e, ng, timing, langKey) => {
     if (nVal && nVal !== '0') parts.push(`${nVal} બપોરે (Afternoon)`);
     if (eVal && eVal !== '0') parts.push(`${eVal} સાંજે (Evening)`);
     if (ngVal && ngVal !== '0') parts.push(`${ngVal} રાત્રે (Night)`);
-    const timingStr = isBf ? 'જમ્યા પહેલાં (ભૂખ્યા પેટે) - BF' : 'જમ્યા પછી - AF';
+    const timingStr = isBf ? 'જમ્યા પહેલાં (ભૂખ્યા પેટે)' : 'જમ્યા પછી';
     const doseText = parts.length > 0 ? parts.join(', ') : 'ડોક્ટરની સલાહ મુજબ';
     return `${doseText} — ${timingStr}`;
   }
@@ -72,7 +72,7 @@ const formatDoseInstruction = (m, n, e, ng, timing, langKey) => {
   if (nVal && nVal !== '0') parts.push(`${nVal} Afternoon`);
   if (eVal && eVal !== '0') parts.push(`${eVal} Evening`);
   if (ngVal && ngVal !== '0') parts.push(`${ngVal} Night`);
-  const timingStr = isBf ? 'Before Food (BF)' : 'After Food (AF)';
+  const timingStr = isBf ? 'Before Food' : 'After Food';
   const doseText = parts.length > 0 ? parts.join(', ') : 'As Directed';
   return `${doseText} — ${timingStr}`;
 };
@@ -1538,7 +1538,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                         title="Add Diagnostic Lab Report"
                       >
                         <FileText size={14} color="#146B5C" />
-                        <span>+ Add Report</span>
+                        <span> Add Report</span>
                       </button>
                     )}
 

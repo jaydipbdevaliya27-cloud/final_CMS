@@ -265,14 +265,14 @@ export const Reports = ({ onNavigateToPatient }) => {
 
         {/* Action Buttons: Print & CSV Export */}
         <div style={styles.tabActions}>
-          <button
+          {/* <button
             onClick={() => setShowLabModal(true)}
             title="Open Diagnostic Laboratory & Investigation Report Form"
             style={styles.labReportBtn}
           >
             <span style={{ fontSize: '13px' }}>🩸</span>
             <span style={{ marginLeft: 5, fontWeight: '700' }}>+ Lab Report</span>
-          </button>
+          </button> */}
 
           <button
             onClick={fetchReport}
@@ -323,14 +323,14 @@ export const Reports = ({ onNavigateToPatient }) => {
                   {r === 'today'
                     ? 'Today'
                     : r === 'yesterday'
-                    ? 'Yesterday'
-                    : r === 'week'
-                    ? 'This Week'
-                    : r === 'month'
-                    ? 'This Month'
-                    : r === 'year'
-                    ? 'This Year'
-                    : 'All Time'}
+                      ? 'Yesterday'
+                      : r === 'week'
+                        ? 'This Week'
+                        : r === 'month'
+                          ? 'This Month'
+                          : r === 'year'
+                            ? 'This Year'
+                            : 'All Time'}
                 </button>
               ))}
             </div>
