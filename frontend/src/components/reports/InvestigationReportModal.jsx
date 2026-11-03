@@ -21,6 +21,161 @@ const DEFAULT_SPECIAL_BOXES = [
   { key: 'mri', title: 'MRI / CTSCAN', placeholder: 'Write MRI / CT Scan report findings...', notes: '' },
 ];
 
+// Reference Medical Ranges for Diagnostic Investigations
+const PARAM_CONFIG = {
+  // Routine Hematology
+  hb: { min: 12.0, max: 16.0, rangeStr: '( 12.0 - 16.0 gm% )' },
+  rbc: { min: 4.2, max: 5.4, rangeStr: '( 4.2 - 5.4 mill /c.mm )' },
+  wbc: { min: 4000, max: 10000, rangeStr: '( 4000 - 10,000 /c.mm )' },
+  platelet: { min: 150000, max: 400000, rangeStr: '( 1,50,000 - 4,00,000 / c.mm )' },
+  esr: { min: 2, max: 20, rangeStr: '( 2 - 20 mm/hr. ) (< 50 yrs)' },
+
+  // Blood Glucose & Renal
+  rbs: { min: 70, max: 140, rangeStr: '( 70 - 140 mg% )' },
+  fbs: { min: 70, max: 100, rangeStr: '( 70 - 100 mg% )' },
+  ppbs: { min: 70, max: 140, rangeStr: '( 70 - 140 mg% )' },
+  screatinin: { min: 0.5, max: 1.5, rangeStr: '( 0.5 - 1.5 mg/dl )' },
+  vitb12: { min: 200, max: 900, rangeStr: '( 200 - 900 pg/ml )' },
+
+  // Differential WBC
+  bandCell: { min: 0, max: 6, rangeStr: '( 0 - 6 % )' },
+  neutrophils: { min: 55, max: 70, rangeStr: '( 55 - 70 % )' },
+  lymphocytes: { min: 20, max: 40, rangeStr: '( 20 - 40 % )' },
+  eosinophils: { min: 1, max: 6, rangeStr: '( 1 - 6 % )' },
+  monocytes: { min: 2, max: 8, rangeStr: '( 2 - 8 % )' },
+  basophils: { min: 0, max: 1, rangeStr: '( 0 - 01 % )' },
+  parasites: { rangeStr: '( Negative / Not Seen )' },
+
+  // Thyroid
+  t3: { min: 82, max: 200, rangeStr: '( 82 - 200 ng/ml )' },
+  t4: { min: 4.5, max: 12.5, rangeStr: '( 4.5 - 12.5 mg% )' },
+  tsh: { min: 0.4, max: 6.0, rangeStr: '( 0.4 - 6.0 mlu/ml )' },
+};
+
+const checkFieldStatus = (key, val) => {
+  if (val === undefined || val === null || String(val).trim() === '') return null;
+  const str = String(val).trim().toLowerCase();
+
+  if (key === 'parasites') {
+    if (str.includes('pos') || str.includes('seen') || str.includes('pres') || str.includes('+')) {
+      return 'high';
+    }
+    if (str.includes('neg') || str.includes('not') || str.includes('nil')) {
+      return 'normal';
+    }
+    return null;
+  }
+
+  const conf = PARAM_CONFIG[key];
+  if (!conf || conf.min === undefined) return null;
+
+  const num = parseFloat(str.replace(/,/g, ''));
+  if (isNaN(num)) return null;
+
+  if (num < conf.min) return 'low';
+  if (num > conf.max) return 'high';
+  return 'normal';
+};
+
+const getHighlightInputStyle = (status) => {
+  if (status === 'high') {
+    return {
+      borderColor: '#EF4444',
+      backgroundColor: '#FEF2F2',
+      color: '#B91C1C',
+      fontWeight: '700',
+      boxShadow: '0 0 0 2px rgba(239, 68, 68, 0.25)',
+    };
+  }
+  if (status === 'low') {
+    return {
+      borderColor: '#F59E0B',
+      backgroundColor: '#FFFBEB',
+      color: '#B45309',
+      fontWeight: '700',
+      boxShadow: '0 0 0 2px rgba(245, 158, 11, 0.25)',
+    };
+  }
+  if (status === 'normal') {
+    return {
+      borderColor: '#10B981',
+      backgroundColor: '#F0FDF4',
+      color: '#15803D',
+      fontWeight: '600',
+    };
+  }
+  return {};
+};
+
+const renderRangeStatusBadge = (status) => {
+  if (status === 'high') {
+    return (
+      <span
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '2px',
+          fontSize: '9px',
+          fontWeight: '800',
+          color: '#DC2626',
+          backgroundColor: '#FEE2E2',
+          border: '1px solid #FECACA',
+          padding: '1px 5px',
+          borderRadius: '4px',
+          marginLeft: '4px',
+          flexShrink: 0,
+        }}
+      >
+        ▲ HIGH
+      </span>
+    );
+  }
+  if (status === 'low') {
+    return (
+      <span
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '2px',
+          fontSize: '9px',
+          fontWeight: '800',
+          color: '#D97706',
+          backgroundColor: '#FEF3C7',
+          border: '1px solid #FDE68A',
+          padding: '1px 5px',
+          borderRadius: '4px',
+          marginLeft: '4px',
+          flexShrink: 0,
+        }}
+      >
+        ▼ LOW
+      </span>
+    );
+  }
+  if (status === 'normal') {
+    return (
+      <span
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          fontSize: '9px',
+          fontWeight: '700',
+          color: '#16A34A',
+          backgroundColor: '#DCFCE7',
+          border: '1px solid #BBF7D0',
+          padding: '1px 5px',
+          borderRadius: '4px',
+          marginLeft: '4px',
+          flexShrink: 0,
+        }}
+      >
+        ✓ OK
+      </span>
+    );
+  }
+  return null;
+};
+
 export const InvestigationReportModal = ({
   isOpen,
   onClose,
@@ -151,6 +306,58 @@ export const InvestigationReportModal = ({
 
   const handleThyroidChange = (field, val) => {
     setThyroid((prev) => ({ ...prev, [field]: val }));
+  };
+
+  // Helper to render parameter row with dynamic out-of-range highlighting
+  const renderParamRow = (label, fieldKey, value, onChange, rangeText) => {
+    const status = checkFieldStatus(fieldKey, value);
+    const highlightStyle = getHighlightInputStyle(status);
+
+    return (
+      <div style={styles.paramRow}>
+        <span style={styles.paramLabel}>{label} :</span>
+        <input
+          type="text"
+          placeholder="--"
+          value={value}
+          onChange={(e) => onChange(fieldKey, e.target.value)}
+          style={{
+            ...styles.paramInput,
+            ...highlightStyle,
+          }}
+        />
+        <span
+          style={{
+            ...styles.rangeText,
+            color: status === 'high' ? '#DC2626' : status === 'low' ? '#D97706' : '#64748B',
+            fontWeight: status === 'high' || status === 'low' ? 700 : 500,
+          }}
+        >
+          {rangeText}
+        </span>
+        {renderRangeStatusBadge(status)}
+      </div>
+    );
+  };
+
+  // Helper to render print table cell with out-of-range warning
+  const renderPrintTdVal = (key, val, unit) => {
+    const status = checkFieldStatus(key, val);
+    if (status === 'high') {
+      return (
+        <td style={{ ...styles.printTdVal, color: '#DC2626', fontWeight: 'bold' }}>
+          {val} {unit} <span style={{ fontSize: '10px' }}>(HIGH)</span>
+        </td>
+      );
+    }
+    if (status === 'low') {
+      return (
+        <td style={{ ...styles.printTdVal, color: '#D97706', fontWeight: 'bold' }}>
+          {val} {unit} <span style={{ fontSize: '10px' }}>(LOW)</span>
+        </td>
+      );
+    }
+    return <td style={styles.printTdVal}>{val} {unit}</td>;
   };
 
   const handleSpecialBoxChange = (index, notes) => {
@@ -407,131 +614,23 @@ export const InvestigationReportModal = ({
                 <div style={styles.paramCard}>
                   <h4 style={styles.cardTitleTeal}>ROUTINE HEMATOLOGY (CBC) PARAMETERS</h4>
                   <div style={styles.paramRowsList}>
-                    <div style={styles.paramRow}>
-                      <span style={styles.paramLabel}>Hemoglobin :</span>
-                      <input
-                        type="text"
-                        placeholder="--"
-                        value={hematology.hb}
-                        onChange={(e) => handleHematologyChange('hb', e.target.value)}
-                        style={styles.paramInput}
-                      />
-                      <span style={styles.rangeText}>( 12.0 - 16.0 gm% )</span>
-                    </div>
-
-                    <div style={styles.paramRow}>
-                      <span style={styles.paramLabel}>RBC Count :</span>
-                      <input
-                        type="text"
-                        placeholder="--"
-                        value={hematology.rbc}
-                        onChange={(e) => handleHematologyChange('rbc', e.target.value)}
-                        style={styles.paramInput}
-                      />
-                      <span style={styles.rangeText}>( 4.2 - 5.4 mill /c.mm )</span>
-                    </div>
-
-                    <div style={styles.paramRow}>
-                      <span style={styles.paramLabel}>WBC Count :</span>
-                      <input
-                        type="text"
-                        placeholder="--"
-                        value={hematology.wbc}
-                        onChange={(e) => handleHematologyChange('wbc', e.target.value)}
-                        style={styles.paramInput}
-                      />
-                      <span style={styles.rangeText}>( 4000 - 10,000 /c.mm )</span>
-                    </div>
-
-                    <div style={styles.paramRow}>
-                      <span style={styles.paramLabel}>Platelet Count :</span>
-                      <input
-                        type="text"
-                        placeholder="--"
-                        value={hematology.platelet}
-                        onChange={(e) => handleHematologyChange('platelet', e.target.value)}
-                        style={styles.paramInput}
-                      />
-                      <span style={styles.rangeText}>( 1,50,000 - 4,00,000 / c.mm )</span>
-                    </div>
-
-                    <div style={styles.paramRow}>
-                      <span style={styles.paramLabel}>ESR :</span>
-                      <input
-                        type="text"
-                        placeholder="--"
-                        value={hematology.esr}
-                        onChange={(e) => handleHematologyChange('esr', e.target.value)}
-                        style={styles.paramInput}
-                      />
-                      <span style={styles.rangeText}>( 2 - 20 mm/hr. ) (&lt; 50 yrs)</span>
-                    </div>
+                    {renderParamRow('Hemoglobin', 'hb', hematology.hb, handleHematologyChange, '( 12.0 - 16.0 gm% )')}
+                    {renderParamRow('RBC Count', 'rbc', hematology.rbc, handleHematologyChange, '( 4.2 - 5.4 mill /c.mm )')}
+                    {renderParamRow('WBC Count', 'wbc', hematology.wbc, handleHematologyChange, '( 4000 - 10,000 /c.mm )')}
+                    {renderParamRow('Platelet Count', 'platelet', hematology.platelet, handleHematologyChange, '( 1,50,000 - 4,00,000 / c.mm )')}
+                    {renderParamRow('ESR', 'esr', hematology.esr, handleHematologyChange, '( 2 - 20 mm/hr. ) (< 50 yrs)')}
                   </div>
                 </div>
 
                 {/* 2. BLOOD GLUCOSE & RENAL PROFILE */}
                 <div style={styles.paramCard}>
-                  <h4 style={styles.cardTitleTeal}>BLOOD GLUCOSE & RENAL PROFILE</h4>
+                  <h4 style={styles.cardTitleTeal}>BLOOD GLUCOSE &amp; RENAL PROFILE</h4>
                   <div style={styles.paramRowsList}>
-                    <div style={styles.paramRow}>
-                      <span style={styles.paramLabel}>RBS :</span>
-                      <input
-                        type="text"
-                        placeholder="--"
-                        value={bloodGlucoseRenal.rbs}
-                        onChange={(e) => handleGlucoseRenalChange('rbs', e.target.value)}
-                        style={styles.paramInput}
-                      />
-                      <span style={styles.rangeText}>( upto - 120 mg% )</span>
-                    </div>
-
-                    <div style={styles.paramRow}>
-                      <span style={styles.paramLabel}>FBS :</span>
-                      <input
-                        type="text"
-                        placeholder="--"
-                        value={bloodGlucoseRenal.fbs}
-                        onChange={(e) => handleGlucoseRenalChange('fbs', e.target.value)}
-                        style={styles.paramInput}
-                      />
-                      <span style={styles.rangeText}>( 70 - 100 mg% )</span>
-                    </div>
-
-                    <div style={styles.paramRow}>
-                      <span style={styles.paramLabel}>PPBS :</span>
-                      <input
-                        type="text"
-                        placeholder="--"
-                        value={bloodGlucoseRenal.ppbs}
-                        onChange={(e) => handleGlucoseRenalChange('ppbs', e.target.value)}
-                        style={styles.paramInput}
-                      />
-                      <span style={styles.rangeText}>( upto - 140 mg% )</span>
-                    </div>
-
-                    <div style={styles.paramRow}>
-                      <span style={styles.paramLabel}>S.Creatinin :</span>
-                      <input
-                        type="text"
-                        placeholder="--"
-                        value={bloodGlucoseRenal.screatinin}
-                        onChange={(e) => handleGlucoseRenalChange('screatinin', e.target.value)}
-                        style={styles.paramInput}
-                      />
-                      <span style={styles.rangeText}>( 0.5 - 1.5 mg/dl )</span>
-                    </div>
-
-                    <div style={styles.paramRow}>
-                      <span style={styles.paramLabel}>Vitamin B 12 :</span>
-                      <input
-                        type="text"
-                        placeholder="--"
-                        value={bloodGlucoseRenal.vitb12}
-                        onChange={(e) => handleGlucoseRenalChange('vitb12', e.target.value)}
-                        style={styles.paramInput}
-                      />
-                      <span style={styles.rangeText}>( 200 - 900 pg/ml )</span>
-                    </div>
+                    {renderParamRow('RBS', 'rbs', bloodGlucoseRenal.rbs, handleGlucoseRenalChange, '( 70 - 140 mg% )')}
+                    {renderParamRow('FBS', 'fbs', bloodGlucoseRenal.fbs, handleGlucoseRenalChange, '( 70 - 100 mg% )')}
+                    {renderParamRow('PPBS', 'ppbs', bloodGlucoseRenal.ppbs, handleGlucoseRenalChange, '( 70 - 140 mg% )')}
+                    {renderParamRow('S.Creatinin', 'screatinin', bloodGlucoseRenal.screatinin, handleGlucoseRenalChange, '( 0.5 - 1.5 mg/dl )')}
+                    {renderParamRow('Vitamin B 12', 'vitb12', bloodGlucoseRenal.vitb12, handleGlucoseRenalChange, '( 200 - 900 pg/ml )')}
                   </div>
                 </div>
 
@@ -539,89 +638,13 @@ export const InvestigationReportModal = ({
                 <div style={{ ...styles.paramCard, ...styles.cardYellow }}>
                   <h4 style={styles.cardTitleYellow}>DIFFERENTIAL WBC COUNT POLYMORPHS</h4>
                   <div style={styles.paramRowsList}>
-                    <div style={styles.paramRow}>
-                      <span style={styles.paramLabel}>Band Cell :</span>
-                      <input
-                        type="text"
-                        placeholder="--"
-                        value={differentialWbc.bandCell}
-                        onChange={(e) => handleDifferentialWbcChange('bandCell', e.target.value)}
-                        style={styles.paramInput}
-                      />
-                      <span style={styles.rangeText}>( 0 - 6 % )</span>
-                    </div>
-
-                    <div style={styles.paramRow}>
-                      <span style={styles.paramLabel}>Neutrophils :</span>
-                      <input
-                        type="text"
-                        placeholder="--"
-                        value={differentialWbc.neutrophils}
-                        onChange={(e) => handleDifferentialWbcChange('neutrophils', e.target.value)}
-                        style={styles.paramInput}
-                      />
-                      <span style={styles.rangeText}>( 55 - 70 % )</span>
-                    </div>
-
-                    <div style={styles.paramRow}>
-                      <span style={styles.paramLabel}>Lymphocytes :</span>
-                      <input
-                        type="text"
-                        placeholder="--"
-                        value={differentialWbc.lymphocytes}
-                        onChange={(e) => handleDifferentialWbcChange('lymphocytes', e.target.value)}
-                        style={styles.paramInput}
-                      />
-                      <span style={styles.rangeText}>( 20 - 40 % )</span>
-                    </div>
-
-                    <div style={styles.paramRow}>
-                      <span style={styles.paramLabel}>Eosinophils :</span>
-                      <input
-                        type="text"
-                        placeholder="--"
-                        value={differentialWbc.eosinophils}
-                        onChange={(e) => handleDifferentialWbcChange('eosinophils', e.target.value)}
-                        style={styles.paramInput}
-                      />
-                      <span style={styles.rangeText}>( 1 - 6 % )</span>
-                    </div>
-
-                    <div style={styles.paramRow}>
-                      <span style={styles.paramLabel}>Monocytes :</span>
-                      <input
-                        type="text"
-                        placeholder="--"
-                        value={differentialWbc.monocytes}
-                        onChange={(e) => handleDifferentialWbcChange('monocytes', e.target.value)}
-                        style={styles.paramInput}
-                      />
-                      <span style={styles.rangeText}>( 2 - 8 % )</span>
-                    </div>
-
-                    <div style={styles.paramRow}>
-                      <span style={styles.paramLabel}>Basophils :</span>
-                      <input
-                        type="text"
-                        placeholder="--"
-                        value={differentialWbc.basophils}
-                        onChange={(e) => handleDifferentialWbcChange('basophils', e.target.value)}
-                        style={styles.paramInput}
-                      />
-                      <span style={styles.rangeText}>( 0 - 01 % )</span>
-                    </div>
-
-                    <div style={styles.paramRow}>
-                      <span style={styles.paramLabel}>Parasites :</span>
-                      <input
-                        type="text"
-                        placeholder="--"
-                        value={differentialWbc.parasites}
-                        onChange={(e) => handleDifferentialWbcChange('parasites', e.target.value)}
-                        style={styles.paramInput}
-                      />
-                      <span style={styles.rangeText}>( Negative / Not Seen )</span>
-                    </div>
+                    {renderParamRow('Band Cell', 'bandCell', differentialWbc.bandCell, handleDifferentialWbcChange, '( 0 - 6 % )')}
+                    {renderParamRow('Neutrophils', 'neutrophils', differentialWbc.neutrophils, handleDifferentialWbcChange, '( 55 - 70 % )')}
+                    {renderParamRow('Lymphocytes', 'lymphocytes', differentialWbc.lymphocytes, handleDifferentialWbcChange, '( 20 - 40 % )')}
+                    {renderParamRow('Eosinophils', 'eosinophils', differentialWbc.eosinophils, handleDifferentialWbcChange, '( 1 - 6 % )')}
+                    {renderParamRow('Monocytes', 'monocytes', differentialWbc.monocytes, handleDifferentialWbcChange, '( 2 - 8 % )')}
+                    {renderParamRow('Basophils', 'basophils', differentialWbc.basophils, handleDifferentialWbcChange, '( 0 - 01 % )')}
+                    {renderParamRow('Parasites', 'parasites', differentialWbc.parasites, handleDifferentialWbcChange, '( Negative / Not Seen )')}
                   </div>
                 </div>
 
@@ -629,41 +652,9 @@ export const InvestigationReportModal = ({
                 <div style={{ ...styles.paramCard, ...styles.cardGreen }}>
                   <h4 style={styles.cardTitleGreen}>THYROID FUNCTION TEST :</h4>
                   <div style={styles.paramRowsList}>
-                    <div style={styles.paramRow}>
-                      <span style={styles.paramLabel}>T3 :</span>
-                      <input
-                        type="text"
-                        placeholder="--"
-                        value={thyroid.t3}
-                        onChange={(e) => handleThyroidChange('t3', e.target.value)}
-                        style={styles.paramInput}
-                      />
-                      <span style={styles.rangeText}>( 82 - 200 ng/ml )</span>
-                    </div>
-
-                    <div style={styles.paramRow}>
-                      <span style={styles.paramLabel}>T4 :</span>
-                      <input
-                        type="text"
-                        placeholder="--"
-                        value={thyroid.t4}
-                        onChange={(e) => handleThyroidChange('t4', e.target.value)}
-                        style={styles.paramInput}
-                      />
-                      <span style={styles.rangeText}>( 4.5 - 12.5 mg% )</span>
-                    </div>
-
-                    <div style={styles.paramRow}>
-                      <span style={styles.paramLabel}>TSH :</span>
-                      <input
-                        type="text"
-                        placeholder="--"
-                        value={thyroid.tsh}
-                        onChange={(e) => handleThyroidChange('tsh', e.target.value)}
-                        style={styles.paramInput}
-                      />
-                      <span style={styles.rangeText}>( 0.4 - 6.0 mlu/ml )</span>
-                    </div>
+                    {renderParamRow('T3', 't3', thyroid.t3, handleThyroidChange, '( 82 - 200 ng/ml )')}
+                    {renderParamRow('T4', 't4', thyroid.t4, handleThyroidChange, '( 4.5 - 12.5 mg% )')}
+                    {renderParamRow('TSH', 'tsh', thyroid.tsh, handleThyroidChange, '( 0.4 - 6.0 mlu/ml )')}
                   </div>
                 </div>
               </div>
@@ -906,35 +897,35 @@ export const InvestigationReportModal = ({
               {hematology.hb && (
                 <tr>
                   <td style={styles.printTd}>Hemoglobin</td>
-                  <td style={styles.printTdVal}>{hematology.hb} gm%</td>
+                  {renderPrintTdVal('hb', hematology.hb, 'gm%')}
                   <td style={styles.printTd}>12.0 - 16.0 gm%</td>
                 </tr>
               )}
               {hematology.rbc && (
                 <tr>
                   <td style={styles.printTd}>RBC Count</td>
-                  <td style={styles.printTdVal}>{hematology.rbc} mill/c.mm</td>
+                  {renderPrintTdVal('rbc', hematology.rbc, 'mill/c.mm')}
                   <td style={styles.printTd}>4.2 - 5.4 mill /c.mm</td>
                 </tr>
               )}
               {hematology.wbc && (
                 <tr>
                   <td style={styles.printTd}>WBC Count</td>
-                  <td style={styles.printTdVal}>{hematology.wbc} /c.mm</td>
+                  {renderPrintTdVal('wbc', hematology.wbc, '/c.mm')}
                   <td style={styles.printTd}>4000 - 10,000 /c.mm</td>
                 </tr>
               )}
               {hematology.platelet && (
                 <tr>
                   <td style={styles.printTd}>Platelet Count</td>
-                  <td style={styles.printTdVal}>{hematology.platelet} /c.mm</td>
+                  {renderPrintTdVal('platelet', hematology.platelet, '/c.mm')}
                   <td style={styles.printTd}>1,50,000 - 4,00,000 / c.mm</td>
                 </tr>
               )}
               {hematology.esr && (
                 <tr>
                   <td style={styles.printTd}>ESR</td>
-                  <td style={styles.printTdVal}>{hematology.esr} mm/hr</td>
+                  {renderPrintTdVal('esr', hematology.esr, 'mm/hr')}
                   <td style={styles.printTd}>2 - 20 mm/hr (&lt; 50 yrs)</td>
                 </tr>
               )}
@@ -943,73 +934,87 @@ export const InvestigationReportModal = ({
               {bloodGlucoseRenal.rbs && (
                 <tr>
                   <td style={styles.printTd}>RBS (Random Blood Sugar)</td>
-                  <td style={styles.printTdVal}>{bloodGlucoseRenal.rbs} mg%</td>
-                  <td style={styles.printTd}>upto - 120 mg%</td>
+                  {renderPrintTdVal('rbs', bloodGlucoseRenal.rbs, 'mg%')}
+                  <td style={styles.printTd}>70 - 140 mg%</td>
                 </tr>
               )}
               {bloodGlucoseRenal.fbs && (
                 <tr>
                   <td style={styles.printTd}>FBS (Fasting Blood Sugar)</td>
-                  <td style={styles.printTdVal}>{bloodGlucoseRenal.fbs} mg%</td>
+                  {renderPrintTdVal('fbs', bloodGlucoseRenal.fbs, 'mg%')}
                   <td style={styles.printTd}>70 - 100 mg%</td>
                 </tr>
               )}
               {bloodGlucoseRenal.ppbs && (
                 <tr>
                   <td style={styles.printTd}>PPBS</td>
-                  <td style={styles.printTdVal}>{bloodGlucoseRenal.ppbs} mg%</td>
-                  <td style={styles.printTd}>upto - 140 mg%</td>
+                  {renderPrintTdVal('ppbs', bloodGlucoseRenal.ppbs, 'mg%')}
+                  <td style={styles.printTd}>70 - 140 mg%</td>
                 </tr>
               )}
               {bloodGlucoseRenal.screatinin && (
                 <tr>
                   <td style={styles.printTd}>Serum Creatinine</td>
-                  <td style={styles.printTdVal}>{bloodGlucoseRenal.screatinin} mg/dl</td>
+                  {renderPrintTdVal('screatinin', bloodGlucoseRenal.screatinin, 'mg/dl')}
                   <td style={styles.printTd}>0.5 - 1.5 mg/dl</td>
                 </tr>
               )}
               {bloodGlucoseRenal.vitb12 && (
                 <tr>
                   <td style={styles.printTd}>Vitamin B 12</td>
-                  <td style={styles.printTdVal}>{bloodGlucoseRenal.vitb12} pg/ml</td>
+                  {renderPrintTdVal('vitb12', bloodGlucoseRenal.vitb12, 'pg/ml')}
                   <td style={styles.printTd}>200 - 900 pg/ml</td>
                 </tr>
               )}
 
               {/* Differential WBC */}
+              {differentialWbc.bandCell && (
+                <tr>
+                  <td style={styles.printTd}>Band Cell</td>
+                  {renderPrintTdVal('bandCell', differentialWbc.bandCell, '%')}
+                  <td style={styles.printTd}>0 - 6 %</td>
+                </tr>
+              )}
               {differentialWbc.neutrophils && (
                 <tr>
                   <td style={styles.printTd}>Neutrophils</td>
-                  <td style={styles.printTdVal}>{differentialWbc.neutrophils} %</td>
+                  {renderPrintTdVal('neutrophils', differentialWbc.neutrophils, '%')}
                   <td style={styles.printTd}>55 - 70 %</td>
                 </tr>
               )}
               {differentialWbc.lymphocytes && (
                 <tr>
                   <td style={styles.printTd}>Lymphocytes</td>
-                  <td style={styles.printTdVal}>{differentialWbc.lymphocytes} %</td>
+                  {renderPrintTdVal('lymphocytes', differentialWbc.lymphocytes, '%')}
                   <td style={styles.printTd}>20 - 40 %</td>
                 </tr>
               )}
               {differentialWbc.eosinophils && (
                 <tr>
                   <td style={styles.printTd}>Eosinophils</td>
-                  <td style={styles.printTdVal}>{differentialWbc.eosinophils} %</td>
+                  {renderPrintTdVal('eosinophils', differentialWbc.eosinophils, '%')}
                   <td style={styles.printTd}>1 - 6 %</td>
                 </tr>
               )}
               {differentialWbc.monocytes && (
                 <tr>
                   <td style={styles.printTd}>Monocytes</td>
-                  <td style={styles.printTdVal}>{differentialWbc.monocytes} %</td>
+                  {renderPrintTdVal('monocytes', differentialWbc.monocytes, '%')}
                   <td style={styles.printTd}>2 - 8 %</td>
                 </tr>
               )}
               {differentialWbc.basophils && (
                 <tr>
                   <td style={styles.printTd}>Basophils</td>
-                  <td style={styles.printTdVal}>{differentialWbc.basophils} %</td>
+                  {renderPrintTdVal('basophils', differentialWbc.basophils, '%')}
                   <td style={styles.printTd}>0 - 01 %</td>
+                </tr>
+              )}
+              {differentialWbc.parasites && (
+                <tr>
+                  <td style={styles.printTd}>Parasites</td>
+                  {renderPrintTdVal('parasites', differentialWbc.parasites, '')}
+                  <td style={styles.printTd}>Negative / Not Seen</td>
                 </tr>
               )}
 
@@ -1017,21 +1022,21 @@ export const InvestigationReportModal = ({
               {thyroid.t3 && (
                 <tr>
                   <td style={styles.printTd}>Total T3</td>
-                  <td style={styles.printTdVal}>{thyroid.t3} ng/ml</td>
+                  {renderPrintTdVal('t3', thyroid.t3, 'ng/ml')}
                   <td style={styles.printTd}>82 - 200 ng/ml</td>
                 </tr>
               )}
               {thyroid.t4 && (
                 <tr>
                   <td style={styles.printTd}>Total T4</td>
-                  <td style={styles.printTdVal}>{thyroid.t4} mg%</td>
+                  {renderPrintTdVal('t4', thyroid.t4, 'mg%')}
                   <td style={styles.printTd}>4.5 - 12.5 mg%</td>
                 </tr>
               )}
               {thyroid.tsh && (
                 <tr>
                   <td style={styles.printTd}>TSH</td>
-                  <td style={styles.printTdVal}>{thyroid.tsh} mlu/ml</td>
+                  {renderPrintTdVal('tsh', thyroid.tsh, 'mlu/ml')}
                   <td style={styles.printTd}>0.4 - 6.0 mlu/ml</td>
                 </tr>
               )}

@@ -143,6 +143,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
   const [isDraggingH, setIsDraggingH] = useState(false);
   const [isDraggingV, setIsDraggingV] = useState(false);
   const splitContainerRef = useRef(null);
+  const bpInputRef = useRef(null);
 
   // --- Modals State ---
   const [showEditModal, setShowEditModal] = useState(false);
@@ -232,7 +233,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
 
   const initialVisitForm = {
     visitDate: getTodayDateStr(),
-    bp: '120/80',
+    bp: '',
     sugar: '',
     other: '',
     reference: '',
@@ -244,7 +245,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
       {
         id: Date.now() + '-p1',
         medicine: '',
-        qty: '10 Tab',
+        qty: '',
         morning: '1',
         noon: '0',
         evening: '1',
@@ -263,6 +264,47 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
     setToastMessage({ text, type });
     setTimeout(() => setToastMessage({ text: '', type: 'success' }), 4000);
   };
+
+  // --- Auto Focus BP Field on New Case Form Open ---
+  useEffect(() => {
+    if (showNewCaseForm) {
+      setTimeout(() => {
+        if (bpInputRef.current) {
+          bpInputRef.current.focus();
+          bpInputRef.current.select?.();
+        }
+      }, 60);
+    }
+  }, [showNewCaseForm]);
+
+  // --- Global Keyboard Shortcuts: Alt+N or F3 for New Case, Ctrl+Enter for Save & Print ---
+  useEffect(() => {
+    const handleGlobalShortcuts = (e) => {
+      // Don't intercept if an overlay modal is open
+      if (showAddReportModal || showTotalDueModal || showFamilyDueModal || showPrintPreview) {
+        return;
+      }
+
+      const isAltN = e.altKey && (e.key === 'n' || e.key === 'N');
+      const isF3 = e.key === 'F3';
+
+      if (isAltN || (isF3 && !showNewCaseForm)) {
+        e.preventDefault();
+        handleOpenNewCase();
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        if (showNewCaseForm) {
+          e.preventDefault();
+          handleSaveVisit(true);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalShortcuts);
+    return () => window.removeEventListener('keydown', handleGlobalShortcuts);
+  }, [showNewCaseForm, showAddReportModal, showTotalDueModal, showFamilyDueModal, showPrintPreview]);
 
   // --- Dragger Event Handlers ---
   useEffect(() => {
@@ -471,7 +513,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
         {
           id: Date.now() + '-' + Math.random(),
           medicine: '',
-          qty: '10 Tab',
+          qty: '',
           morning: '1',
           noon: '0',
           evening: '1',
@@ -495,7 +537,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
         updated.push({
           id: Date.now() + '-' + Math.random(),
           medicine: '',
-          qty: '10 Tab',
+          qty: '',
           morning: '1',
           noon: '0',
           evening: '1',
@@ -520,7 +562,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
               {
                 id: Date.now() + '-p1',
                 medicine: '',
-                qty: '10 Tab',
+                qty: '',
                 morning: '1',
                 noon: '0',
                 evening: '1',
@@ -538,8 +580,15 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
     setVisitForm({
       ...initialVisitForm,
       visitDate: getTodayDateStr(),
+      bp: '',
     });
     setShowNewCaseForm(true);
+    setTimeout(() => {
+      if (bpInputRef.current) {
+        bpInputRef.current.focus();
+        bpInputRef.current.select?.();
+      }
+    }, 80);
   };
 
   // --- Start Edit on an Existing Past Visit ---
@@ -567,7 +616,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
           ? visit.prescriptions.map((p, idx) => ({
             id: p._id || `${Date.now()}-${idx}`,
             medicine: p.medicine,
-            qty: p.qty || '10 Tab',
+            qty: p.qty !== undefined && p.qty !== null ? String(p.qty) : '',
             morning: p.morning || '1',
             noon: p.noon || '0',
             evening: p.evening || '1',
@@ -578,7 +627,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
             {
               id: Date.now() + '-p1',
               medicine: '',
-              qty: '10 Tab',
+              qty: '',
               morning: '1',
               noon: '0',
               evening: '1',
@@ -591,6 +640,11 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
     });
     setAttachedReport(visit.labReport || null);
     setShowNewCaseForm(true);
+    setTimeout(() => {
+      if (bpInputRef.current) {
+        bpInputRef.current.focus();
+      }
+    }, 80);
   };
 
   // --- Save / Update Visit & Optional Print ---
@@ -1129,13 +1183,14 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                   </div>
                 </div>
 
-                {/* Vitals Grid: BP, Sugar, Other, Reference, Investigation, Complaint */}
+                {/* Vitals Grid: BP, Sugar, Other, Reference, Investigation, Complaint, Dietary */}
                 <div style={styles.vitalsRowGrid}>
                   <div style={{ ...styles.fieldCol, width: '74px', flex: 'none' }}>
                     <label style={styles.miniLabel}>BP</label>
                     <input
+                      ref={bpInputRef}
                       type="text"
-                      placeholder="120/80"
+                      placeholder="e.g. 120/80"
                       value={visitForm.bp}
                       onChange={(e) =>
                         setVisitForm({ ...visitForm, bp: e.target.value })
@@ -1184,17 +1239,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                   </div>
 
                   <div style={{ ...styles.fieldCol, flex: 1.1, minWidth: '130px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <label style={styles.miniLabel}>INVESTIGATION</label>
-                      <button
-                        type="button"
-                        onClick={() => setShowAddReportModal(true)}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-                        title="Open Lab & Investigation Report Form"
-                      >
-                        <FileText size={12} color="var(--primary)" />
-                      </button>
-                    </div>
+                    <label style={styles.miniLabel}>INVESTIGATION</label>
                     <MasterDataInput
                       type="investigation"
                       allowMultiple={true}
@@ -1259,15 +1304,16 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                           />
                         </div>
 
-                        <div style={{ width: '70px' }}>
+                        <div style={{ width: '48px', flexShrink: 0 }}>
                           <input
-                            type="text"
+                            type="number"
+                            min="1"
                             placeholder="Qty"
                             value={treatment.qty}
                             onChange={(e) =>
                               handleUpdateTreatment(treatment.id, 'qty', e.target.value)
                             }
-                            style={styles.tableInput}
+                            style={{ ...styles.tableInput, textAlign: 'center', padding: '0 2px' }}
                           />
                         </div>
 
@@ -1318,15 +1364,16 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                         </div>
 
                         {/* Quantity */}
-                        <div style={{ width: '60px' }}>
+                        <div style={{ width: '48px', flexShrink: 0 }}>
                           <input
-                            type="text"
+                            type="number"
+                            min="1"
                             placeholder="Qty"
                             value={rx.qty}
                             onChange={(e) =>
                               handleUpdatePrescription(rx.id, 'qty', e.target.value)
                             }
-                            style={styles.tableInput}
+                            style={{ ...styles.tableInput, textAlign: 'center', padding: '0 2px' }}
                           />
                         </div>
 
@@ -1464,7 +1511,14 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                         onChange={(e) =>
                           setVisitForm({ ...visitForm, received: e.target.value })
                         }
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleSaveVisit(true);
+                          }
+                        }}
                         style={styles.billingInput}
+                        title="Press Enter to Save & Print Case"
                       />
                     </div>
 
@@ -1509,10 +1563,24 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                       onClick={() => handleSaveVisit(true)}
                       disabled={isSavingVisit}
                       style={styles.saveAndPrintBtn}
+                      title="Save and print case (Enter / Ctrl+Enter)"
                     >
                       <Printer size={14} />
                       <span>
                         {isSavingVisit ? 'Recording...' : editingVisitId ? 'Update & Print' : 'Save & Print'}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: '10px',
+                          opacity: 0.9,
+                          backgroundColor: 'rgba(255,255,255,0.22)',
+                          padding: '1px 5px',
+                          borderRadius: '4px',
+                          marginLeft: '4px',
+                          fontWeight: 'bold',
+                        }}
+                      >
+                        Enter
                       </span>
                     </button>
                   </div>
@@ -1581,10 +1649,23 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                     type="button"
                     onClick={handleOpenNewCase}
                     style={styles.openNewCaseBtn}
-                    title="Open clinical case entry form"
+                    title="Open clinical case entry form (Alt+N or F3)"
                   >
                     <Plus size={14} />
                     <span>New Case</span>
+                    <span
+                      style={{
+                        fontSize: '10px',
+                        opacity: 0.9,
+                        backgroundColor: 'rgba(255,255,255,0.22)',
+                        padding: '1px 5px',
+                        borderRadius: '4px',
+                        marginLeft: '3px',
+                        fontWeight: 'bold',
+                      }}
+                    >
+                      Alt+N
+                    </span>
                   </button>
                 )}
               </div>

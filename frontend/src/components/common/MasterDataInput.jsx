@@ -74,8 +74,15 @@ export const MasterDataInput = ({
     }
 
     onChange(val);
-    setIsOpen(true);
-    setHighlightedIndex(0);
+
+    // If the field / active token is empty, close the suggestion datalist immediately
+    const token = getActiveToken(val);
+    if (!token || token.trim().length === 0) {
+      setIsOpen(false);
+    } else {
+      setIsOpen(true);
+      setHighlightedIndex(0);
+    }
   };
 
   const selectItem = (item) => {
@@ -91,7 +98,7 @@ export const MasterDataInput = ({
       const newVal = `${prefix}${selectedVal}, `;
       onChange(newVal);
 
-      // Keep focus in input and cursor at end to immediately select the next complaint
+      // Keep focus in input and cursor at end to immediately select the next item
       setTimeout(() => {
         if (inputRef.current) {
           inputRef.current.focus();
@@ -99,9 +106,8 @@ export const MasterDataInput = ({
         }
       }, 0);
 
-      // Keep suggestions open for picking the next complaint
-      setIsOpen(true);
-      setHighlightedIndex(0);
+      // Close suggestions after selection until doctor types the next word
+      setIsOpen(false);
     } else {
       onChange(selectedVal);
       setIsOpen(false);
@@ -194,7 +200,17 @@ export const MasterDataInput = ({
         type="text"
         value={value}
         onChange={handleInputChange}
-        onFocus={() => setIsOpen(true)}
+        onFocus={() => {
+          if (currentToken && currentToken.trim().length > 0) {
+            setIsOpen(true);
+          } else {
+            setIsOpen(false);
+          }
+        }}
+        onBlur={() => {
+          // Delay closing slightly so mouse clicks on dropdown options trigger first
+          setTimeout(() => setIsOpen(false), 200);
+        }}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         required={required}
@@ -210,8 +226,8 @@ export const MasterDataInput = ({
         }}
       />
 
-      {/* Suggestion Dropdown */}
-      {isOpen && suggestions.length > 0 && (
+      {/* Suggestion Dropdown - only shown when there is an active search token and matching suggestions */}
+      {isOpen && currentToken && currentToken.trim().length > 0 && suggestions.length > 0 && (
         <ul style={styles.dropdown}>
           {suggestions.map((item, idx) => {
             const isHighlighted = idx === highlightedIndex;
