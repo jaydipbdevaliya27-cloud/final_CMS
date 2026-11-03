@@ -6,6 +6,7 @@ import {
   getDailyCollectionsReport,
   getMonthlyIncomeReport,
   getDueReport,
+  getDashboardSummary,
 } from '../controllers/reportController.js';
 import { protectDoctor } from '../middleware/authMiddleware.js';
 
@@ -13,6 +14,7 @@ const router = express.Router();
 
 router.use(protectDoctor); // Protected: doctor auth required
 
+router.get('/dashboard-summary', getDashboardSummary);
 router.get('/area-wise', getAreaWiseReport);
 router.get('/ref-doctor', getRefDoctorReport);
 router.get('/patient-history', getPatientHistoryReport);

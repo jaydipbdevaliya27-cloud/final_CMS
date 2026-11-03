@@ -143,6 +143,10 @@ export const visitAPI = {
 };
 
 export const reportAPI = {
+  getDashboardSummary: async () => {
+    const response = await api.get('/reports/dashboard-summary');
+    return response.data;
+  },
   getAreaWise: async (params = {}) => {
     const response = await api.get('/reports/area-wise', { params });
     return response.data;

@@ -1,6 +1,7 @@
 import Visit from '../models/Visit.js';
 import Patient from '../models/Patient.js';
 import Family from '../models/Family.js';
+import Certificate from '../models/Certificate.js';
 
 // 1. AREA-WISE REPORT
 // @route   GET /api/reports/area-wise
@@ -530,6 +531,132 @@ export const getDueReport = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: 'Failed to generate due report',
+      error: error.message,
+    });
+  }
+};
+
+// 7. DASHBOARD LIVE ANALYTICS & SUMMARY
+// @route   GET /api/reports/dashboard-summary
+// @access  Private
+export const getDashboardSummary = async (req, res) => {
+  try {
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    const [
+      totalPatients,
+      totalFamilies,
+      totalVisits,
+      totalCertificates,
+      todayVisitsList,
+      recentVisitsList,
+      allVisitsAgg,
+      recentPatientsList,
+    ] = await Promise.all([
+      Patient.countDocuments(),
+      Family.countDocuments(),
+      Visit.countDocuments(),
+      Certificate.countDocuments(),
+      Visit.find({ visitDate: todayStr }).lean(),
+      Visit.find().sort({ createdAt: -1 }).limit(8).lean(),
+      Visit.aggregate([
+        {
+          $group: {
+            _id: null,
+            totalCharge: { $sum: '$charge' },
+            totalReceived: { $sum: '$received' },
+            totalDue: { $sum: '$due' },
+          },
+        },
+      ]),
+      Patient.find().sort({ createdAt: -1 }).limit(5).lean(),
+    ]);
+
+    // Today's financials
+    let todayCharge = 0;
+    let todayReceived = 0;
+    let todayDue = 0;
+    todayVisitsList.forEach((v) => {
+      todayCharge += Number(v.charge) || 0;
+      todayReceived += Number(v.received) || 0;
+      todayDue += Number(v.due) || 0;
+    });
+
+    // Populate patient info for recent visits
+    const recentPatientIds = [...new Set(recentVisitsList.map((v) => v.patientId))];
+    const patients = await Patient.find({ patientId: { $in: recentPatientIds } }).lean();
+    const patientMap = {};
+    patients.forEach((p) => {
+      patientMap[p.patientId] = p;
+    });
+
+    const populatedRecentVisits = recentVisitsList.map((v) => {
+      const p = patientMap[v.patientId];
+      return {
+        ...v,
+        patientName: p?.name || v.patientName || 'Patient',
+        patientAge: p?.age || '',
+        patientGender: p?.gender || 'Male',
+        patientArea: p?.area || '',
+        patientPhone: p?.phone || '',
+      };
+    });
+
+    // Last 7 days trend
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+    const sevenDaysAgoStr = sevenDaysAgo.toISOString().split('T')[0];
+
+    const weekVisits = await Visit.find({ visitDate: { $gte: sevenDaysAgoStr } }).lean();
+    const dayMap = {};
+    weekVisits.forEach((v) => {
+      if (!dayMap[v.visitDate]) {
+        dayMap[v.visitDate] = { count: 0, received: 0, charge: 0 };
+      }
+      dayMap[v.visitDate].count += 1;
+      dayMap[v.visitDate].received += Number(v.received) || 0;
+      dayMap[v.visitDate].charge += Number(v.charge) || 0;
+    });
+
+    const last7Days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      const stats = dayMap[dateStr] || { count: 0, received: 0, charge: 0 };
+      last7Days.push({
+        date: dateStr,
+        dayName: d.toLocaleDateString('en-US', { weekday: 'short' }),
+        count: stats.count,
+        received: stats.received,
+        charge: stats.charge,
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      stats: {
+        totalPatients,
+        totalFamilies,
+        totalVisits,
+        totalCertificates,
+        todayVisitsCount: todayVisitsList.length,
+        todayCharge,
+        todayReceived,
+        todayDue,
+        overallCharge: allVisitsAgg[0]?.totalCharge || 0,
+        overallReceived: allVisitsAgg[0]?.totalReceived || 0,
+        overallDue: allVisitsAgg[0]?.totalDue || 0,
+      },
+      recentVisits: populatedRecentVisits,
+      recentPatients: recentPatientsList,
+      last7Days,
+    });
+  } catch (error) {
+    console.error('Dashboard summary error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch dashboard summary',
       error: error.message,
     });
   }
