@@ -1142,18 +1142,7 @@ export const Dashboard = () => {
                               <span style={styles.uniMemberRelation}>
                                 ({relationLabel})
                               </span>
-                              {isHighlighted && (
-                                <span style={{
-                                  fontSize: '0.68rem',
-                                  backgroundColor: 'var(--primary)',
-                                  color: '#FFFFFF',
-                                  padding: '1px 6px',
-                                  borderRadius: '4px',
-                                  fontWeight: 700,
-                                  marginLeft: '4px',
-                                }}>
-                                </span>
-                              )}
+                              {isHighlighted}
                             </div>
                             <div style={styles.uniMemberDetails}>
                               {m.age && <span>Age {m.age}</span>}
