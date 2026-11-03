@@ -1612,7 +1612,14 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                     </div>
 
                     {visitForm.treatments.map((treatment, idx) => (
-                      <div key={treatment.id} style={styles.treatmentRow}>
+                      <div
+                        key={treatment.id}
+                        style={{
+                          ...styles.treatmentRow,
+                          position: 'relative',
+                          zIndex: (visitForm.treatments.length - idx) * 2 + 1,
+                        }}
+                      >
                         {/* Data dictionary autocomplete for treatment */}
                         <div style={{ flex: 1, minWidth: '95px' }}>
                           <MasterDataInput
@@ -1671,7 +1678,14 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                     </div>
 
                     {visitForm.prescriptions.map((rx, idx) => (
-                      <div key={rx.id} style={styles.prescriptionRow}>
+                      <div
+                        key={rx.id}
+                        style={{
+                          ...styles.prescriptionRow,
+                          position: 'relative',
+                          zIndex: (visitForm.prescriptions.length - idx) * 2 + 1,
+                        }}
+                      >
                         {/* Medicine Autocomplete */}
                         <div style={{ flex: '1 1 110px', minWidth: '95px' }}>
                           <MasterDataInput
@@ -4205,6 +4219,9 @@ const styles = {
     gap: '8px',
     paddingTop: '2px',
     borderTop: '1px dashed #E5CDAF',
+    position: 'relative',
+    zIndex: 5,
+    overflow: 'visible',
   },
   halfSectionBlock: {
     display: 'flex',
@@ -4215,6 +4232,8 @@ const styles = {
     borderRadius: '4px',
     border: '1px solid #F1DAC2',
     minWidth: 0,
+    position: 'relative',
+    overflow: 'visible',
   },
   shortcutCaseTag: {
     fontSize: '9px',
@@ -4231,6 +4250,9 @@ const styles = {
     gap: '6px',
     alignItems: 'flex-end',
     flexWrap: 'wrap',
+    position: 'relative',
+    zIndex: 15,
+    overflow: 'visible',
   },
   fieldCol: {
     display: 'flex',
@@ -4288,6 +4310,8 @@ const styles = {
     flexWrap: 'nowrap',
     minWidth: 0,
     width: '100%',
+    position: 'relative',
+    overflow: 'visible',
   },
   prescriptionRow: {
     display: 'flex',
@@ -4296,7 +4320,8 @@ const styles = {
     flexWrap: 'nowrap',
     minWidth: 0,
     width: '100%',
-    overflowX: 'auto',
+    position: 'relative',
+    overflow: 'visible',
   },
   tableInput: {
     width: '100%',
@@ -4376,6 +4401,8 @@ const styles = {
     gap: '8px',
     paddingTop: '4px',
     borderTop: '1px solid #EAD2B8',
+    position: 'relative',
+    zIndex: 1,
   },
   billingInputsGroup: {
     display: 'flex',

@@ -30,6 +30,21 @@ export const MasterDataInput = ({
     }
   }, [highlightedIndex, isOpen, suggestions.length]);
 
+  // Ensure dropdown aligns cleanly within viewport (right-align if near right edge)
+  useEffect(() => {
+    if (isOpen && wrapperRef.current && listRef.current) {
+      const rect = wrapperRef.current.getBoundingClientRect();
+      const listWidth = listRef.current.offsetWidth || 280;
+      if (rect.left + listWidth > window.innerWidth - 20) {
+        listRef.current.style.left = 'auto';
+        listRef.current.style.right = '0';
+      } else {
+        listRef.current.style.left = '0';
+        listRef.current.style.right = 'auto';
+      }
+    }
+  }, [isOpen, suggestions.length]);
+
   // Extract active search token (text after last comma when allowMultiple is active)
   const getActiveToken = (text) => {
     if (!allowMultiple) return (text || '').trim();
@@ -213,7 +228,15 @@ export const MasterDataInput = ({
   };
 
   return (
-    <div ref={wrapperRef} style={{ position: 'relative', width: '100%', ...style }}>
+    <div
+      ref={wrapperRef}
+      style={{
+        position: 'relative',
+        width: '100%',
+        zIndex: isOpen ? 9999 : 'auto',
+        ...style,
+      }}
+    >
       <input
         ref={inputRef}
         type="text"
@@ -290,16 +313,16 @@ const styles = {
     position: 'absolute',
     top: 'calc(100% + 4px)',
     left: 0,
-    minWidth: '240px',
-    maxWidth: '420px',
-    backgroundColor: 'var(--surface)',
-    border: '1px solid var(--border)',
+    minWidth: '280px',
+    maxWidth: '460px',
+    backgroundColor: '#FFFFFF',
+    border: '1.5px solid var(--primary)',
     borderRadius: '8px',
-    boxShadow: 'var(--shadow-md)',
-    maxHeight: '190px',
+    boxShadow: '0 10px 25px -3px rgba(0, 0, 0, 0.25), 0 4px 10px -2px rgba(0, 0, 0, 0.1)',
+    maxHeight: '220px',
     overflowY: 'auto',
     listStyle: 'none',
-    zIndex: 1000,
+    zIndex: 99999,
     padding: '4px 0',
   },
   dropdownItem: {
