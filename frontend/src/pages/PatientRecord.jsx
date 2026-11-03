@@ -929,7 +929,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
       name: currentPatient.name || '',
       relation: currentPatient.relation || 'Member',
       age: currentPatient.age || '',
-      gender: currentPatient.gender || 'Not Specified',
+      gender: currentPatient.gender || 'Male',
       bloodGroup: currentPatient.bloodGroup || '',
       allergies: Array.isArray(currentPatient.allergies)
         ? currentPatient.allergies.join(', ')
@@ -1292,7 +1292,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
 
             <span style={styles.dotSeparator}>&bull;</span>
             <span style={styles.subDetailText}>
-              Age {currentPatient.age || 'N/A'}
+              Age {currentPatient.age || 'N/A'}{currentPatient.gender && currentPatient.gender !== 'Not Specified' ? ` (${currentPatient.gender})` : ''}
             </span>
 
             <span style={styles.dotSeparator}>&bull;</span>
@@ -2243,6 +2243,24 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
 
               <div style={styles.formGrid2}>
                 <div style={styles.formGroup}>
+                  <label style={styles.formLabel}>Gender</label>
+                  <select
+                    value={editFormData.gender || 'Male'}
+                    onChange={(e) =>
+                      setEditFormData({
+                        ...editFormData,
+                        gender: e.target.value,
+                      })
+                    }
+                    style={styles.modalInput}
+                  >
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                <div style={styles.formGroup}>
                   <label style={styles.formLabel}>Blood Group</label>
                   <select
                     value={editFormData.bloodGroup}
@@ -2265,18 +2283,18 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                     <option value="AB-">AB-</option>
                   </select>
                 </div>
+              </div>
 
-                <div style={styles.formGroup}>
-                  <label style={styles.formLabel}>Contact Phone</label>
-                  <input
-                    type="text"
-                    value={editFormData.phone}
-                    onChange={(e) =>
-                      setEditFormData({ ...editFormData, phone: e.target.value })
-                    }
-                    style={styles.modalInput}
-                  />
-                </div>
+              <div style={styles.formGroup}>
+                <label style={styles.formLabel}>Contact Phone</label>
+                <input
+                  type="text"
+                  value={editFormData.phone}
+                  onChange={(e) =>
+                    setEditFormData({ ...editFormData, phone: e.target.value })
+                  }
+                  style={styles.modalInput}
+                />
               </div>
 
               <div style={styles.formGroup}>
@@ -2712,9 +2730,9 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                     </span>
                     <span style={styles.letterpadForUnderline}>
                       {printVisit.patientName || currentPatient?.name}
-                      {currentPatient?.age && (
+                      {(currentPatient?.age || (currentPatient?.gender && currentPatient.gender !== 'Not Specified')) && (
                         <span style={{ fontWeight: '700', color: '#1F2937' }}>
-                          {' '}({currentPatient.age} Yrs{currentPatient.gender ? ` / ${currentPatient.gender}` : ''})
+                          {' '}({currentPatient.age ? `${currentPatient.age} Yrs` : ''}{currentPatient.age && currentPatient.gender && currentPatient.gender !== 'Not Specified' ? ' / ' : ''}{currentPatient.gender && currentPatient.gender !== 'Not Specified' ? currentPatient.gender : ''})
                         </span>
                       )}
                       {currentPatient?.patientId && (

@@ -32,6 +32,8 @@ const BLOOD_GROUPS = [
   'AB-',
 ];
 
+const GENDER_OPTIONS = ['Male', 'Female', 'Other'];
+
 const REGISTRATION_OPTIONS = [
   'Self (Head of Family)',
   'Family Member',
@@ -96,6 +98,7 @@ export const FamilyHeadRegistration = ({ onNavigateToAddMember, onNavigateToPati
   const [formData, setFormData] = useState({
     headName: '',
     age: '',
+    gender: 'Male',
     bloodGroup: '',
     allergy: '',
     society: '',
@@ -164,6 +167,7 @@ export const FamilyHeadRegistration = ({ onNavigateToAddMember, onNavigateToPati
     setFormData({
       headName: fam.headName || '',
       age: fam.headPatientId?.age !== undefined ? String(fam.headPatientId.age) : '',
+      gender: fam.headPatientId?.gender || 'Male',
       bloodGroup: fam.headPatientId?.bloodGroup || '',
       allergy:
         fam.headPatientId?.allergies && fam.headPatientId.allergies.length > 0
@@ -186,6 +190,7 @@ export const FamilyHeadRegistration = ({ onNavigateToAddMember, onNavigateToPati
     setFormData({
       headName: '',
       age: '',
+      gender: 'Male',
       bloodGroup: '',
       allergy: '',
       society: '',
@@ -238,6 +243,7 @@ export const FamilyHeadRegistration = ({ onNavigateToAddMember, onNavigateToPati
       const payload = {
         headName: formData.headName.trim(),
         age: formData.age ? Number(formData.age) : undefined,
+        gender: formData.gender || 'Male',
         bloodGroup: formData.bloodGroup === '-- Select --' ? '' : formData.bloodGroup,
         allergies: allergiesList,
         society: formData.society.trim(),
@@ -270,6 +276,7 @@ export const FamilyHeadRegistration = ({ onNavigateToAddMember, onNavigateToPati
           setFormData({
             headName: '',
             age: '',
+            gender: 'Male',
             bloodGroup: '',
             allergy: '',
             society: '',
@@ -428,7 +435,7 @@ export const FamilyHeadRegistration = ({ onNavigateToAddMember, onNavigateToPati
               />
             </div>
 
-            {/* AGE, BLOOD GROUP, KNOWN ALLERGIES */}
+            {/* AGE, GENDER, BLOOD GROUP */}
             <div style={styles.grid3}>
               <div style={styles.inputGroup}>
                 <label style={styles.label}>AGE</label>
@@ -441,6 +448,21 @@ export const FamilyHeadRegistration = ({ onNavigateToAddMember, onNavigateToPati
                   onChange={(e) => handleInputChange('age', e.target.value)}
                   style={styles.input}
                 />
+              </div>
+
+              <div style={styles.inputGroup}>
+                <label style={styles.label}>GENDER</label>
+                <select
+                  value={formData.gender}
+                  onChange={(e) => handleInputChange('gender', e.target.value)}
+                  style={styles.select}
+                >
+                  {GENDER_OPTIONS.map((g) => (
+                    <option key={g} value={g}>
+                      {g}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div style={styles.inputGroup}>
@@ -457,19 +479,20 @@ export const FamilyHeadRegistration = ({ onNavigateToAddMember, onNavigateToPati
                   ))}
                 </select>
               </div>
+            </div>
 
-              <div style={styles.inputGroup}>
-                <label style={styles.label}>
-                  KNOWN ALLERGIES <span style={styles.hintText}></span>
-                </label>
-                <MasterDataInput
-                  type="allergy"
-                  allowMultiple={true}
-                  placeholder="e.g. PEN -> Penicillin"
-                  value={formData.allergy}
-                  onChange={(val) => handleInputChange('allergy', val)}
-                />
-              </div>
+            {/* KNOWN ALLERGIES */}
+            <div style={styles.inputGroup}>
+              <label style={styles.label}>
+                KNOWN ALLERGIES <span style={styles.hintText}></span>
+              </label>
+              <MasterDataInput
+                type="allergy"
+                allowMultiple={true}
+                placeholder="e.g. PEN -> Penicillin"
+                value={formData.allergy}
+                onChange={(val) => handleInputChange('allergy', val)}
+              />
             </div>
 
             {/* SOCIETY / FLAT, AREA / LOCATION */}

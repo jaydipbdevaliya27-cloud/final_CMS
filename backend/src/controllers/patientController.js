@@ -72,7 +72,7 @@ export const addPatientMember = async (req, res) => {
       name: name.trim(),
       relation: relation ? relation.trim() : 'Member',
       age: age ? String(age).trim() : '',
-      gender: gender || 'Not Specified',
+      gender: gender || 'Male',
       bloodGroup: bloodGroup || '',
       allergies: patientAllergies,
       society: society ? society.trim() : family.society || '',

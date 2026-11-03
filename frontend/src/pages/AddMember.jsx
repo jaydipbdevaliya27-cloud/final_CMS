@@ -27,6 +27,8 @@ const BLOOD_GROUPS = [
   'AB-',
 ];
 
+const GENDER_OPTIONS = ['Male', 'Female', 'Other'];
+
 const COMMON_RELATIONS = [
   'Spouse',
   'Wife',
@@ -53,6 +55,7 @@ export const AddMember = ({ initialFamilyId, onProceedToCaseEntry, onNavigateToF
     name: '',
     relation: '',
     age: '',
+    gender: 'Male',
     bloodGroup: '',
     allergy: '',
     society: '',
@@ -154,6 +157,7 @@ export const AddMember = ({ initialFamilyId, onProceedToCaseEntry, onNavigateToF
       name: '',
       relation: '',
       age: '',
+      gender: 'Male',
       bloodGroup: '',
       allergy: '',
       society: selectedFamily?.society || '',
@@ -196,6 +200,7 @@ export const AddMember = ({ initialFamilyId, onProceedToCaseEntry, onNavigateToF
         name: formData.name.trim(),
         relation: formData.relation.trim(),
         age: formData.age.trim(),
+        gender: formData.gender || 'Male',
         bloodGroup: formData.bloodGroup === '-- Select --' ? '' : formData.bloodGroup,
         allergies: allergiesList,
         society: formData.society.trim(),
@@ -515,7 +520,7 @@ export const AddMember = ({ initialFamilyId, onProceedToCaseEntry, onNavigateToF
               </div>
             </div>
 
-            {/* ROW 2: AGE, BLOOD GROUP, KNOWN ALLERGIES */}
+            {/* ROW 2: AGE, GENDER, BLOOD GROUP */}
             <div style={styles.grid3}>
               <div style={styles.inputGroup}>
                 <label style={styles.label}>AGE</label>
@@ -526,6 +531,21 @@ export const AddMember = ({ initialFamilyId, onProceedToCaseEntry, onNavigateToF
                   onChange={(e) => handleInputChange('age', e.target.value)}
                   style={styles.input}
                 />
+              </div>
+
+              <div style={styles.inputGroup}>
+                <label style={styles.label}>GENDER</label>
+                <select
+                  value={formData.gender}
+                  onChange={(e) => handleInputChange('gender', e.target.value)}
+                  style={styles.select}
+                >
+                  {GENDER_OPTIONS.map((g) => (
+                    <option key={g} value={g}>
+                      {g}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div style={styles.inputGroup}>
@@ -542,20 +562,21 @@ export const AddMember = ({ initialFamilyId, onProceedToCaseEntry, onNavigateToF
                   ))}
                 </select>
               </div>
+            </div>
 
-              <div style={styles.inputGroup}>
-                <label style={styles.label}>
-                  KNOWN ALLERGIES <span style={styles.hintSub}>(SHORTCUT + ENTER)</span>
-                </label>
-                <MasterDataInput
-                  type="allergy"
-                  allowMultiple={true}
-                  placeholder="e.g. PEN -> Penicillin,"
-                  value={formData.allergy}
-                  onChange={(val) => handleInputChange('allergy', val)}
-                  inputStyle={styles.input}
-                />
-              </div>
+            {/* KNOWN ALLERGIES */}
+            <div style={styles.inputGroup}>
+              <label style={styles.label}>
+                KNOWN ALLERGIES <span style={styles.hintSub}>(SHORTCUT + ENTER)</span>
+              </label>
+              <MasterDataInput
+                type="allergy"
+                allowMultiple={true}
+                placeholder="e.g. PEN -> Penicillin,"
+                value={formData.allergy}
+                onChange={(val) => handleInputChange('allergy', val)}
+                inputStyle={styles.input}
+              />
             </div>
 
             {/* ROW 3: SOCIETY / FLAT & AREA / LOCATION (AUTO-FILLED, EDITABLE) */}

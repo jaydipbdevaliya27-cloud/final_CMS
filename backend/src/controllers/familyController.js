@@ -54,6 +54,7 @@ export const registerFamilyHead = async (req, res) => {
     const {
       headName,
       age,
+      gender,
       bloodGroup,
       allergies,
       society,
@@ -104,6 +105,7 @@ export const registerFamilyHead = async (req, res) => {
       familyId,
       name: headName.trim(),
       age: age ? Number(age) : undefined,
+      gender: gender || 'Male',
       bloodGroup: bloodGroup || '',
       allergies: patientAllergies,
       society: society ? society.trim() : '',
@@ -291,6 +293,7 @@ export const updateFamily = async (req, res) => {
     const {
       headName,
       age,
+      gender,
       bloodGroup,
       allergies,
       society,
@@ -328,6 +331,7 @@ export const updateFamily = async (req, res) => {
         $set: {
           name: family.headName,
           age: age ? Number(age) : undefined,
+          gender: gender || 'Male',
           bloodGroup: bloodGroup || '',
           allergies: patientAllergies,
           society: family.society,
