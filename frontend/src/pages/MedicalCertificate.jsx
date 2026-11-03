@@ -18,10 +18,15 @@ import {
   Calendar,
   Sparkles,
   RefreshCw,
+  ChevronRight,
+  SlidersHorizontal,
 } from 'lucide-react';
 
 export const MedicalCertificate = () => {
   const { doctor } = useAuth();
+
+  // Active View Tab: 'studio' (Issue & Live Preview) vs 'registry' (All Issued Records)
+  const [activeTab, setActiveTab] = useState('studio');
 
   // State: Core Form
   const [nextCertId, setNextCertId] = useState('CERT-2026-0001');
@@ -155,9 +160,9 @@ export const MedicalCertificate = () => {
     const clean = inputVal.trim().toLowerCase();
     const matched = registeredPatients.find(
       (p) =>
-        p.patientId.toLowerCase() === clean ||
-        p.name.toLowerCase() === clean ||
-        `[${p.patientId.toLowerCase()}] ${p.name.toLowerCase()}`.includes(clean)
+        p.patientId?.toLowerCase() === clean ||
+        p.name?.toLowerCase() === clean ||
+        `[${p.patientId?.toLowerCase()}] ${p.name?.toLowerCase()}`.includes(clean)
     );
 
     if (matched) {
@@ -239,7 +244,7 @@ export const MedicalCertificate = () => {
     }
 
     if (!medicalDiagnosis.trim()) {
-      setErrorMsg('Please specify the medical diagnosis.');
+      setErrorMsg('Please specify the diagnosis.');
       return;
     }
 
@@ -248,15 +253,17 @@ export const MedicalCertificate = () => {
       return;
     }
 
-    setErrorMsg('');
-    setFormSubmitting(true);
-
     try {
+      setFormSubmitting(true);
+      setErrorMsg('');
+      setSuccessMsg('');
+
       const activeTmpl = templates.find((t) => t.templateKey === selectedTemplateKey);
+
       const payload = {
         patientId: selectedPatient.patientId,
         patientName: patientFullName.trim(),
-        age,
+        age: age ? Number(age) : undefined,
         gender,
         templateId: selectedTemplateKey,
         templateName: activeTmpl?.name || 'Medical Fitness Certificate',
@@ -426,7 +433,7 @@ export const MedicalCertificate = () => {
     setShowSignatureModal(false);
   };
 
-  // Certificate active in print view
+  // Active Certificate for Print View
   const activePrintCert = printCertificate || {
     certificateId: nextCertId,
     patientName: (patientFullName || 'PATIENT NAME').toUpperCase(),
@@ -439,7 +446,7 @@ export const MedicalCertificate = () => {
     restDays,
     issuePlace: issuePlace || 'Ahmedabad',
     bodyText: currentFormattedBody,
-    clinicName: doctor?.clinicName || 'Dhyey Main Clinic',
+    clinicName: doctor?.clinicName || 'Clinic Management System',
     doctorName: doctor?.name || 'Dr. Dhyey Patel',
     doctorQualifications: doctor?.specialization || 'Consulting Physician',
     doctorRegNo: 'G-14285',
@@ -447,51 +454,94 @@ export const MedicalCertificate = () => {
     digitalSignature,
   };
 
+  const activeTemplateName =
+    templates.find((t) => t.templateKey === selectedTemplateKey)?.name || 'Medical Fitness Certificate';
+
   return (
     <div style={styles.container}>
-      {/* 1. TOP HEADER BAR */}
+      {/* 1. TOP HEADER & NAVIGATION BAR */}
       <div style={styles.topBar} className="no-print">
         <div style={styles.headerLeft}>
           <div style={styles.headerIconWrap}>
-            <Award size={22} color="#146B5C" />
+            <Award size={20} color="#146B5C" />
           </div>
           <div>
-            <h2 style={styles.pageTitle}>Medical Fitness & Leave Certificates</h2>
-            <p style={styles.pageSubtitle}>
-              Issue official verifiable medical certificates with auto generated unique ID and custom templates
-            </p>
+            <h2 style={styles.pageTitle}>Medical Certificates</h2>
+            <p style={styles.pageSubtitle}>Official verifiable fitness & leave certificates</p>
+          </div>
+
+          {/* View Mode Segmented Switcher */}
+          <div style={styles.tabSwitcher}>
+            <button
+              type="button"
+              onClick={() => setActiveTab('studio')}
+              style={{
+                ...styles.tabPill,
+                backgroundColor: activeTab === 'studio' ? 'var(--primary)' : 'transparent',
+                color: activeTab === 'studio' ? '#FFFFFF' : 'var(--text-muted)',
+                fontWeight: activeTab === 'studio' ? '700' : '500',
+              }}
+            >
+              <FileText size={13} />
+              <span>Issue Certificate</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('registry')}
+              style={{
+                ...styles.tabPill,
+                backgroundColor: activeTab === 'registry' ? 'var(--primary)' : 'transparent',
+                color: activeTab === 'registry' ? '#FFFFFF' : 'var(--text-muted)',
+                fontWeight: activeTab === 'registry' ? '700' : '500',
+              }}
+            >
+              <Award size={13} />
+              <span>Issued Registry</span>
+              <span
+                style={{
+                  ...styles.tabBadge,
+                  backgroundColor: activeTab === 'registry' ? 'rgba(255,255,255,0.25)' : 'var(--surface-alt)',
+                  color: activeTab === 'registry' ? '#FFFFFF' : 'var(--primary)',
+                }}
+              >
+                {totalCount}
+              </span>
+            </button>
           </div>
         </div>
 
         <div style={styles.headerRight}>
           {/* Next Cert ID Badge */}
           <div style={styles.nextCertBadge}>
-            <span style={styles.nextCertLabel}>NEXT CERT ID:</span>
+            <span style={styles.nextCertLabel}>NEXT ID:</span>
             <span style={styles.nextCertVal}>{nextCertId}</span>
           </div>
 
-          {/* Add Digital Signature */}
-          <button
-            onClick={() => setShowSignatureModal(true)}
-            style={styles.actionBtnOutline}
-            title="Configure Digital Signature"
-          >
-            <Edit3 size={14} color="#146B5C" />
-            <span>+ Add Digital Signature</span>
-          </button>
-
           {/* Add Template */}
           <button
+            type="button"
             onClick={() => setShowAddTemplateModal(true)}
             style={styles.actionBtnPrimary}
             title="Create Custom Certificate Template"
           >
-            <Plus size={14} color="#FFFFFF" />
-            <span>+ Add Template</span>
+            <Plus size={13} color="#FFFFFF" />
+            <span>Template</span>
+          </button>
+
+          {/* Add Digital Signature */}
+          <button
+            type="button"
+            onClick={() => setShowSignatureModal(true)}
+            style={styles.actionBtnOutline}
+            title="Configure Digital Signature"
+          >
+            <Edit3 size={13} color="var(--primary)" />
+            <span>Signature</span>
           </button>
 
           {/* Verify Certificate */}
           <button
+            type="button"
             onClick={() => {
               setShowVerifyModal(true);
               setVerificationResult(null);
@@ -500,537 +550,589 @@ export const MedicalCertificate = () => {
             style={styles.actionBtnOutline}
             title="Verify Certificate Authenticity"
           >
-            <ShieldCheck size={14} color="#146B5C" />
-            <span>Verify Certificate</span>
+            <ShieldCheck size={13} color="var(--primary)" />
+            <span>Verify</span>
           </button>
         </div>
       </div>
 
-      {/* 2. MAIN SPLIT SECTION: FORM (LEFT) + LIVE PREVIEW (RIGHT) */}
-      <div style={styles.mainSplit} className="no-print">
-        {/* LEFT PANE: CERTIFICATE ISSUE FORM */}
-        <div style={styles.formPane}>
-          <div style={styles.paneHeader}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <FileText size={16} color="var(--primary)" />
-              <h3 style={styles.paneTitle}>Issue Medical Certificate</h3>
-            </div>
-            <span style={styles.paneCertBadge}>Unique ID: {nextCertId}</span>
-          </div>
-
-          {/* Dynamic Clinic Header Banner */}
-          <div style={styles.clinicBanner}>
-            <span style={{ fontSize: '11px', color: 'var(--primary-dark)', fontWeight: '600' }}>
-              {doctor?.clinicName || 'Dhyey Main Clinic'} &bull; Shop No. 1, Mahavir Heights, New Kosad Road, Amroli, Surat
-            </span>
-            <span style={styles.clinicHeaderTag}>Dynamic Clinic Header</span>
-          </div>
-
-          {/* Error & Success Messages */}
-          {errorMsg && (
-            <div style={styles.errorAlert}>
-              <AlertCircle size={15} color="var(--danger)" style={{ flexShrink: 0 }} />
-              <span style={{ fontSize: '11px', fontWeight: '500' }}>{errorMsg}</span>
-            </div>
-          )}
-
-          {successMsg && (
-            <div style={styles.successAlert}>
-              <CheckCircle2 size={15} color="#15803D" style={{ flexShrink: 0 }} />
-              <span style={{ fontSize: '11px', fontWeight: '500' }}>{successMsg}</span>
-            </div>
-          )}
-
-          <form onSubmit={handleIssueAndPrint} style={styles.form}>
-            {/* Template Selector Row */}
-            <div style={styles.formRow}>
-              <div style={{ flex: 1 }}>
-                <div style={styles.fieldHeader}>
-                  <label style={styles.label}>SELECT CERTIFICATE TEMPLATE *</label>
-                  <button
-                    type="button"
-                    onClick={() => setShowAddTemplateModal(true)}
-                    style={styles.inlineActionLink}
-                  >
-                    + New Template
-                  </button>
+      {/* 2. TAB: STUDIO (FORM + LIVE PREVIEW) */}
+      {activeTab === 'studio' && (
+        <div style={styles.studioContainer} className="no-print">
+          <div style={styles.mainSplit}>
+            {/* LEFT PANE: CERTIFICATE ISSUE FORM */}
+            <div style={styles.formPane}>
+              <div style={styles.paneHeader}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <FileText size={15} color="var(--primary)" />
+                  <h3 style={styles.paneTitle}>Certificate Details</h3>
                 </div>
-                <select
-                  value={selectedTemplateKey}
-                  onChange={(e) => handleTemplateChange(e.target.value)}
-                  style={styles.select}
-                >
-                  {templates.map((t) => (
-                    <option key={t.templateKey} value={t.templateKey}>
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* Registered Patient Quick Select & Validation (STRICT USER REQUIREMENT) */}
-            <div style={styles.formRow}>
-              <div style={{ flex: 1 }}>
-                <div style={styles.fieldHeader}>
-                  <label style={styles.label}>
-                    QUICK SELECT REGISTERED PATIENT <span style={{ color: 'var(--danger)' }}>*</span>
-                  </label>
-                  {isPatientValid && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={styles.paneCertBadge}>ID: {nextCertId}</span>
+                  {selectedPatient && (
                     <span style={styles.verifiedTag}>
                       <CheckCircle2 size={12} color="#15803D" />
-                      <span>Registered (PID: {selectedPatient?.patientId})</span>
+                      <span>{selectedPatient.patientId}</span>
                     </span>
                   )}
                 </div>
+              </div>
 
-                <div style={{ position: 'relative' }}>
-                  <input
-                    type="text"
-                    list="registered-patients-datalist"
-                    placeholder="Type patient name or ID to auto-fill..."
-                    value={patientInput}
-                    onChange={(e) => handleSelectPatient(e.target.value)}
-                    style={{
-                      ...styles.input,
-                      borderColor: isPatientValid
-                        ? '#15803D'
-                        : patientInput.trim()
-                        ? 'var(--danger)'
-                        : 'var(--border)',
-                      backgroundColor: isPatientValid ? '#F0FDF4' : '#FFFFFF',
-                    }}
-                  />
-                  <datalist id="registered-patients-datalist">
-                    {registeredPatients.map((p) => (
-                      <option key={p.patientId} value={p.name}>
-                        PID: {p.patientId} &bull; Age: {p.age || '-'} &bull; Area: {p.area || '-'}
+              {/* Error & Success Messages */}
+              {errorMsg && (
+                <div style={styles.errorAlert}>
+                  <AlertCircle size={14} color="var(--danger)" style={{ flexShrink: 0 }} />
+                  <span>{errorMsg}</span>
+                </div>
+              )}
+
+              {successMsg && (
+                <div style={styles.successAlert}>
+                  <CheckCircle2 size={14} color="#15803D" style={{ flexShrink: 0 }} />
+                  <span>{successMsg}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleIssueAndPrint} style={styles.form}>
+                {/* Row 1: Certificate Template */}
+                <div style={styles.formGroup}>
+                  <div style={styles.fieldHeader}>
+                    <label style={styles.label}>Template *</label>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddTemplateModal(true)}
+                      style={styles.inlineActionLink}
+                    >
+                      <Plus size={11} />
+                      <span>New Template</span>
+                    </button>
+                  </div>
+                  <select
+                    value={selectedTemplateKey}
+                    onChange={(e) => handleTemplateChange(e.target.value)}
+                    style={styles.select}
+                  >
+                    {templates.map((t) => (
+                      <option key={t.templateKey} value={t.templateKey}>
+                        {t.name}
                       </option>
                     ))}
-                  </datalist>
+                  </select>
                 </div>
-              </div>
 
-              <div style={{ flex: 1 }}>
-                <label style={styles.label}>PATIENT FULL NAME *</label>
-                <input
-                  type="text"
-                  placeholder="Patient Name"
-                  value={patientFullName}
-                  onChange={(e) => setPatientFullName(e.target.value)}
-                  style={styles.input}
-                  required
-                />
-              </div>
-            </div>
+                {/* Row 2: Search Registered Patient & Patient Name */}
+                <div style={styles.formRow}>
+                  <div style={{ flex: 1 }}>
+                    <div style={styles.fieldHeader}>
+                      <label style={styles.label}>
+                        Search Patient <span style={{ color: 'var(--danger)' }}>*</span>
+                      </label>
+                      {isPatientValid && (
+                        <span style={styles.verifiedTagMini}>
+                          <CheckCircle2 size={11} color="#15803D" />
+                          <span>Matched</span>
+                        </span>
+                      )}
+                    </div>
+                    <input
+                      type="text"
+                      list="registered-patients-datalist"
+                      placeholder="Type patient name or ID..."
+                      value={patientInput}
+                      onChange={(e) => handleSelectPatient(e.target.value)}
+                      style={{
+                        ...styles.input,
+                        borderColor: isPatientValid
+                          ? '#15803D'
+                          : patientInput.trim()
+                          ? 'var(--danger)'
+                          : 'var(--border)',
+                        backgroundColor: isPatientValid ? '#F0FDF4' : '#FFFFFF',
+                      }}
+                    />
+                    <datalist id="registered-patients-datalist">
+                      {registeredPatients.map((p) => (
+                        <option key={p.patientId} value={p.name}>
+                          PID: {p.patientId} &bull; Age: {p.age || '-'} &bull; Area: {p.area || '-'}
+                        </option>
+                      ))}
+                    </datalist>
+                  </div>
 
-            {/* Age, Gender, Medical Diagnosis */}
-            <div style={styles.formRow}>
-              <div style={{ width: '80px' }}>
-                <label style={styles.label}>AGE</label>
-                <input
-                  type="text"
-                  placeholder="e.g. 45"
-                  value={age}
-                  onChange={(e) => setAge(e.target.value)}
-                  style={styles.input}
-                />
-              </div>
+                  <div style={{ flex: 1 }}>
+                    <label style={styles.label}>Patient Name *</label>
+                    <input
+                      type="text"
+                      placeholder="Patient Full Name"
+                      value={patientFullName}
+                      onChange={(e) => setPatientFullName(e.target.value)}
+                      style={styles.input}
+                      required
+                    />
+                  </div>
+                </div>
 
-              <div style={{ width: '110px' }}>
-                <label style={styles.label}>GENDER</label>
-                <select
-                  value={gender}
-                  onChange={(e) => setGender(e.target.value)}
-                  style={styles.select}
-                >
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
+                {/* Row 3: Age, Gender, Diagnosis */}
+                <div style={styles.formRow}>
+                  <div style={{ width: '85px' }}>
+                    <label style={styles.label}>Age</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 28"
+                      value={age}
+                      onChange={(e) => setAge(e.target.value)}
+                      style={styles.input}
+                    />
+                  </div>
 
-              <div style={{ flex: 1 }}>
-                <label style={styles.label}>MEDICAL DIAGNOSIS *</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Acute Viral Pyrexia, Gastroenteritis..."
-                  value={medicalDiagnosis}
-                  onChange={(e) => setMedicalDiagnosis(e.target.value)}
-                  style={styles.input}
-                  required
-                />
-              </div>
-            </div>
+                  <div style={{ width: '110px' }}>
+                    <label style={styles.label}>Gender</label>
+                    <select
+                      value={gender}
+                      onChange={(e) => setGender(e.target.value)}
+                      style={styles.select}
+                    >
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
 
-            {/* From Date, To Date, Rest Days, Issue Place */}
-            <div style={styles.formRow}>
-              <div style={{ flex: 1 }}>
-                <label style={styles.label}>FROM DATE *</label>
-                <input
-                  type="date"
-                  value={fromDate}
-                  onChange={(e) => setFromDate(e.target.value)}
-                  style={styles.input}
-                  required
-                />
-              </div>
+                  <div style={{ flex: 1 }}>
+                    <label style={styles.label}>Diagnosis / Illness *</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Acute Viral Pyrexia, Gastroenteritis..."
+                      value={medicalDiagnosis}
+                      onChange={(e) => setMedicalDiagnosis(e.target.value)}
+                      style={styles.input}
+                      required
+                    />
+                  </div>
+                </div>
 
-              <div style={{ flex: 1 }}>
-                <label style={styles.label}>TO DATE *</label>
-                <input
-                  type="date"
-                  value={toDate}
-                  onChange={(e) => setToDate(e.target.value)}
-                  style={styles.input}
-                  required
-                />
-              </div>
+                {/* Row 4: From Date, To Date, Days, Issue Place */}
+                <div style={styles.formRow}>
+                  <div style={{ flex: 1 }}>
+                    <label style={styles.label}>From Date *</label>
+                    <input
+                      type="date"
+                      value={fromDate}
+                      onChange={(e) => setFromDate(e.target.value)}
+                      style={styles.input}
+                      required
+                    />
+                  </div>
 
-              <div style={{ width: '90px' }}>
-                <label style={styles.label}>REST DAYS</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={restDays}
-                  onChange={(e) => setRestDays(Number(e.target.value))}
-                  style={styles.input}
-                />
-              </div>
+                  <div style={{ flex: 1 }}>
+                    <label style={styles.label}>To Date *</label>
+                    <input
+                      type="date"
+                      value={toDate}
+                      onChange={(e) => setToDate(e.target.value)}
+                      style={styles.input}
+                      required
+                    />
+                  </div>
 
-              <div style={{ flex: 1 }}>
-                <label style={styles.label}>ISSUE PLACE</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Ahmedabad"
-                  value={issuePlace}
-                  onChange={(e) => setIssuePlace(e.target.value)}
-                  style={styles.input}
-                />
-              </div>
-            </div>
+                  <div style={{ width: '90px' }}>
+                    <div style={styles.fieldHeader}>
+                      <label style={styles.label}>Days</label>
+                      <span style={styles.autoTag}>Auto</span>
+                    </div>
+                    <input
+                      type="number"
+                      min="1"
+                      value={restDays}
+                      onChange={(e) => setRestDays(Number(e.target.value))}
+                      style={styles.input}
+                    />
+                  </div>
 
-            {/* Live Editable Certificate Body Text */}
-            <div style={styles.formRow}>
-              <div style={{ flex: 1 }}>
-                <div style={styles.fieldHeader}>
-                  <label style={styles.label}>CERTIFICATE BODY TEXT (LIVE EDITABLE + AUTO-FILLED)</label>
+                  <div style={{ flex: 1 }}>
+                    <label style={styles.label}>Issue Place</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Surat, Ahmedabad"
+                      value={issuePlace}
+                      onChange={(e) => setIssuePlace(e.target.value)}
+                      style={styles.input}
+                    />
+                  </div>
+                </div>
+
+                {/* Row 5: Certificate Content */}
+                <div style={styles.formGroup}>
+                  <div style={styles.fieldHeader}>
+                    <label style={styles.label}>Certificate Content</label>
+                    <button
+                      type="button"
+                      onClick={handleResetBodyText}
+                      style={styles.inlineActionLink}
+                      title="Reset to Template Default Text"
+                    >
+                      <RotateCcw size={11} />
+                      <span>Reset Text</span>
+                    </button>
+                  </div>
+
+                  {/* Clean Helper Tokens */}
+                  <div style={styles.tokensRow}>
+                    {[
+                      { key: '{PATIENT_NAME}', label: '+ Name' },
+                      { key: '{DIAGNOSIS}', label: '+ Diagnosis' },
+                      { key: '{FROM_DATE}', label: '+ From' },
+                      { key: '{TO_DATE}', label: '+ To' },
+                      { key: '{REST_DAYS}', label: '+ Days' },
+                      { key: '{CERT_ID}', label: '+ Cert ID' },
+                      { key: '{CLINIC_NAME}', label: '+ Clinic' },
+                    ].map((tok) => (
+                      <button
+                        key={tok.key}
+                        type="button"
+                        onClick={() => insertToken(tok.key)}
+                        style={styles.tokenPill}
+                        title={`Insert ${tok.key}`}
+                      >
+                        {tok.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  <textarea
+                    rows={4}
+                    value={bodyText}
+                    onChange={(e) => setBodyText(e.target.value)}
+                    style={styles.textarea}
+                    placeholder="Enter certificate text..."
+                    required
+                  />
+                </div>
+
+                {/* Bottom Actions */}
+                <div style={styles.formActions}>
                   <button
                     type="button"
-                    onClick={handleResetBodyText}
-                    style={styles.inlineActionLink}
-                    title="Reset to Template Default Text"
+                    onClick={handleClearForm}
+                    style={styles.clearBtn}
                   >
-                    <RotateCcw size={12} />
-                    <span>Reset to Template Default</span>
+                    Clear
+                  </button>
+
+                  <button
+                    type="submit"
+                    disabled={formSubmitting || !isPatientValid}
+                    style={{
+                      ...styles.submitBtn,
+                      opacity: isPatientValid ? 1 : 0.6,
+                      cursor: isPatientValid ? 'pointer' : 'not-allowed',
+                    }}
+                    title={
+                      !isPatientValid
+                        ? 'Select patient from registered records to issue certificate'
+                        : 'Issue & Print Medical Certificate'
+                    }
+                  >
+                    <Printer size={15} />
+                    <span>
+                      {formSubmitting
+                        ? 'Issuing Certificate...'
+                        : 'Issue & Print Certificate'}
+                    </span>
+                    <span style={styles.keyTag}>Enter</span>
                   </button>
                 </div>
+              </form>
+            </div>
 
-                {/* Token Helper Pills */}
-                <div style={styles.tokensRow}>
-                  {[
-                    '{PATIENT_NAME}',
-                    '{DIAGNOSIS}',
-                    '{FROM_DATE}',
-                    '{TO_DATE}',
-                    '{REST_DAYS}',
-                    '{CERT_ID}',
-                    '{CLINIC_NAME}',
-                  ].map((tok) => (
-                    <button
-                      key={tok}
-                      type="button"
-                      onClick={() => insertToken(tok)}
-                      style={styles.tokenPill}
-                      title={`Insert ${tok} placeholder`}
-                    >
-                      +{tok}
-                    </button>
-                  ))}
+            {/* RIGHT PANE: LIVE CERTIFICATE PREVIEW (OFFICIAL AUTHENTIC A4 FORMAT) */}
+            <div style={styles.previewPane}>
+              <div style={styles.paneHeader}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Eye size={15} color="var(--primary)" />
+                  <h3 style={styles.paneTitle}>Live Certificate Preview</h3>
                 </div>
-
-                <textarea
-                  rows={4}
-                  value={bodyText}
-                  onChange={(e) => setBodyText(e.target.value)}
-                  style={styles.textarea}
-                  required
-                />
-              </div>
-            </div>
-
-            {/* Bottom Actions */}
-            <div style={styles.formActions}>
-              <button
-                type="button"
-                onClick={handleClearForm}
-                style={styles.clearBtn}
-              >
-                Clear
-              </button>
-
-              <button
-                type="submit"
-                disabled={formSubmitting || !isPatientValid}
-                style={{
-                  ...styles.submitBtn,
-                  opacity: isPatientValid ? 1 : 0.6,
-                  cursor: isPatientValid ? 'pointer' : 'not-allowed',
-                }}
-                title={
-                  !isPatientValid
-                    ? 'Patient must be selected from the registered list to issue'
-                    : 'Issue & Print Medical Certificate'
-                }
-              >
-                <Printer size={15} />
-                <span>
-                  {formSubmitting
-                    ? 'Issuing Certificate...'
-                    : 'Issue & Print Medical Certificate'}
-                </span>
-                <span style={styles.keyTag}>Enter</span>
-              </button>
-            </div>
-          </form>
-        </div>
-
-        {/* RIGHT PANE: LIVE CERTIFICATE PREVIEW (A4 FORMATTED) */}
-        <div style={styles.previewPane}>
-          <div style={styles.paneHeader}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Eye size={16} color="var(--primary)" />
-              <h3 style={styles.paneTitle}>Live Certificate Preview (A4 Formatted)</h3>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <button
-                onClick={() => setShowSignatureModal(true)}
-                style={styles.miniLink}
-              >
-                + Add Digital Signature
-              </button>
-              <span style={styles.verifiableBadge}>Verifiable</span>
-            </div>
-          </div>
-
-          {/* A4 Paper Certificate Container */}
-          <div style={styles.a4Paper}>
-            {/* Clinic Brand Header */}
-            <div style={styles.a4ClinicHeader}>
-              <h2 style={styles.a4ClinicTitle}>
-                {doctor?.clinicName || 'Dhyey Main Clinic'}
-              </h2>
-              <p style={styles.a4ClinicSub}>
-                Shop No. 1, Mahavir Heights, New Kosad Road, Amroli, Surat &bull; Ph: 9876543210
-              </p>
-              <div style={styles.a4DividerLine} />
-            </div>
-
-            {/* Certificate Title */}
-            <div style={styles.a4TitleWrap}>
-              <h3 style={styles.a4CertTitle}>
-                <u>
-                  {(
-                    templates.find((t) => t.templateKey === selectedTemplateKey)?.name ||
-                    'MEDICAL FITNESS CERTIFICATE'
-                  ).toUpperCase()}
-                </u>
-              </h3>
-            </div>
-
-            {/* Cert ID & Security Badge */}
-            <div style={styles.a4MetaBar}>
-              <span style={styles.a4CertId}>CERTIFICATE ID: {nextCertId}</span>
-              <span style={styles.a4VerifiablePill}>VERIFIABLE</span>
-            </div>
-
-            {/* Certificate Body Paragraph */}
-            <div style={styles.a4BodyText}>
-              {currentFormattedBody}
-            </div>
-
-            {/* Bottom Meta & Doctor Sign Off */}
-            <div style={styles.a4Footer}>
-              <div style={styles.a4FooterLeft}>
-                <p style={styles.a4FootItem}>Date of Issue: {todayStr}</p>
-                <p style={styles.a4FootItem}>Place of Issue: {issuePlace || 'Ahmedabad'}</p>
-                <p style={styles.a4FootSecurity}>Security Verifiable Document</p>
-              </div>
-
-              <div style={styles.a4FooterRight}>
-                {/* Doctor Signature Rendering */}
-                <div style={styles.a4SignatureWrap}>
-                  {isCanvasSignature && digitalSignature.startsWith('data:image') ? (
-                    <img
-                      src={digitalSignature}
-                      alt="Doctor Signature"
-                      style={{ maxHeight: '42px', objectFit: 'contain' }}
-                    />
-                  ) : (
-                    <span style={styles.cursiveSignature}>
-                      {digitalSignature || 'Dr. Dhyey Patel'}
-                    </span>
-                  )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowSignatureModal(true)}
+                    style={styles.miniLink}
+                  >
+                    <Edit3 size={11} />
+                    <span>Signature</span>
+                  </button>
+                  <span style={styles.verifiableBadge}>Official Verifiable</span>
                 </div>
-                <p style={styles.a4DocName}>{doctor?.name || 'Dr. Dhyey Patel'}</p>
-                <p style={styles.a4DocRole}>
-                  {doctor?.specialization || 'Consulting Physician'} (Reg. No. G-14285)
-                </p>
               </div>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      {/* 3. BOTTOM SECTION: ISSUED CERTIFICATES REGISTRY */}
-      <div style={styles.registryCard} className="no-print">
-        <div style={styles.registryHeader}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <FileText size={16} color="var(--primary)" />
-            <h3 style={styles.registryTitle}>Issued Medical Certificates Registry</h3>
-            <span style={styles.countBadge}>{totalCount} Issued</span>
-          </div>
+              {/* A4 Paper Certificate Container */}
+              <div style={styles.a4Paper}>
+                <div style={styles.a4InnerBorder}>
+                  {/* Clinic Crest & Brand Header */}
+                  <div style={styles.a4ClinicHeader}>
+                    <div style={styles.a4CrestBadge}>
+                      <Award size={20} color="#146B5C" />
+                    </div>
+                    <h2 style={styles.a4ClinicTitle}>
+                      {doctor?.clinicName || 'CLINIC MANAGEMENT SYSTEM'}
+                    </h2>
+                    <p style={styles.a4ClinicSub}>
+                      Shop No. 1, Mahavir Heights, New Kosad Road, Amroli, Surat &bull; Ph: 9876543210
+                    </p>
+                    <div style={styles.a4OrnamentalDivider}>
+                      <div style={styles.a4DividerLineLeft} />
+                      <span style={styles.a4DividerEmblem}>✦</span>
+                      <div style={styles.a4DividerLineRight} />
+                    </div>
+                  </div>
 
-          <div style={styles.registrySearchWrap}>
-            <Search size={14} color="var(--text-muted)" style={styles.searchIcon} />
-            <input
-              type="text"
-              placeholder="Search by Certificate ID or Patient Name..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={styles.registrySearchInput}
-            />
-          </div>
-        </div>
+                  {/* Certificate Title Banner */}
+                  <div style={styles.a4TitleWrap}>
+                    <div style={styles.a4CertTitleBadge}>
+                      {activeTemplateName.toUpperCase()}
+                    </div>
+                  </div>
 
-        {/* Table */}
-        <div style={styles.tableResponsive}>
-          <table style={styles.table}>
-            <thead>
-              <tr style={styles.theadRow}>
-                <th style={styles.th}>CERTIFICATE ID</th>
-                <th style={styles.th}>PATIENT NAME</th>
-                <th style={styles.th}>TEMPLATE / TYPE</th>
-                <th style={styles.th}>MEDICAL DIAGNOSIS</th>
-                <th style={styles.th}>VALIDITY PERIOD</th>
-                <th style={styles.th}>ISSUE DATE</th>
-                <th style={{ ...styles.th, textAlign: 'center' }}>STATUS</th>
-                <th style={{ ...styles.th, textAlign: 'center' }}>ACTIONS</th>
-              </tr>
-            </thead>
-            <tbody>
-              {certificates.length === 0 ? (
-                <tr>
-                  <td colSpan={8} style={styles.emptyTd}>
-                    No issued certificates found in database
-                  </td>
-                </tr>
-              ) : (
-                certificates.map((cert, idx) => (
-                  <tr key={cert._id || idx} style={idx % 2 === 0 ? styles.trEven : styles.trOdd}>
-                    <td style={{ ...styles.td, fontFamily: 'monospace', fontWeight: '700' }}>
-                      <span style={styles.certIdBadge}>{cert.certificateId}</span>
-                    </td>
-                    <td style={{ ...styles.td, fontWeight: '600' }}>{cert.patientName}</td>
-                    <td style={{ ...styles.td, color: 'var(--text-muted)' }}>{cert.templateName}</td>
-                    <td style={{ ...styles.td, fontWeight: '500' }}>{cert.medicalDiagnosis}</td>
-                    <td style={{ ...styles.td, whiteSpace: 'nowrap' }}>
-                      {cert.fromDate} to {cert.toDate} ({cert.restDays}d)
-                    </td>
-                    <td style={{ ...styles.td, whiteSpace: 'nowrap' }}>{cert.issueDate}</td>
-                    <td style={{ ...styles.td, textAlign: 'center' }}>
-                      <span style={styles.statusBadge}>{cert.status || 'Issued'}</span>
-                    </td>
-                    <td style={{ ...styles.td, textAlign: 'center' }}>
-                      <div style={{ display: 'inline-flex', gap: 6 }}>
-                        <button
-                          onClick={() => handlePrintExisting(cert)}
-                          style={styles.iconBtnPrint}
-                          title="Print this Certificate"
-                        >
-                          <Printer size={13} />
-                          <span>Print</span>
-                        </button>
-                        <button
-                          onClick={() => handleDeleteCertificate(cert._id, cert.certificateId)}
-                          style={styles.iconBtnDelete}
-                          title="Delete Certificate"
-                        >
-                          <Trash2 size={13} />
-                        </button>
+                  {/* Cert ID & Security Bar */}
+                  <div style={styles.a4MetaBar}>
+                    <div style={styles.a4CertIdWrap}>
+                      <span style={styles.a4CertIdLabel}>CERTIFICATE NO:</span>
+                      <span style={styles.a4CertIdVal}>{nextCertId}</span>
+                    </div>
+                    <div style={styles.a4SecurityPill}>
+                      <ShieldCheck size={12} color="#15803D" />
+                      <span>AUTHENTIC & VERIFIABLE</span>
+                    </div>
+                  </div>
+
+                  {/* Certificate Body Paragraph */}
+                  <div style={styles.a4BodyBox}>
+                    <p style={styles.a4BodyText}>
+                      {currentFormattedBody}
+                    </p>
+                  </div>
+
+                  {/* Bottom Meta & Doctor Sign Off */}
+                  <div style={styles.a4Footer}>
+                    <div style={styles.a4FooterLeft}>
+                      {/* Circular Official Medical Seal Stamp */}
+                      <div style={styles.a4SealStamp}>
+                        <div style={styles.a4SealInner}>
+                          <span style={styles.a4SealTextTop}>★ OFFICIAL CLINIC SEAL ★</span>
+                          <span style={styles.a4SealEmblem}>✚</span>
+                          <span style={styles.a4SealTextBottom}>VERIFIED & REGISTERED</span>
+                        </div>
                       </div>
+                      <div style={styles.a4IssueMeta}>
+                        <p style={styles.a4FootItem}><strong>Date:</strong> {todayStr}</p>
+                        <p style={styles.a4FootItem}><strong>Place:</strong> {issuePlace || 'Ahmedabad'}</p>
+                        <p style={styles.a4FootSecurity}>Secure Document &bull; Reg: G-14285</p>
+                      </div>
+                    </div>
+
+                    <div style={styles.a4FooterRight}>
+                      {/* Doctor Signature Rendering */}
+                      <div style={styles.a4SignatureWrap}>
+                        {isCanvasSignature && digitalSignature.startsWith('data:image') ? (
+                          <img
+                            src={digitalSignature}
+                            alt="Doctor Signature"
+                            style={{ maxHeight: '44px', objectFit: 'contain' }}
+                          />
+                        ) : (
+                          <span style={styles.cursiveSignature}>
+                            {digitalSignature || 'Dr. Dhyey Patel'}
+                          </span>
+                        )}
+                      </div>
+                      <div style={styles.a4SignRule} />
+                      <p style={styles.a4DocName}>{doctor?.name || 'Dr. Dhyey Patel'}</p>
+                      <p style={styles.a4DocRole}>
+                        {doctor?.specialization || 'Consulting Physician'}
+                      </p>
+                      <p style={styles.a4DocReg}>Reg. No. G-14285</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Footer Summary Bar */}
+          <div style={styles.bottomQuickBar}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '11px', color: 'var(--text-muted)' }}>
+              <Award size={13} color="var(--primary)" />
+              <span>
+                Total <strong>{totalCount}</strong> medical certificates issued so far.
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setActiveTab('registry')}
+              style={styles.viewRegistryBtn}
+            >
+              <span>View Issued Registry</span>
+              <ChevronRight size={13} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 3. TAB: REGISTRY (FULL SCREEN CERTIFICATE HISTORY TABLE) */}
+      {activeTab === 'registry' && (
+        <div style={styles.registryCard} className="no-print">
+          <div style={styles.registryHeader}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <FileText size={16} color="var(--primary)" />
+              <h3 style={styles.registryTitle}>Issued Medical Certificates Registry</h3>
+              <span style={styles.countBadge}>{totalCount} Issued</span>
+            </div>
+
+            <div style={styles.registrySearchWrap}>
+              <Search size={14} color="var(--text-muted)" style={styles.searchIcon} />
+              <input
+                type="text"
+                placeholder="Search by Certificate ID or Patient Name..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={styles.registrySearchInput}
+              />
+            </div>
+          </div>
+
+          {/* Table */}
+          <div style={styles.tableResponsive}>
+            <table style={styles.table}>
+              <thead>
+                <tr style={styles.theadRow}>
+                  <th style={styles.th}>CERTIFICATE ID</th>
+                  <th style={styles.th}>PATIENT NAME</th>
+                  <th style={styles.th}>TEMPLATE / TYPE</th>
+                  <th style={styles.th}>DIAGNOSIS</th>
+                  <th style={styles.th}>VALIDITY PERIOD</th>
+                  <th style={styles.th}>ISSUE DATE</th>
+                  <th style={{ ...styles.th, textAlign: 'center' }}>STATUS</th>
+                  <th style={{ ...styles.th, textAlign: 'center' }}>ACTIONS</th>
+                </tr>
+              </thead>
+              <tbody>
+                {certificates.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} style={styles.emptyTd}>
+                      No issued certificates found in database.
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  certificates.map((cert, idx) => (
+                    <tr key={cert._id || idx} style={idx % 2 === 0 ? styles.trEven : styles.trOdd}>
+                      <td style={{ ...styles.td, fontFamily: 'monospace', fontWeight: '700' }}>
+                        <span style={styles.certIdBadge}>{cert.certificateId}</span>
+                      </td>
+                      <td style={{ ...styles.td, fontWeight: '600' }}>{cert.patientName}</td>
+                      <td style={{ ...styles.td, color: 'var(--text-muted)' }}>{cert.templateName}</td>
+                      <td style={{ ...styles.td, fontWeight: '500' }}>{cert.medicalDiagnosis}</td>
+                      <td style={{ ...styles.td, whiteSpace: 'nowrap' }}>
+                        {cert.fromDate} to {cert.toDate} ({cert.restDays}d)
+                      </td>
+                      <td style={{ ...styles.td, whiteSpace: 'nowrap' }}>{cert.issueDate}</td>
+                      <td style={{ ...styles.td, textAlign: 'center' }}>
+                        <span style={styles.statusBadge}>{cert.status || 'Issued'}</span>
+                      </td>
+                      <td style={{ ...styles.td, textAlign: 'center' }}>
+                        <div style={{ display: 'inline-flex', gap: 6 }}>
+                          <button
+                            type="button"
+                            onClick={() => handlePrintExisting(cert)}
+                            style={styles.iconBtnPrint}
+                            title="Print this Certificate"
+                          >
+                            <Printer size={13} />
+                            <span>Print</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteCertificate(cert._id, cert.certificateId)}
+                            style={styles.iconBtnDelete}
+                            title="Delete Certificate"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* 4. DEDICATED PRINTABLE LAYOUT (#printable-cert) */}
       <div id="printable-cert" className="print-only" style={styles.printCertContainer}>
-        <div style={styles.printInnerBorder}>
-          {/* Header */}
-          <div style={styles.printClinicHead}>
-            <h1 style={styles.printClinicName}>
-              {activePrintCert.clinicName || 'DHYEY MAIN CLINIC'}
-            </h1>
-            <p style={styles.printClinicSub}>
-              Shop No. 1, Mahavir Heights, New Kosad Road, Amroli, Surat &bull; Phone: +91 98765 43210
-            </p>
-            <div style={styles.printDivider} />
-          </div>
-
-          {/* Certificate Title */}
-          <div style={styles.printTitleWrap}>
-            <h2 style={styles.printCertTitle}>
-              <u>{activePrintCert.templateName?.toUpperCase() || 'MEDICAL FITNESS CERTIFICATE'}</u>
-            </h2>
-          </div>
-
-          {/* Meta Bar */}
-          <div style={styles.printMetaBar}>
-            <span style={styles.printCertId}>
-              CERTIFICATE ID: {activePrintCert.certificateId}
-            </span>
-            <span style={styles.printVerifiedTag}>OFFICIAL VERIFIABLE</span>
-          </div>
-
-          {/* Body Paragraph */}
-          <div style={styles.printBodyText}>
-            {activePrintCert.bodyText}
-          </div>
-
-          {/* Signatures & Footer */}
-          <div style={styles.printFooter}>
-            <div style={styles.printFootLeft}>
-              <p><strong>Date of Issue:</strong> {activePrintCert.issueDate || todayStr}</p>
-              <p><strong>Place of Issue:</strong> {activePrintCert.issuePlace || 'Ahmedabad'}</p>
-              <p style={{ fontSize: '10px', color: '#666', marginTop: 4 }}>
-                Security Verifiable Medical Document &bull; Reg: G-14285
+        <div style={styles.printOuterBorder}>
+          <div style={styles.printInnerBorder}>
+            {/* Header */}
+            <div style={styles.printClinicHead}>
+              <h1 style={styles.printClinicName}>
+                {activePrintCert.clinicName || 'CLINIC MANAGEMENT SYSTEM'}
+              </h1>
+              <p style={styles.printClinicSub}>
+                Shop No. 1, Mahavir Heights, New Kosad Road, Amroli, Surat &bull; Phone: +91 98765 43210
               </p>
+              <div style={styles.printDivider} />
             </div>
 
-            <div style={styles.printFootRight}>
-              <div style={styles.printSigWrap}>
-                {activePrintCert.digitalSignature?.startsWith('data:image') ? (
-                  <img
-                    src={activePrintCert.digitalSignature}
-                    alt="Doctor Signature"
-                    style={{ maxHeight: '48px', objectFit: 'contain' }}
-                  />
-                ) : (
-                  <span style={styles.printCursiveSig}>
-                    {activePrintCert.digitalSignature || 'Dr. Dhyey Patel'}
-                  </span>
-                )}
+            {/* Certificate Title */}
+            <div style={styles.printTitleWrap}>
+              <h2 style={styles.printCertTitle}>
+                {activePrintCert.templateName?.toUpperCase() || 'MEDICAL FITNESS CERTIFICATE'}
+              </h2>
+            </div>
+
+            {/* Meta Bar */}
+            <div style={styles.printMetaBar}>
+              <span style={styles.printCertId}>
+                CERTIFICATE ID: {activePrintCert.certificateId}
+              </span>
+              <span style={styles.printVerifiedTag}>OFFICIAL VERIFIABLE</span>
+            </div>
+
+            {/* Body Paragraph */}
+            <div style={styles.printBodyText}>
+              {activePrintCert.bodyText}
+            </div>
+
+            {/* Signatures & Footer */}
+            <div style={styles.printFooter}>
+              <div style={styles.printFootLeft}>
+                <p><strong>Date of Issue:</strong> {activePrintCert.issueDate || todayStr}</p>
+                <p><strong>Place of Issue:</strong> {activePrintCert.issuePlace || 'Ahmedabad'}</p>
+                <p style={{ fontSize: '10px', color: '#666', marginTop: 4 }}>
+                  Security Verifiable Medical Document &bull; Reg: G-14285
+                </p>
               </div>
-              <div style={styles.printSignLine} />
-              <p style={styles.printDocName}>{activePrintCert.doctorName || 'Dr. Dhyey Patel'}</p>
-              <p style={styles.printDocRole}>
-                {activePrintCert.doctorQualifications || 'Consulting Physician'}
-              </p>
+
+              <div style={styles.printFootRight}>
+                <div style={styles.printSigWrap}>
+                  {activePrintCert.digitalSignature?.startsWith('data:image') ? (
+                    <img
+                      src={activePrintCert.digitalSignature}
+                      alt="Doctor Signature"
+                      style={{ maxHeight: '48px', objectFit: 'contain' }}
+                    />
+                  ) : (
+                    <span style={styles.printCursiveSig}>
+                      {activePrintCert.digitalSignature || 'Dr. Dhyey Patel'}
+                    </span>
+                  )}
+                </div>
+                <div style={styles.printSignLine} />
+                <p style={styles.printDocName}>{activePrintCert.doctorName || 'Dr. Dhyey Patel'}</p>
+                <p style={styles.printDocRole}>
+                  {activePrintCert.doctorQualifications || 'Consulting Physician'}
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -1041,8 +1143,9 @@ export const MedicalCertificate = () => {
         <div style={styles.modalOverlay}>
           <div style={styles.modalContent}>
             <div style={styles.modalHeader}>
-              <h3 style={styles.modalTitle}>Create Custom Certificate Template</h3>
+              <h3 style={styles.modalTitle}>Create Custom Template</h3>
               <button
+                type="button"
                 onClick={() => setShowAddTemplateModal(false)}
                 style={styles.modalCloseBtn}
               >
@@ -1051,7 +1154,7 @@ export const MedicalCertificate = () => {
             </div>
             <form onSubmit={handleCreateTemplate} style={styles.modalForm}>
               <div>
-                <label style={styles.label}>TEMPLATE NAME *</label>
+                <label style={styles.label}>Template Name *</label>
                 <input
                   type="text"
                   placeholder="e.g. Fitness for Sports / Gym"
@@ -1063,7 +1166,7 @@ export const MedicalCertificate = () => {
               </div>
 
               <div>
-                <label style={styles.label}>CATEGORY</label>
+                <label style={styles.label}>Category</label>
                 <input
                   type="text"
                   placeholder="e.g. Fitness, Leave, Travel..."
@@ -1074,9 +1177,9 @@ export const MedicalCertificate = () => {
               </div>
 
               <div>
-                <label style={styles.label}>DEFAULT BODY TEXT *</label>
+                <label style={styles.label}>Default Body Text *</label>
                 <p style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: 4 }}>
-                  Use placeholders: {'{PATIENT_NAME}'}, {'{AGE}'}, {'{DIAGNOSIS}'}, {'{FROM_DATE}'}, {'{TO_DATE}'}, {'{REST_DAYS}'}
+                  Available: {'{PATIENT_NAME}'}, {'{AGE}'}, {'{DIAGNOSIS}'}, {'{FROM_DATE}'}, {'{TO_DATE}'}, {'{REST_DAYS}'}
                 </p>
                 <textarea
                   rows={4}
@@ -1112,9 +1215,10 @@ export const MedicalCertificate = () => {
             <div style={styles.modalHeader}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <ShieldCheck size={18} color="var(--primary)" />
-                <h3 style={styles.modalTitle}>Verify Certificate Authenticity</h3>
+                <h3 style={styles.modalTitle}>Verify Certificate</h3>
               </div>
               <button
+                type="button"
                 onClick={() => setShowVerifyModal(false)}
                 style={styles.modalCloseBtn}
               >
@@ -1187,6 +1291,7 @@ export const MedicalCertificate = () => {
                 <h3 style={styles.modalTitle}>Doctor Digital Signature</h3>
               </div>
               <button
+                type="button"
                 onClick={() => setShowSignatureModal(false)}
                 style={styles.modalCloseBtn}
               >
@@ -1237,7 +1342,7 @@ export const MedicalCertificate = () => {
                   onClick={saveCanvasSignature}
                   style={styles.submitBtn}
                 >
-                  Save Drawn Signature
+                  Save Signature
                 </button>
               </div>
             </div>
@@ -1252,7 +1357,7 @@ const styles = {
   container: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '8px',
+    gap: '10px',
     height: '100%',
     flex: 1,
     minHeight: 0,
@@ -1263,37 +1368,66 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: '#FFFFFF',
-    padding: '6px 12px',
-    borderRadius: '8px',
+    padding: '8px 14px',
+    borderRadius: '10px',
     border: '1px solid var(--border)',
-    boxShadow: 'var(--shadow-sm)',
+    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
     flexWrap: 'wrap',
-    gap: '8px',
+    gap: '10px',
   },
   headerLeft: {
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
+    gap: '12px',
+    flexWrap: 'wrap',
   },
   headerIconWrap: {
-    width: '32px',
-    height: '32px',
-    borderRadius: '6px',
+    width: '34px',
+    height: '34px',
+    borderRadius: '8px',
     backgroundColor: 'var(--primary-soft)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
   },
   pageTitle: {
-    fontSize: '14px',
+    fontSize: '15px',
     fontWeight: '700',
     color: 'var(--text)',
     margin: 0,
+    lineHeight: 1.2,
   },
   pageSubtitle: {
     fontSize: '11px',
     color: 'var(--text-muted)',
     margin: 0,
+  },
+  tabSwitcher: {
+    display: 'flex',
+    alignItems: 'center',
+    backgroundColor: 'var(--bg)',
+    padding: '3px',
+    borderRadius: '8px',
+    border: '1px solid var(--border)',
+    gap: '2px',
+    marginLeft: '6px',
+  },
+  tabPill: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '6px',
+    padding: '5px 12px',
+    borderRadius: '6px',
+    border: 'none',
+    fontSize: '12px',
+    cursor: 'pointer',
+    transition: 'all 0.15s ease',
+  },
+  tabBadge: {
+    fontSize: '10px',
+    fontWeight: '700',
+    padding: '1px 6px',
+    borderRadius: '10px',
   },
   headerRight: {
     display: 'flex',
@@ -1303,27 +1437,28 @@ const styles = {
   nextCertBadge: {
     display: 'flex',
     alignItems: 'center',
-    gap: '4px',
-    padding: '4px 10px',
+    gap: '5px',
+    padding: '5px 10px',
     borderRadius: '6px',
-    border: '1px dashed #3B82F6',
+    border: '1px solid #BFDBFE',
     backgroundColor: '#EFF6FF',
     fontSize: '11px',
   },
   nextCertLabel: {
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#1E40AF',
+    fontSize: '10px',
   },
   nextCertVal: {
     fontFamily: 'monospace',
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#1E3A8A',
   },
   actionBtnOutline: {
     display: 'inline-flex',
     alignItems: 'center',
     gap: '5px',
-    padding: '5px 10px',
+    padding: '6px 11px',
     backgroundColor: '#FFFFFF',
     border: '1px solid var(--border)',
     borderRadius: '6px',
@@ -1331,12 +1466,13 @@ const styles = {
     fontWeight: '600',
     color: 'var(--primary)',
     cursor: 'pointer',
+    transition: 'all 0.15s ease',
   },
   actionBtnPrimary: {
     display: 'inline-flex',
     alignItems: 'center',
     gap: '5px',
-    padding: '5px 12px',
+    padding: '6px 12px',
     backgroundColor: '#146B5C',
     border: 'none',
     borderRadius: '6px',
@@ -1344,11 +1480,20 @@ const styles = {
     fontWeight: '600',
     color: '#FFFFFF',
     cursor: 'pointer',
+    boxShadow: '0 1px 3px rgba(20, 107, 92, 0.25)',
+  },
+  studioContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+    flex: 1,
+    minHeight: 0,
+    height: '100%',
   },
   mainSplit: {
     display: 'grid',
-    gridTemplateColumns: '1.05fr 0.95fr',
-    gap: '10px',
+    gridTemplateColumns: '1.08fr 0.92fr',
+    gap: '12px',
     flex: 1,
     height: '100%',
     minHeight: 0,
@@ -1356,51 +1501,37 @@ const styles = {
   formPane: {
     backgroundColor: '#FFFFFF',
     border: '1px solid var(--border)',
-    borderRadius: '8px',
-    padding: '10px 12px',
+    borderRadius: '10px',
+    padding: '14px 16px',
     display: 'flex',
     flexDirection: 'column',
-    gap: '8px',
+    gap: '10px',
     height: '100%',
     minHeight: 0,
     overflowY: 'auto',
+    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.02)',
   },
   paneHeader: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
     borderBottom: '1px solid var(--border)',
-    paddingBottom: '6px',
+    paddingBottom: '8px',
   },
   paneTitle: {
-    fontSize: '12px',
+    fontSize: '13px',
     fontWeight: '700',
     color: 'var(--text)',
     margin: 0,
   },
   paneCertBadge: {
-    fontSize: '10px',
+    fontSize: '11px',
     fontFamily: 'monospace',
     fontWeight: '700',
     backgroundColor: 'var(--primary-soft)',
     color: 'var(--primary-dark)',
-    padding: '2px 6px',
+    padding: '2px 8px',
     borderRadius: '4px',
-  },
-  clinicBanner: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: 'var(--bg)',
-    padding: '4px 8px',
-    borderRadius: '5px',
-    border: '1px solid var(--border)',
-  },
-  clinicHeaderTag: {
-    fontSize: '9px',
-    fontWeight: '700',
-    color: 'var(--primary)',
-    textTransform: 'uppercase',
   },
   errorAlert: {
     display: 'flex',
@@ -1408,9 +1539,11 @@ const styles = {
     gap: '6px',
     backgroundColor: 'var(--danger-soft)',
     color: 'var(--danger)',
-    padding: '5px 8px',
-    borderRadius: '5px',
+    padding: '6px 10px',
+    borderRadius: '6px',
     border: '1px solid var(--danger)',
+    fontSize: '11px',
+    fontWeight: '500',
   },
   successAlert: {
     display: 'flex',
@@ -1418,19 +1551,26 @@ const styles = {
     gap: '6px',
     backgroundColor: '#DCFCE7',
     color: '#15803D',
-    padding: '5px 8px',
-    borderRadius: '5px',
+    padding: '6px 10px',
+    borderRadius: '6px',
     border: '1px solid #16A34A',
+    fontSize: '11px',
+    fontWeight: '500',
   },
   form: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '7px',
+    gap: '9px',
+  },
+  formGroup: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '3px',
   },
   formRow: {
     display: 'flex',
     alignItems: 'flex-start',
-    gap: '8px',
+    gap: '10px',
   },
   fieldHeader: {
     display: 'flex',
@@ -1439,13 +1579,31 @@ const styles = {
     marginBottom: '2px',
   },
   label: {
-    fontSize: '10px',
+    fontSize: '11px',
+    fontWeight: '600',
+    color: '#334155',
+    letterSpacing: '0.1px',
+  },
+  autoTag: {
+    fontSize: '9px',
     fontWeight: '700',
-    color: 'var(--text-muted)',
-    textTransform: 'uppercase',
-    letterSpacing: '0.3px',
+    color: '#1E40AF',
+    backgroundColor: '#EFF6FF',
+    padding: '1px 5px',
+    borderRadius: '3px',
   },
   verifiedTag: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '4px',
+    fontSize: '10px',
+    fontWeight: '700',
+    color: '#15803D',
+    backgroundColor: '#DCFCE7',
+    padding: '2px 6px',
+    borderRadius: '4px',
+  },
+  verifiedTagMini: {
     display: 'inline-flex',
     alignItems: 'center',
     gap: '3px',
@@ -1457,7 +1615,7 @@ const styles = {
     display: 'inline-flex',
     alignItems: 'center',
     gap: '3px',
-    fontSize: '10px',
+    fontSize: '11px',
     fontWeight: '600',
     color: 'var(--primary)',
     background: 'none',
@@ -1467,64 +1625,67 @@ const styles = {
   },
   input: {
     width: '100%',
-    padding: '5px 8px',
-    borderRadius: '5px',
-    border: '1px solid var(--border)',
+    padding: '7px 10px',
+    borderRadius: '6px',
+    border: '1px solid #CBD5E1',
     fontSize: '12px',
     color: 'var(--text)',
     outline: 'none',
+    backgroundColor: '#F8FAFC',
+    transition: 'border-color 0.15s, background-color 0.15s',
   },
   select: {
     width: '100%',
-    padding: '5px 8px',
-    borderRadius: '5px',
-    border: '1px solid var(--border)',
+    padding: '7px 10px',
+    borderRadius: '6px',
+    border: '1px solid #CBD5E1',
     fontSize: '12px',
     color: 'var(--text)',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F8FAFC',
     outline: 'none',
     cursor: 'pointer',
   },
   tokensRow: {
     display: 'flex',
     alignItems: 'center',
-    gap: '4px',
+    gap: '5px',
     flexWrap: 'wrap',
     marginBottom: '4px',
   },
   tokenPill: {
-    padding: '2px 6px',
+    padding: '2px 8px',
     borderRadius: '4px',
-    fontSize: '9px',
-    fontFamily: 'monospace',
+    fontSize: '10px',
     fontWeight: '600',
     backgroundColor: 'var(--surface-alt)',
-    border: '1px solid var(--primary-soft)',
+    border: '1px solid var(--border)',
     color: 'var(--primary-dark)',
     cursor: 'pointer',
+    transition: 'all 0.1s ease',
   },
   textarea: {
     width: '100%',
-    padding: '6px 8px',
-    borderRadius: '5px',
-    border: '1px solid var(--border)',
-    fontSize: '11px',
+    padding: '8px 10px',
+    borderRadius: '6px',
+    border: '1px solid #CBD5E1',
+    fontSize: '12px',
     color: 'var(--text)',
     fontFamily: 'inherit',
-    lineHeight: '1.4',
+    lineHeight: '1.5',
     resize: 'vertical',
+    backgroundColor: '#F8FAFC',
   },
   formActions: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: '4px',
+    marginTop: '6px',
   },
   clearBtn: {
-    padding: '5px 12px',
+    padding: '7px 14px',
     backgroundColor: '#FFFFFF',
     border: '1px solid var(--border)',
-    borderRadius: '5px',
+    borderRadius: '6px',
     fontSize: '11px',
     fontWeight: '600',
     color: 'var(--text-muted)',
@@ -1534,18 +1695,18 @@ const styles = {
     display: 'inline-flex',
     alignItems: 'center',
     gap: '6px',
-    padding: '6px 16px',
+    padding: '7px 18px',
     backgroundColor: '#146B5C',
     border: 'none',
-    borderRadius: '5px',
+    borderRadius: '6px',
     fontSize: '12px',
     fontWeight: '700',
     color: '#FFFFFF',
     cursor: 'pointer',
-    boxShadow: '0 2px 4px rgba(20, 107, 92, 0.2)',
+    boxShadow: '0 2px 6px rgba(20, 107, 92, 0.25)',
   },
   keyTag: {
-    padding: '1px 4px',
+    padding: '1px 5px',
     borderRadius: '3px',
     backgroundColor: 'rgba(255, 255, 255, 0.25)',
     fontSize: '9px',
@@ -1553,17 +1714,21 @@ const styles = {
   previewPane: {
     backgroundColor: '#FFFFFF',
     border: '1px solid var(--border)',
-    borderRadius: '8px',
-    padding: '10px 12px',
+    borderRadius: '10px',
+    padding: '12px 14px',
     display: 'flex',
     flexDirection: 'column',
     gap: '8px',
     height: '100%',
     minHeight: 0,
     overflowY: 'auto',
+    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.02)',
   },
   miniLink: {
-    fontSize: '10px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '4px',
+    fontSize: '11px',
     fontWeight: '600',
     color: 'var(--primary)',
     background: 'none',
@@ -1574,93 +1739,202 @@ const styles = {
     fontSize: '9px',
     fontWeight: '700',
     color: '#15803D',
-    border: '1px solid #16A34A',
+    backgroundColor: '#DCFCE7',
+    border: '1px solid #86EFAC',
     borderRadius: '10px',
-    padding: '1px 6px',
+    padding: '2px 8px',
     textTransform: 'uppercase',
   },
+  // Authentic A4 Certificate Styling
   a4Paper: {
-    backgroundColor: '#FFFFFF',
-    border: '1px solid #D1D5DB',
-    borderRadius: '6px',
-    padding: '14px 16px',
+    backgroundColor: '#FCFDFD',
+    border: '2px solid #146B5C',
+    borderRadius: '8px',
+    padding: '6px',
     display: 'flex',
     flexDirection: 'column',
-    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
+    boxShadow: '0 4px 16px rgba(0, 0, 0, 0.05)',
     flex: 1,
-    minHeight: '290px',
+    minHeight: '340px',
+  },
+  a4InnerBorder: {
+    border: '1px solid #0F766E',
+    borderRadius: '5px',
+    padding: '16px 18px',
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100%',
+    backgroundColor: '#FFFFFF',
   },
   a4ClinicHeader: {
     textAlign: 'center',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
     marginBottom: '8px',
   },
+  a4CrestBadge: {
+    width: '32px',
+    height: '32px',
+    borderRadius: '50%',
+    backgroundColor: '#E6F4F1',
+    border: '1.5px solid #146B5C',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: '4px',
+  },
   a4ClinicTitle: {
-    fontSize: '15px',
+    fontSize: '16px',
     fontWeight: '800',
-    color: '#0E4F44',
+    color: '#0D483E',
     margin: 0,
     textTransform: 'uppercase',
-    letterSpacing: '0.4px',
+    letterSpacing: '0.8px',
   },
   a4ClinicSub: {
     fontSize: '9px',
-    color: '#666666',
+    color: '#64748B',
+    margin: '3px 0 6px 0',
+  },
+  a4OrnamentalDivider: {
+    display: 'flex',
+    alignItems: 'center',
+    width: '100%',
+    gap: '8px',
     margin: '2px 0 6px 0',
   },
-  a4DividerLine: {
-    height: '1.5px',
+  a4DividerLineLeft: {
+    flex: 1,
+    height: '1px',
     backgroundColor: '#146B5C',
-    width: '100%',
+  },
+  a4DividerEmblem: {
+    fontSize: '10px',
+    color: '#146B5C',
+  },
+  a4DividerLineRight: {
+    flex: 1,
+    height: '1px',
+    backgroundColor: '#146B5C',
   },
   a4TitleWrap: {
     textAlign: 'center',
-    margin: '8px 0',
+    margin: '6px 0 10px 0',
   },
-  a4CertTitle: {
+  a4CertTitleBadge: {
+    display: 'inline-block',
+    padding: '4px 16px',
+    backgroundColor: '#E6F4F1',
+    border: '1px solid #146B5C',
+    borderRadius: '4px',
     fontSize: '12px',
     fontWeight: '800',
-    color: '#111827',
-    margin: 0,
-    letterSpacing: '0.5px',
+    color: '#0D483E',
+    letterSpacing: '0.8px',
   },
   a4MetaBar: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: '10px',
+    paddingBottom: '5px',
+    borderBottom: '1px dashed #CBD5E1',
   },
-  a4CertId: {
+  a4CertIdWrap: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '5px',
+  },
+  a4CertIdLabel: {
     fontSize: '9px',
-    fontFamily: 'monospace',
     fontWeight: '700',
-    color: '#111827',
+    color: '#64748B',
   },
-  a4VerifiablePill: {
+  a4CertIdVal: {
+    fontSize: '10px',
+    fontFamily: 'monospace',
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  a4SecurityPill: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '4px',
     fontSize: '8px',
     fontWeight: '800',
     color: '#15803D',
-    border: '1px solid #16A34A',
-    padding: '1px 5px',
-    borderRadius: '2px',
+    backgroundColor: '#F0FDF4',
+    border: '1px solid #86EFAC',
+    padding: '1px 6px',
+    borderRadius: '3px',
+  },
+  a4BodyBox: {
+    flex: 1,
+    marginBottom: '12px',
   },
   a4BodyText: {
-    fontSize: '11px',
-    lineHeight: '1.5',
-    color: '#1F2937',
-    flex: 1,
+    fontFamily: "'Georgia', 'Times New Roman', serif",
+    fontSize: '12.5px',
+    lineHeight: '1.75',
+    color: '#1E293B',
     textAlign: 'justify',
+    margin: 0,
   },
   a4Footer: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
-    borderTop: '1px solid #E5E7EB',
+    borderTop: '1px solid #E2E8F0',
     paddingTop: '8px',
-    marginTop: '10px',
+    marginTop: 'auto',
   },
   a4FooterLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+  },
+  a4SealStamp: {
+    width: '56px',
+    height: '56px',
+    borderRadius: '50%',
+    border: '1.5px dashed #0D9488',
+    padding: '2px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F0FDFA',
+  },
+  a4SealInner: {
+    width: '100%',
+    height: '100%',
+    borderRadius: '50%',
+    border: '1px solid #0D9488',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    textAlign: 'center',
+  },
+  a4SealTextTop: {
+    fontSize: '5px',
+    fontWeight: '800',
+    color: '#0F766E',
+    letterSpacing: '0.2px',
+  },
+  a4SealEmblem: {
+    fontSize: '12px',
+    color: '#0F766E',
+    lineHeight: 1,
+  },
+  a4SealTextBottom: {
+    fontSize: '4.5px',
+    fontWeight: '700',
+    color: '#0F766E',
+  },
+  a4IssueMeta: {
     fontSize: '9px',
-    color: '#4B5563',
+    color: '#475569',
     lineHeight: '1.4',
   },
   a4FootItem: {
@@ -1669,14 +1943,14 @@ const styles = {
   a4FootSecurity: {
     margin: '2px 0 0 0',
     fontSize: '8px',
-    color: '#9CA3AF',
+    color: '#94A3B8',
     fontStyle: 'italic',
   },
   a4FooterRight: {
     textAlign: 'right',
   },
   a4SignatureWrap: {
-    height: '36px',
+    height: '38px',
     display: 'flex',
     alignItems: 'flex-end',
     justifyContent: 'flex-end',
@@ -1684,37 +1958,75 @@ const styles = {
   },
   cursiveSignature: {
     fontFamily: '"Brush Script MT", cursive, sans-serif',
-    fontSize: '18px',
-    color: '#0E4F44',
+    fontSize: '20px',
+    color: '#0D483E',
+  },
+  a4SignRule: {
+    width: '130px',
+    height: '1px',
+    backgroundColor: '#334155',
+    marginLeft: 'auto',
+    marginBottom: '3px',
   },
   a4DocName: {
-    fontSize: '10px',
+    fontSize: '11px',
     fontWeight: '700',
-    color: '#111827',
+    color: '#0F172A',
     margin: 0,
   },
   a4DocRole: {
-    fontSize: '8px',
-    color: '#6B7280',
+    fontSize: '9px',
+    color: '#64748B',
     margin: 0,
+  },
+  a4DocReg: {
+    fontSize: '8px',
+    color: '#94A3B8',
+    margin: 0,
+  },
+  bottomQuickBar: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    border: '1px solid var(--border)',
+    borderRadius: '8px',
+    padding: '7px 14px',
+  },
+  viewRegistryBtn: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '4px',
+    fontSize: '11px',
+    fontWeight: '600',
+    color: 'var(--primary)',
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
   },
   registryCard: {
     backgroundColor: '#FFFFFF',
     border: '1px solid var(--border)',
-    borderRadius: '8px',
+    borderRadius: '10px',
     overflow: 'hidden',
-    marginTop: '2px',
+    flex: 1,
+    minHeight: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.02)',
   },
   registryHeader: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: '6px 12px',
+    padding: '10px 16px',
     borderBottom: '1px solid var(--border)',
-    backgroundColor: 'var(--bg)',
+    backgroundColor: '#F8FAFC',
+    flexWrap: 'wrap',
+    gap: '8px',
   },
   registryTitle: {
-    fontSize: '12px',
+    fontSize: '13px',
     fontWeight: '700',
     color: 'var(--text)',
     margin: 0,
@@ -1724,7 +2036,7 @@ const styles = {
     fontWeight: '600',
     backgroundColor: 'var(--primary-soft)',
     color: 'var(--primary-dark)',
-    padding: '1px 6px',
+    padding: '2px 8px',
     borderRadius: '10px',
   },
   registrySearchWrap: {
@@ -1734,36 +2046,36 @@ const styles = {
   },
   searchIcon: {
     position: 'absolute',
-    left: '8px',
+    left: '9px',
     pointerEvents: 'none',
   },
   registrySearchInput: {
-    padding: '4px 8px 4px 26px',
-    borderRadius: '5px',
+    padding: '6px 10px 6px 28px',
+    borderRadius: '6px',
     border: '1px solid var(--border)',
-    fontSize: '11px',
-    width: '260px',
+    fontSize: '12px',
+    width: '280px',
     backgroundColor: '#FFFFFF',
   },
   tableResponsive: {
     overflowX: 'auto',
-    maxHeight: '190px',
+    flex: 1,
   },
   table: {
     width: '100%',
     borderCollapse: 'collapse',
-    fontSize: '11px',
+    fontSize: '12px',
   },
   theadRow: {
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#F1F5F9',
     borderBottom: '1px solid var(--border)',
   },
   th: {
-    padding: '6px 8px',
+    padding: '8px 12px',
     textAlign: 'left',
     fontSize: '10px',
     fontWeight: '700',
-    color: 'var(--text-muted)',
+    color: '#475569',
     textTransform: 'uppercase',
     letterSpacing: '0.3px',
     whiteSpace: 'nowrap',
@@ -1773,37 +2085,39 @@ const styles = {
     borderBottom: '1px solid var(--border)',
   },
   trOdd: {
-    backgroundColor: '#FDFEFE',
+    backgroundColor: '#F8FAFC',
     borderBottom: '1px solid var(--border)',
   },
   td: {
-    padding: '5px 8px',
+    padding: '8px 12px',
     color: 'var(--text)',
   },
   certIdBadge: {
     backgroundColor: 'var(--surface-alt)',
     color: 'var(--primary-dark)',
-    padding: '2px 5px',
-    borderRadius: '3px',
-    fontSize: '10px',
+    padding: '2px 6px',
+    borderRadius: '4px',
+    fontSize: '11px',
+    fontFamily: 'monospace',
+    fontWeight: '700',
   },
   statusBadge: {
     backgroundColor: '#DCFCE7',
     color: '#15803D',
-    padding: '2px 6px',
-    borderRadius: '8px',
-    fontSize: '9px',
+    padding: '2px 8px',
+    borderRadius: '10px',
+    fontSize: '10px',
     fontWeight: '700',
   },
   iconBtnPrint: {
     display: 'inline-flex',
     alignItems: 'center',
-    gap: '3px',
-    padding: '2px 6px',
+    gap: '4px',
+    padding: '4px 8px',
     backgroundColor: 'var(--primary-soft)',
     border: 'none',
-    borderRadius: '3px',
-    fontSize: '10px',
+    borderRadius: '4px',
+    fontSize: '11px',
     fontWeight: '600',
     color: 'var(--primary-dark)',
     cursor: 'pointer',
@@ -1811,33 +2125,38 @@ const styles = {
   iconBtnDelete: {
     display: 'inline-flex',
     alignItems: 'center',
-    padding: '2px 5px',
+    padding: '4px 6px',
     backgroundColor: 'var(--danger-soft)',
     border: 'none',
-    borderRadius: '3px',
+    borderRadius: '4px',
     color: 'var(--danger)',
     cursor: 'pointer',
   },
   emptyTd: {
-    padding: '20px',
+    padding: '30px',
     textAlign: 'center',
     color: 'var(--text-muted)',
-    fontSize: '11px',
+    fontSize: '12px',
   },
 
-  // Print Styles
+  // Dedicated Print Styles
   printCertContainer: {
     backgroundColor: '#FFFFFF',
     color: '#000000',
     width: '100%',
   },
+  printOuterBorder: {
+    border: '3px solid #146B5C',
+    borderRadius: '10px',
+    padding: '8px',
+  },
   printInnerBorder: {
-    border: '2px solid #146B5C',
-    borderRadius: '8px',
-    padding: '24px 28px',
+    border: '1px solid #146B5C',
+    borderRadius: '6px',
+    padding: '26px 30px',
     display: 'flex',
     flexDirection: 'column',
-    minHeight: '800px',
+    minHeight: '820px',
   },
   printClinicHead: {
     textAlign: 'center',
@@ -1849,7 +2168,7 @@ const styles = {
     color: '#0E4F44',
     margin: 0,
     textTransform: 'uppercase',
-    letterSpacing: '0.8px',
+    letterSpacing: '1px',
   },
   printClinicSub: {
     fontSize: '12px',
@@ -1863,13 +2182,14 @@ const styles = {
   },
   printTitleWrap: {
     textAlign: 'center',
-    margin: '20px 0',
+    margin: '18px 0',
   },
   printCertTitle: {
     fontSize: '18px',
     fontWeight: '800',
     color: '#111827',
     letterSpacing: '0.8px',
+    margin: 0,
   },
   printMetaBar: {
     display: 'flex',
@@ -1877,7 +2197,7 @@ const styles = {
     alignItems: 'center',
     marginBottom: '24px',
     borderBottom: '1px solid #E5E7EB',
-    paddingBottom: '6px',
+    paddingBottom: '8px',
   },
   printCertId: {
     fontSize: '12px',
@@ -1893,9 +2213,10 @@ const styles = {
     borderRadius: '3px',
   },
   printBodyText: {
-    fontSize: '14px',
+    fontSize: '14.5px',
     lineHeight: '1.9',
     color: '#1F2937',
+    fontFamily: "'Georgia', 'Times New Roman', serif",
     textAlign: 'justify',
     flex: 1,
     marginBottom: '40px',
@@ -1904,7 +2225,7 @@ const styles = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
-    borderTop: '1px solid #D1D5DB',
+    borderTop: '1px solid #CBD5E1',
     paddingTop: '16px',
   },
   printFootLeft: {
@@ -1927,7 +2248,7 @@ const styles = {
     color: '#0E4F44',
   },
   printSignLine: {
-    width: '190px',
+    width: '180px',
     borderBottom: '1.5px solid #111827',
     margin: '4px 0 6px 0',
   },
@@ -1958,22 +2279,22 @@ const styles = {
   },
   modalContent: {
     backgroundColor: '#FFFFFF',
-    borderRadius: '8px',
-    padding: '16px',
-    width: '440px',
-    maxWidth: '90%',
-    boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+    borderRadius: '10px',
+    padding: '18px 20px',
+    width: '450px',
+    maxWidth: '92%',
+    boxShadow: '0 12px 30px rgba(0,0,0,0.18)',
   },
   modalHeader: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
     borderBottom: '1px solid var(--border)',
-    paddingBottom: '8px',
-    marginBottom: '12px',
+    paddingBottom: '10px',
+    marginBottom: '14px',
   },
   modalTitle: {
-    fontSize: '13px',
+    fontSize: '14px',
     fontWeight: '700',
     color: 'var(--text)',
     margin: 0,
@@ -1987,7 +2308,7 @@ const styles = {
   modalForm: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '10px',
+    gap: '12px',
   },
   modalActions: {
     display: 'flex',
@@ -1996,8 +2317,8 @@ const styles = {
     marginTop: '6px',
   },
   cancelBtn: {
-    padding: '5px 12px',
-    borderRadius: '5px',
+    padding: '6px 14px',
+    borderRadius: '6px',
     border: '1px solid var(--border)',
     backgroundColor: '#FFFFFF',
     fontSize: '11px',
@@ -2030,3 +2351,4 @@ const styles = {
   },
 };
 
+export default MedicalCertificate;
