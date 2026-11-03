@@ -38,6 +38,20 @@ export const MedicalCertificate = () => {
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [patientInput, setPatientInput] = useState('');
   const [isPatientValid, setIsPatientValid] = useState(false);
+  const [showPatientDropdown, setShowPatientDropdown] = useState(false);
+  const [patientHighlightIndex, setPatientHighlightIndex] = useState(0);
+  const certPatientWrapRef = useRef(null);
+
+  // Close patient dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (certPatientWrapRef.current && !certPatientWrapRef.current.contains(e.target)) {
+        setShowPatientDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Form Fields
   const todayStr = new Date().toISOString().split('T')[0];
@@ -152,38 +166,60 @@ export const MedicalCertificate = () => {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Handle Patient Quick Selection & Validation
-  const handleSelectPatient = (inputVal) => {
-    setPatientInput(inputVal);
-    const clean = inputVal.trim().toLowerCase();
-    if (!clean) {
+  // Filtered patients for quick search
+  const filteredPatients = registeredPatients.filter((p) => {
+    if (!patientInput.trim()) return false;
+    const clean = patientInput.trim().toLowerCase();
+    return (
+      p.name?.toLowerCase().includes(clean) ||
+      p.patientId?.toLowerCase().includes(clean) ||
+      (p.phone && p.phone.includes(clean))
+    );
+  });
+
+  const handlePickPatient = (p) => {
+    if (!p) return;
+    setPatientInput(p.name);
+    setSelectedPatient(p);
+    setIsPatientValid(true);
+    setPatientFullName(p.name);
+    if (p.age) setAge(p.age);
+    if (p.gender) setGender(p.gender);
+    setShowPatientDropdown(false);
+    setErrorMsg('');
+  };
+
+  const handlePatientInputChange = (val) => {
+    setPatientInput(val);
+    setPatientHighlightIndex(0); // Automatically select first match
+    if (!val || !val.trim()) {
       setSelectedPatient(null);
       setIsPatientValid(false);
+      setShowPatientDropdown(false);
       return;
     }
+    setShowPatientDropdown(true);
 
-    // Look for matching patient by patientId or name in the registered list
+    const clean = val.trim().toLowerCase();
     const matched = registeredPatients.find(
-      (p) =>
-        p.patientId?.toLowerCase() === clean ||
-        p.name?.toLowerCase() === clean ||
-        p.name?.toLowerCase().includes(clean) ||
-        `[${p.patientId?.toLowerCase()}] ${p.name?.toLowerCase()}`.includes(clean)
+      (p) => p.patientId?.toLowerCase() === clean || p.name?.toLowerCase() === clean
     );
-
     if (matched) {
       setSelectedPatient(matched);
       setIsPatientValid(true);
       setPatientFullName(matched.name);
-      setAge(matched.age || '');
-      setGender(matched.gender || 'Male');
-      setErrorMsg('');
+      if (matched.age) setAge(matched.age);
+      if (matched.gender) setGender(matched.gender);
     } else {
       setSelectedPatient(null);
       setIsPatientValid(false);
-      setPatientFullName(inputVal);
-      setErrorMsg('');
+      setPatientFullName(val);
     }
+  };
+
+  // Handle Patient Quick Selection & Validation
+  const handleSelectPatient = (inputVal) => {
+    handlePatientInputChange(inputVal);
   };
 
   const handlePatientNameChange = (val) => {
@@ -641,7 +677,7 @@ export const MedicalCertificate = () => {
 
                 {/* Row 2: Search Registered Patient & Patient Name */}
                 <div style={styles.formRow}>
-                  <div style={{ flex: 1 }}>
+                  <div style={{ flex: 1, position: 'relative' }} ref={certPatientWrapRef}>
                     <div style={styles.fieldHeader}>
                       <label style={styles.label}>
                         Search Patient <span style={{ color: 'var(--danger)' }}>*</span>
@@ -655,10 +691,39 @@ export const MedicalCertificate = () => {
                     </div>
                     <input
                       type="text"
-                      list="registered-patients-datalist"
                       placeholder="Type patient name or ID..."
                       value={patientInput}
-                      onChange={(e) => handleSelectPatient(e.target.value)}
+                      onChange={(e) => handlePatientInputChange(e.target.value)}
+                      onFocus={() => {
+                        if (patientInput.trim()) {
+                          setShowPatientDropdown(true);
+                          setPatientHighlightIndex(0);
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        const list = filteredPatients;
+                        if (e.key === 'ArrowDown') {
+                          if (list.length > 0) {
+                            e.preventDefault();
+                            if (!showPatientDropdown) setShowPatientDropdown(true);
+                            setPatientHighlightIndex((prev) => (prev < list.length - 1 ? prev + 1 : 0));
+                          }
+                        } else if (e.key === 'ArrowUp') {
+                          if (list.length > 0) {
+                            e.preventDefault();
+                            if (!showPatientDropdown) setShowPatientDropdown(true);
+                            setPatientHighlightIndex((prev) => (prev > 0 ? prev - 1 : list.length - 1));
+                          }
+                        } else if (e.key === 'Enter') {
+                          if (list.length > 0) {
+                            e.preventDefault();
+                            const chosen = list[patientHighlightIndex] || list[0];
+                            if (chosen) handlePickPatient(chosen);
+                          }
+                        } else if (e.key === 'Escape') {
+                          setShowPatientDropdown(false);
+                        }
+                      }}
                       style={{
                         ...styles.input,
                         borderColor: isPatientValid
@@ -669,13 +734,45 @@ export const MedicalCertificate = () => {
                         backgroundColor: isPatientValid ? '#F0FDF4' : '#FFFFFF',
                       }}
                     />
-                    <datalist id="registered-patients-datalist">
-                      {registeredPatients.map((p) => (
-                        <option key={p.patientId} value={p.name}>
-                          PID: {p.patientId} &bull; Age: {p.age || '-'} &bull; Area: {p.area || '-'}
-                        </option>
-                      ))}
-                    </datalist>
+
+                    {/* Keyboard Navigable Patient Dropdown */}
+                    {showPatientDropdown && patientInput.trim() && filteredPatients.length > 0 && (
+                      <ul style={styles.patientDropdown}>
+                        {filteredPatients.slice(0, 15).map((p, idx) => {
+                          const isHighlighted = idx === patientHighlightIndex;
+                          return (
+                            <li
+                              key={p._id || p.patientId}
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                handlePickPatient(p);
+                              }}
+                              onMouseEnter={() => setPatientHighlightIndex(idx)}
+                              style={{
+                                ...styles.patientDropdownItem,
+                                backgroundColor: isHighlighted ? 'var(--primary-soft)' : '#FFFFFF',
+                                borderLeft: isHighlighted ? '4px solid var(--primary)' : '4px solid transparent',
+                              }}
+                            >
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <strong style={{ color: isHighlighted ? 'var(--primary-dark)' : 'var(--text)' }}>
+                                    {p.name}
+                                  </strong>
+                                  <span style={styles.pidBadgeMini}>PID: {p.patientId}</span>
+                                  {isHighlighted && (
+                                    <span style={styles.enterBadgeMini}>↵ Enter</span>
+                                  )}
+                                </div>
+                                <span style={{ fontSize: '11px', color: '#64748B' }}>
+                                  Age: {p.age || '-'} &bull; Gender: {p.gender || '-'} &bull; Area: {p.area || '-'}
+                                </span>
+                              </div>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
                   </div>
 
                   <div style={{ flex: 1 }}>
@@ -2095,6 +2192,45 @@ const styles = {
     color: 'var(--primary-dark)',
     padding: '2px 8px',
     borderRadius: '10px',
+  },
+  patientDropdown: {
+    position: 'absolute',
+    top: 'calc(100% + 4px)',
+    left: 0,
+    right: 0,
+    backgroundColor: '#FFFFFF',
+    border: '1px solid var(--border)',
+    borderRadius: '8px',
+    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12)',
+    maxHeight: '220px',
+    overflowY: 'auto',
+    listStyle: 'none',
+    zIndex: 100,
+    padding: '4px 0',
+  },
+  patientDropdownItem: {
+    padding: '8px 12px',
+    fontSize: '0.88rem',
+    cursor: 'pointer',
+    transition: 'background 0.15s ease',
+  },
+  pidBadgeMini: {
+    fontSize: '10px',
+    fontWeight: 700,
+    backgroundColor: '#F1F5F9',
+    color: '#475569',
+    padding: '1px 6px',
+    borderRadius: '4px',
+    border: '1px solid #CBD5E1',
+  },
+  enterBadgeMini: {
+    fontSize: '9.5px',
+    fontWeight: 700,
+    backgroundColor: 'var(--primary)',
+    color: '#FFFFFF',
+    padding: '1px 5px',
+    borderRadius: '4px',
+    marginLeft: 'auto',
   },
   registrySearchWrap: {
     position: 'relative',

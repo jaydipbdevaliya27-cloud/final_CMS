@@ -46,6 +46,7 @@ export const AddMember = ({ initialFamilyId, onProceedToCaseEntry, onNavigateToF
   const [familySearch, setFamilySearch] = useState('');
   const debouncedFamilySearch = useDebounce(familySearch, 250);
   const [loadingFamilies, setLoadingFamilies] = useState(false);
+  const [familyHighlightIndex, setFamilyHighlightIndex] = useState(0);
 
   // Member Form State
   const [formData, setFormData] = useState({
@@ -73,6 +74,7 @@ export const AddMember = ({ initialFamilyId, onProceedToCaseEntry, onNavigateToF
       if (res.success) {
         const list = res.data || [];
         setFamilies(list);
+        setFamilyHighlightIndex(0); // Automatically select first match
 
         // Pre-select only if explicitly passed via initialFamilyId
         if (initialFamilyId && !selectedFamily) {
@@ -239,6 +241,26 @@ export const AddMember = ({ initialFamilyId, onProceedToCaseEntry, onNavigateToF
             placeholder="Type family head name, FAM ID, society, or area..."
             value={familySearch}
             onChange={(e) => setFamilySearch(e.target.value)}
+            onKeyDown={(e) => {
+              const list = families.slice(0, 4);
+              if (e.key === 'ArrowDown') {
+                if (list.length > 0) {
+                  e.preventDefault();
+                  setFamilyHighlightIndex((prev) => (prev < list.length - 1 ? prev + 1 : 0));
+                }
+              } else if (e.key === 'ArrowUp') {
+                if (list.length > 0) {
+                  e.preventDefault();
+                  setFamilyHighlightIndex((prev) => (prev > 0 ? prev - 1 : list.length - 1));
+                }
+              } else if (e.key === 'Enter') {
+                if (list.length > 0) {
+                  e.preventDefault();
+                  const chosen = list[familyHighlightIndex] || list[0];
+                  if (chosen) selectFamily(chosen);
+                }
+              }
+            }}
             style={styles.searchInput}
           />
           {familySearch && (
@@ -257,8 +279,8 @@ export const AddMember = ({ initialFamilyId, onProceedToCaseEntry, onNavigateToF
           <div style={styles.recentSection}>
             <span style={styles.recentLabel}>
               {familySearch.trim()
-                ? 'MATCHING FAMILIES (CLICK TO SELECT):'
-                : 'RECENT FAMILIES (CLICK TO SELECT):'}
+                ? 'MATCHING FAMILIES (USE ↑/↓ & ENTER TO SELECT):'
+                : 'RECENT FAMILIES (CLICK OR ENTER TO SELECT):'}
             </span>
 
             {loadingFamilies ? (
@@ -278,20 +300,48 @@ export const AddMember = ({ initialFamilyId, onProceedToCaseEntry, onNavigateToF
               </div>
             ) : (
               <div style={styles.familyCardsList}>
-                {families.slice(0, 4).map((fam) => {
+                {families.slice(0, 4).map((fam, idx) => {
                   const isSelected = selectedFamily?.familyId === fam.familyId;
+                  const isHighlighted = idx === familyHighlightIndex;
                   return (
                     <div
                       key={fam._id || fam.familyId}
                       onClick={() => selectFamily(fam)}
+                      onMouseEnter={() => setFamilyHighlightIndex(idx)}
                       style={{
                         ...styles.familyCardItem,
-                        borderColor: isSelected ? 'var(--primary)' : 'var(--border)',
-                        backgroundColor: isSelected ? 'var(--primary-soft)' : '#FFFFFF',
+                        borderColor: isHighlighted
+                          ? 'var(--primary)'
+                          : isSelected
+                          ? 'var(--primary)'
+                          : 'var(--border)',
+                        backgroundColor: isHighlighted
+                          ? 'var(--primary-soft)'
+                          : isSelected
+                          ? 'var(--primary-soft)'
+                          : '#FFFFFF',
+                        borderLeft: isHighlighted
+                          ? '4px solid var(--primary)'
+                          : '1px solid var(--border)',
+                        cursor: 'pointer',
                       }}
                     >
                       <div style={styles.familyCardLeft}>
-                        <h4 style={styles.familyCardHeadName}>{fam.headName}</h4>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <h4 style={styles.familyCardHeadName}>{fam.headName}</h4>
+                          {isHighlighted && (
+                            <span style={{
+                              fontSize: '0.68rem',
+                              backgroundColor: 'var(--primary)',
+                              color: '#FFFFFF',
+                              padding: '1px 6px',
+                              borderRadius: '4px',
+                              fontWeight: 700,
+                            }}>
+                              ↵ Enter
+                            </span>
+                          )}
+                        </div>
                         <div style={styles.familyCardMetaRow}>
                           <span>&bull; {fam.membersCount || 1} Member(s)</span>
                           {fam.phone && (

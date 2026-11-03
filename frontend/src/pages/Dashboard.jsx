@@ -55,6 +55,7 @@ export const Dashboard = () => {
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
+  const [searchHighlightIndex, setSearchHighlightIndex] = useState(0);
   const searchInputRef = useRef(null);
   const searchWrapRef = useRef(null);
 
@@ -143,6 +144,7 @@ export const Dashboard = () => {
         const res = await universalSearchAPI.search(debouncedSearchQuery);
         if (active && res.success) {
           setSearchResults(res.data || []);
+          setSearchHighlightIndex(0); // Automatically select first match
           setShowSearchDropdown(true);
         }
       } catch (err) {
@@ -855,15 +857,29 @@ export const Dashboard = () => {
             }}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                const list = Array.isArray(searchResults) ? searchResults : [];
+              const list = Array.isArray(searchResults) ? searchResults : [];
+              if (e.key === 'ArrowDown') {
                 if (list.length > 0) {
                   e.preventDefault();
-                  const first = list[0];
-                  setShowSearchDropdown(false);
-                  setSearchQuery('');
-                  setSelectedPatientId(first.patientId || first._id);
-                  setActiveTab('patient-record');
+                  if (!showSearchDropdown) setShowSearchDropdown(true);
+                  setSearchHighlightIndex((prev) => (prev < list.length - 1 ? prev + 1 : 0));
+                }
+              } else if (e.key === 'ArrowUp') {
+                if (list.length > 0) {
+                  e.preventDefault();
+                  if (!showSearchDropdown) setShowSearchDropdown(true);
+                  setSearchHighlightIndex((prev) => (prev > 0 ? prev - 1 : list.length - 1));
+                }
+              } else if (e.key === 'Enter') {
+                if (list.length > 0) {
+                  e.preventDefault();
+                  const chosen = list[searchHighlightIndex] || list[0];
+                  if (chosen) {
+                    setShowSearchDropdown(false);
+                    setSearchQuery('');
+                    setSelectedPatientId(chosen.patientId || chosen._id);
+                    setActiveTab('patient-record');
+                  }
                 }
               } else if (e.key === 'Escape') {
                 setShowSearchDropdown(false);
@@ -916,7 +932,7 @@ export const Dashboard = () => {
                       const allergyStr = Array.isArray(m.allergies)
                         ? m.allergies.filter(Boolean).join(', ')
                         : m.allergies || '';
-                      const isFirst = idx === 0;
+                      const isHighlighted = idx === searchHighlightIndex;
 
                       return (
                         <div
@@ -927,9 +943,12 @@ export const Dashboard = () => {
                             setSelectedPatientId(m.patientId || m._id);
                             setActiveTab('patient-record');
                           }}
+                          onMouseEnter={() => setSearchHighlightIndex(idx)}
                           style={{
                             ...styles.uniMemberCard,
-                            ...(isFirst ? styles.uniFirstMatchCard : {}),
+                            backgroundColor: isHighlighted ? 'var(--primary-soft)' : '#FFFFFF',
+                            borderLeft: isHighlighted ? '4px solid var(--primary)' : '4px solid transparent',
+                            boxShadow: isHighlighted ? '0 2px 8px rgba(20, 107, 92, 0.12)' : 'none',
                           }}
                           title={`Click or press Enter to open Patient Record for ${m.name}`}
                         >
@@ -939,6 +958,19 @@ export const Dashboard = () => {
                               <span style={styles.uniMemberRelation}>
                                 ({relationLabel})
                               </span>
+                              {isHighlighted && (
+                                <span style={{
+                                  fontSize: '0.68rem',
+                                  backgroundColor: 'var(--primary)',
+                                  color: '#FFFFFF',
+                                  padding: '1px 6px',
+                                  borderRadius: '4px',
+                                  fontWeight: 700,
+                                  marginLeft: '4px',
+                                }}>
+                                  ↵ Enter to Select
+                                </span>
+                              )}
                             </div>
                             <div style={styles.uniMemberDetails}>
                               {m.age && <span>Age {m.age}</span>}

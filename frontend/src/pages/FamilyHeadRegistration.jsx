@@ -43,6 +43,7 @@ export const FamilyHeadRegistration = ({ onNavigateToAddMember, onNavigateToPati
   const [families, setFamilies] = useState([]);
   const [expandedFamilies, setExpandedFamilies] = useState({});
   const [directorySearch, setDirectorySearch] = useState('');
+  const [directoryHighlightIndex, setDirectoryHighlightIndex] = useState(0);
   const [loadingDirectory, setLoadingDirectory] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
@@ -124,6 +125,7 @@ export const FamilyHeadRegistration = ({ onNavigateToAddMember, onNavigateToPati
       if (res.success) {
         const loaded = res.data || [];
         setFamilies(loaded);
+        setDirectoryHighlightIndex(0); // Automatically select first match
         if (loaded.length === 1) {
           setExpandedFamilies((prev) => ({
             ...prev,
@@ -573,6 +575,25 @@ export const FamilyHeadRegistration = ({ onNavigateToAddMember, onNavigateToPati
               placeholder="Search by head name, society, area, or FAM ID..."
               value={directorySearch}
               onChange={(e) => setDirectorySearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'ArrowDown') {
+                  if (families.length > 0) {
+                    e.preventDefault();
+                    setDirectoryHighlightIndex((prev) => (prev < families.length - 1 ? prev + 1 : 0));
+                  }
+                } else if (e.key === 'ArrowUp') {
+                  if (families.length > 0) {
+                    e.preventDefault();
+                    setDirectoryHighlightIndex((prev) => (prev > 0 ? prev - 1 : families.length - 1));
+                  }
+                } else if (e.key === 'Enter') {
+                  if (families.length > 0) {
+                    e.preventDefault();
+                    const chosen = families[directoryHighlightIndex] || families[0];
+                    if (chosen) toggleExpandFamily(chosen.familyId);
+                  }
+                }
+              }}
               style={styles.directorySearchInput}
             />
           </div>
@@ -593,9 +614,10 @@ export const FamilyHeadRegistration = ({ onNavigateToAddMember, onNavigateToPati
                 </span>
               </div>
             ) : (
-              families.map((fam) => {
+              families.map((fam, idx) => {
                 const isCurrentEdit = editingFamily && editingFamily.familyId === fam.familyId;
                 const isExpanded = !!expandedFamilies[fam.familyId];
+                const isHighlighted = idx === directoryHighlightIndex;
                 let membersList = fam.members || [];
                 if (membersList.length === 0 && fam.headName) {
                   membersList = [
@@ -616,15 +638,20 @@ export const FamilyHeadRegistration = ({ onNavigateToAddMember, onNavigateToPati
                   <div
                     key={fam._id || fam.familyId}
                     onClick={() => toggleExpandFamily(fam.familyId)}
+                    onMouseEnter={() => setDirectoryHighlightIndex(idx)}
                     style={{
                       ...styles.familyCard,
                       border: isCurrentEdit
                         ? '2px solid var(--accent)'
+                        : isHighlighted
+                        ? '2px solid var(--primary)'
                         : isExpanded
                         ? '1px solid #146B5C'
                         : '1px solid var(--border)',
                       backgroundColor: isCurrentEdit
                         ? 'var(--accent-soft)'
+                        : isHighlighted
+                        ? 'var(--primary-soft)'
                         : '#FFFFFF',
                       cursor: 'pointer',
                     }}

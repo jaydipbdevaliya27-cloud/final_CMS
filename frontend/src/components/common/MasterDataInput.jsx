@@ -18,6 +18,17 @@ export const MasterDataInput = ({
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const wrapperRef = useRef(null);
   const inputRef = useRef(null);
+  const listRef = useRef(null);
+
+  // Auto-scroll highlighted suggestion into view
+  useEffect(() => {
+    if (isOpen && listRef.current && suggestions.length > 0) {
+      const activeEl = listRef.current.children[highlightedIndex];
+      if (activeEl) {
+        activeEl.scrollIntoView({ block: 'nearest' });
+      }
+    }
+  }, [highlightedIndex, isOpen, suggestions.length]);
 
   // Extract active search token (text after last comma when allowMultiple is active)
   const getActiveToken = (text) => {
@@ -37,7 +48,9 @@ export const MasterDataInput = ({
       try {
         const res = await masterDataAPI.getItems(type, debouncedToken || '');
         if (active && res.success) {
-          setSuggestions(res.data || []);
+          const items = res.data || [];
+          setSuggestions(items);
+          setHighlightedIndex(0); // Automatically pre-select first match
         }
       } catch (err) {
         console.error(`Error loading master data for ${type}:`, err);
@@ -168,6 +181,7 @@ export const MasterDataInput = ({
     if (!isOpen || suggestions.length === 0) {
       if (e.key === 'ArrowDown') {
         setIsOpen(true);
+        setHighlightedIndex(0);
       }
       return;
     }
@@ -183,12 +197,17 @@ export const MasterDataInput = ({
         prev > 0 ? prev - 1 : suggestions.length - 1
       );
     } else if (e.key === 'Enter') {
-      // If there are suggestions, select the highlighted one or first match on Enter
+      // If suggestions are active, automatically use highlighted/first selection on Enter
       if (suggestions.length > 0) {
         e.preventDefault();
-        selectItem(suggestions[highlightedIndex] || suggestions[0]);
+        e.stopPropagation();
+        const itemToUse = suggestions[highlightedIndex] || suggestions[0];
+        if (itemToUse) {
+          selectItem(itemToUse);
+        }
       }
     } else if (e.key === 'Escape') {
+      e.preventDefault();
       setIsOpen(false);
     }
   };
@@ -203,6 +222,7 @@ export const MasterDataInput = ({
         onFocus={() => {
           if (currentToken && currentToken.trim().length > 0) {
             setIsOpen(true);
+            setHighlightedIndex(0);
           } else {
             setIsOpen(false);
           }
@@ -228,7 +248,7 @@ export const MasterDataInput = ({
 
       {/* Suggestion Dropdown - only shown when there is an active search token and matching suggestions */}
       {isOpen && currentToken && currentToken.trim().length > 0 && suggestions.length > 0 && (
-        <ul style={styles.dropdown}>
+        <ul ref={listRef} style={styles.dropdown}>
           {suggestions.map((item, idx) => {
             const isHighlighted = idx === highlightedIndex;
             return (
@@ -243,10 +263,16 @@ export const MasterDataInput = ({
                   ...styles.dropdownItem,
                   backgroundColor: isHighlighted ? 'var(--primary-soft)' : 'transparent',
                   color: isHighlighted ? 'var(--primary-dark)' : 'var(--text)',
-                  fontWeight: isHighlighted ? 600 : 400,
+                  fontWeight: isHighlighted ? 700 : 400,
+                  borderLeft: isHighlighted ? '3px solid var(--primary)' : '3px solid transparent',
                 }}
               >
-                <span>{item.value}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>{item.value}</span>
+                  {isHighlighted && (
+                    <span style={styles.autoSelectHint}>↵ Enter</span>
+                  )}
+                </div>
                 {item.shortcut && (
                   <span style={styles.shortcutBadge}>{item.shortcut}</span>
                 )}
@@ -283,6 +309,15 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'space-between',
     transition: 'background 0.15s ease',
+  },
+  autoSelectHint: {
+    fontSize: '0.68rem',
+    backgroundColor: 'var(--primary)',
+    color: '#FFFFFF',
+    padding: '1px 5px',
+    borderRadius: '4px',
+    fontWeight: 700,
+    letterSpacing: '0.3px',
   },
   shortcutBadge: {
     fontSize: '0.72rem',

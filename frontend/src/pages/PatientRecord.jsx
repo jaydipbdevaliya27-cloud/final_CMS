@@ -154,6 +154,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
+  const [patientHighlightIndex, setPatientHighlightIndex] = useState(0);
   const searchWrapRef = useRef(null);
 
   const [currentPatient, setCurrentPatient] = useState(null);
@@ -408,6 +409,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
         const res = await patientAPI.getAll(debouncedSearch);
         if (active && res.success) {
           setSearchResults(res.data || []);
+          setPatientHighlightIndex(0); // Automatically select first match
           setShowSearchDropdown(true);
         }
       } catch (err) {
@@ -880,6 +882,32 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
               onFocus={() => {
                 if (searchResults.length > 0) setShowSearchDropdown(true);
               }}
+              onKeyDown={(e) => {
+                const list = Array.isArray(searchResults) ? searchResults : [];
+                if (e.key === 'ArrowDown') {
+                  if (list.length > 0) {
+                    e.preventDefault();
+                    if (!showSearchDropdown) setShowSearchDropdown(true);
+                    setPatientHighlightIndex((prev) => (prev < list.length - 1 ? prev + 1 : 0));
+                  }
+                } else if (e.key === 'ArrowUp') {
+                  if (list.length > 0) {
+                    e.preventDefault();
+                    if (!showSearchDropdown) setShowSearchDropdown(true);
+                    setPatientHighlightIndex((prev) => (prev > 0 ? prev - 1 : list.length - 1));
+                  }
+                } else if (e.key === 'Enter') {
+                  if (list.length > 0) {
+                    e.preventDefault();
+                    const chosen = list[patientHighlightIndex] || list[0];
+                    if (chosen) {
+                      handleSelectPatient(chosen);
+                    }
+                  }
+                } else if (e.key === 'Escape') {
+                  setShowSearchDropdown(false);
+                }
+              }}
               placeholder="Universal Search: Name, Family ID (shows all members), Patient ID, Area..."
               style={styles.searchInput}
             />
@@ -902,25 +930,55 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
           {showSearchDropdown && searchResults.length > 0 && (
             <div style={styles.dropdownMenu}>
               <div style={styles.dropdownHeader}>
-                <span>Found {searchResults.length} matching patients</span>
+                <span>Found {searchResults.length} matching patients (Use ↑/↓ & Enter)</span>
               </div>
-              {searchResults.map((p) => {
+              {searchResults.map((p, idx) => {
                 const pDue = p.totalDue || 0;
                 const isSelected = currentPatient?.patientId === p.patientId;
+                const isHighlighted = idx === patientHighlightIndex;
+
                 return (
                   <div
                     key={p._id || p.patientId}
                     onClick={() => handleSelectPatient(p)}
+                    onMouseEnter={() => setPatientHighlightIndex(idx)}
                     style={{
                       ...styles.dropdownItem,
-                      backgroundColor: isSelected ? 'var(--primary-soft)' : '#FFFFFF',
+                      backgroundColor: isHighlighted
+                        ? 'var(--primary-soft)'
+                        : isSelected
+                        ? 'var(--primary-soft)'
+                        : '#FFFFFF',
+                      borderLeft: isHighlighted
+                        ? '4px solid var(--primary)'
+                        : '4px solid transparent',
+                      cursor: 'pointer',
                     }}
                   >
                     <div style={styles.dropdownItemLeft}>
                       <div style={styles.dropdownItemNameRow}>
-                        <span style={styles.dropdownItemName}>{p.name}</span>
+                        <span style={{
+                          ...styles.dropdownItemName,
+                          fontWeight: isHighlighted ? '800' : '700',
+                          color: isHighlighted ? 'var(--primary-dark)' : 'var(--text)',
+                        }}>
+                          {p.name}
+                        </span>
                         <span style={styles.dropdownItemBadge}>{p.patientId}</span>
                         {p.isHead && <span style={styles.headTag}>HEAD</span>}
+                        {isHighlighted && (
+                          <span style={{
+                            fontSize: '0.68rem',
+                            backgroundColor: 'var(--primary)',
+                            color: '#FFFFFF',
+                            padding: '1px 6px',
+                            borderRadius: '4px',
+                            fontWeight: 700,
+                            marginLeft: '4px',
+                          }}>
+                            ↵ Enter
+                          </span>
+                        )}
                       </div>
                       <div style={styles.dropdownItemSub}>
                         <span>
