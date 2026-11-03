@@ -222,14 +222,14 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
     setPrintDietary(updated);
 
     if (printVisit?._id) {
-      visitAPI.update(printVisit._id, { dietary: updated }).catch(() => {});
+      visitAPI.update(printVisit._id, { dietary: updated }).catch(() => { });
     }
   };
 
   const handleDietaryInputChange = (val) => {
     setPrintDietary(val);
     if (printVisit?._id) {
-      visitAPI.update(printVisit._id, { dietary: val }).catch(() => {});
+      visitAPI.update(printVisit._id, { dietary: val }).catch(() => { });
     }
   };
 
@@ -1045,8 +1045,8 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                       backgroundColor: isHighlighted
                         ? 'var(--primary-soft)'
                         : isSelected
-                        ? 'var(--primary-soft)'
-                        : '#FFFFFF',
+                          ? 'var(--primary-soft)'
+                          : '#FFFFFF',
                       borderLeft: isHighlighted
                         ? '4px solid var(--primary)'
                         : '4px solid transparent',
@@ -1196,6 +1196,9 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
           <div style={styles.bannerBottomRow}>
             <span style={styles.bannerFamilyText}>
               Family:{' '}
+              <span style={styles.patientIdBadgeDisplay}>
+                FAM ID: {currentPatient.familyId}
+              </span>
               <strong>
                 {currentPatient.family?.headName || currentPatient.name}
               </strong>
@@ -1987,63 +1990,63 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                       {/* ROW 2: THERAPEUTICS (Treatments & Prescriptions in SAME ROW) */}
                       {((visit.treatments && visit.treatments.length > 0) ||
                         (visit.prescriptions && visit.prescriptions.length > 0)) && (
-                        <div
-                          style={{
-                            display: 'grid',
-                            gridTemplateColumns:
-                              visit.treatments?.length > 0 && visit.prescriptions?.length > 0
-                                ? 'minmax(180px, 1fr) minmax(260px, 1.4fr)'
-                                : '1fr',
-                            gap: '6px',
-                          }}
-                        >
-                          {/* TREATMENT (CLINIC) */}
-                          {visit.treatments && visit.treatments.length > 0 && (
-                            <div style={styles.pastTreatmentsBlock}>
-                              <div style={styles.treatmentHeaderRow}>
-                                <span style={styles.treatmentHeaderLabel}>Treatment:</span>
-                              </div>
-                              <div style={styles.treatmentChipsRow}>
-                                {visit.treatments.map((t, tIdx) => (
-                                  <span key={tIdx} style={styles.treatmentChip}>
-                                    {t.item} {t.qty ? `(${t.qty})` : ''}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* PRESCRIPTIONS (Rx) */}
-                          {visit.prescriptions && visit.prescriptions.length > 0 && (
-                            <div style={styles.pastPrescriptionBlock}>
-                              <div style={styles.rxHeaderRow}>
-                                <Pill size={11} color="#0F766E" />
-                                <span style={styles.rxHeaderLabel}>Rx:</span>
-                              </div>
-                              <div style={styles.pastRxChips}>
-                                {visit.prescriptions.map((rx, rIdx) => (
-                                  <div key={rIdx} style={styles.rxCard}>
-                                    <span style={styles.rxMedName}>{rx.medicine}</span>
-                                    {rx.qty && (
-                                      <span style={styles.rxQtyBadge}>
-                                        {String(rx.qty).toLowerCase().includes('tab') ? rx.qty : `${rx.qty} Tab`}
-                                      </span>
-                                    )}
-                                    <span style={styles.rxDoseBadge}>
-                                      {rx.morning ?? 0}-{rx.noon ?? 0}-{rx.evening ?? 0}-{rx.night ?? 0}
+                          <div
+                            style={{
+                              display: 'grid',
+                              gridTemplateColumns:
+                                visit.treatments?.length > 0 && visit.prescriptions?.length > 0
+                                  ? 'minmax(180px, 1fr) minmax(260px, 1.4fr)'
+                                  : '1fr',
+                              gap: '6px',
+                            }}
+                          >
+                            {/* TREATMENT (CLINIC) */}
+                            {visit.treatments && visit.treatments.length > 0 && (
+                              <div style={styles.pastTreatmentsBlock}>
+                                <div style={styles.treatmentHeaderRow}>
+                                  <span style={styles.treatmentHeaderLabel}>Treatment:</span>
+                                </div>
+                                <div style={styles.treatmentChipsRow}>
+                                  {visit.treatments.map((t, tIdx) => (
+                                    <span key={tIdx} style={styles.treatmentChip}>
+                                      {t.item} {t.qty ? `(${t.qty})` : ''}
                                     </span>
-                                    {rx.timing && (
-                                      <span style={styles.rxTimingBadge}>
-                                        {rx.timing === 'AF' ? 'AF' : rx.timing === 'BF' ? 'BF' : rx.timing}
-                                      </span>
-                                    )}
-                                  </div>
-                                ))}
+                                  ))}
+                                </div>
                               </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
+                            )}
+
+                            {/* PRESCRIPTIONS (Rx) */}
+                            {visit.prescriptions && visit.prescriptions.length > 0 && (
+                              <div style={styles.pastPrescriptionBlock}>
+                                <div style={styles.rxHeaderRow}>
+                                  <Pill size={11} color="#0F766E" />
+                                  <span style={styles.rxHeaderLabel}>Rx:</span>
+                                </div>
+                                <div style={styles.pastRxChips}>
+                                  {visit.prescriptions.map((rx, rIdx) => (
+                                    <div key={rIdx} style={styles.rxCard}>
+                                      <span style={styles.rxMedName}>{rx.medicine}</span>
+                                      {rx.qty && (
+                                        <span style={styles.rxQtyBadge}>
+                                          {String(rx.qty).toLowerCase().includes('tab') ? rx.qty : `${rx.qty} Tab`}
+                                        </span>
+                                      )}
+                                      <span style={styles.rxDoseBadge}>
+                                        {rx.morning ?? 0}-{rx.noon ?? 0}-{rx.evening ?? 0}-{rx.night ?? 0}
+                                      </span>
+                                      {rx.timing && (
+                                        <span style={styles.rxTimingBadge}>
+                                          {rx.timing === 'AF' ? 'AF' : rx.timing === 'BF' ? 'BF' : rx.timing}
+                                        </span>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
 
                       {/* SUBTLE FINANCIAL BREAKDOWN FOOTER */}
                       {(visit.charge > 0 || visit.received > 0 || visit.due > 0) && (
