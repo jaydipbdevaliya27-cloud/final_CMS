@@ -452,17 +452,105 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
     initPatient();
   }, [selectedPatientId]);
 
-  // --- Load Recent Patients for Landing Search View ---
+  // --- Persistent Recently Searched OPD Patients Helpers ---
+  const RECENT_SEARCHED_KEY = 'cms_recent_opd_searched_patients';
+
+  const getStoredSearchedPatients = () => {
+    try {
+      const raw = localStorage.getItem(RECENT_SEARCHED_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (e) {
+      console.error('Error reading recent searches from storage:', e);
+    }
+    return [];
+  };
+
+  const addToRecentSearched = (patient) => {
+    if (!patient || (!patient.patientId && !patient._id)) return;
+    try {
+      const pidToMatch = patient.patientId || patient._id;
+      const currentList = getStoredSearchedPatients();
+      const filtered = currentList.filter(
+        (p) => (p.patientId || p._id) !== pidToMatch
+      );
+
+      const itemToAdd = {
+        _id: patient._id,
+        patientId: patient.patientId,
+        name: patient.name,
+        relation: patient.relation,
+        isHead: patient.isHead,
+        age: patient.age,
+        gender: patient.gender,
+        bloodGroup: patient.bloodGroup,
+        phone: patient.phone,
+        area: patient.area || patient.family?.area || '',
+        society: patient.society || patient.family?.society || '',
+        allergies: patient.allergies,
+        familyId: patient.familyId,
+        family: patient.family,
+        searchedAt: Date.now(),
+        isRecentlySearched: true,
+      };
+
+      const updated = [itemToAdd, ...filtered].slice(0, 15);
+      localStorage.setItem(RECENT_SEARCHED_KEY, JSON.stringify(updated));
+
+      // Update state immediately if landing page is open
+      setRecentPatientsList((prev) => {
+        const remaining = prev.filter((p) => (p.patientId || p._id) !== pidToMatch);
+        return [itemToAdd, ...remaining].slice(0, 8);
+      });
+    } catch (err) {
+      console.error('Error saving recent searched patient:', err);
+    }
+  };
+
+  // --- Load Recent Patients for Landing Search View (At least 6 items guaranteed) ---
+  const loadRecentOPDPatients = async () => {
+    try {
+      const searched = getStoredSearchedPatients();
+
+      // If we already have 6 or more searched patients, show top 8
+      if (searched.length >= 6) {
+        setRecentPatientsList(searched.slice(0, 8));
+        return;
+      }
+
+      // If fewer than 6, backfill with clinic's registered/visited patients to ensure at least 6
+      const patientsRes = await patientAPI.getAll('');
+      const allPatients =
+        patientsRes.success && Array.isArray(patientsRes.data)
+          ? patientsRes.data
+          : [];
+
+      const existingPids = new Set(searched.map((p) => p.patientId || p._id));
+      const fillList = [];
+
+      for (const p of allPatients) {
+        const pid = p.patientId || p._id;
+        if (!existingPids.has(pid)) {
+          existingPids.add(pid);
+          fillList.push(p);
+          if (searched.length + fillList.length >= 8) {
+            break;
+          }
+        }
+      }
+
+      const combined = [...searched, ...fillList];
+      setRecentPatientsList(combined.slice(0, 8));
+    } catch (err) {
+      console.error('Error loading recent OPD patients:', err);
+    }
+  };
+
   useEffect(() => {
     if (!currentPatient) {
-      patientAPI
-        .getAll('')
-        .then((res) => {
-          if (res.success && Array.isArray(res.data)) {
-            setRecentPatientsList(res.data.slice(0, 8));
-          }
-        })
-        .catch((err) => console.error('Error fetching recent patients:', err));
+      loadRecentOPDPatients();
     }
   }, [currentPatient]);
 
@@ -537,6 +625,8 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
   }, [currentPatient?.patientId]);
 
   const handleSelectPatient = (patient, autoStartCase = true) => {
+    if (!patient) return;
+    addToRecentSearched(patient);
     setCurrentPatient(patient);
     setShowSearchDropdown(false);
     setPatientSearch('');
@@ -914,6 +1004,8 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
             ? 'Visit record updated successfully!'
             : 'New visit saved successfully and dues updated!'
         );
+
+        addToRecentSearched(patient);
 
         setCurrentPatient((prev) => ({
           ...prev,
@@ -1407,44 +1499,59 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
           {recentPatientsList.length > 0 && (
             <div style={styles.recentPatientsSection}>
               <div style={styles.recentSectionHeader}>
-                <span style={styles.recentSectionTitle}>Recent OPD Patients</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={styles.recentSectionTitle}>Recent OPD Patients</span>
+                  <span style={styles.recentCountBadge}>{recentPatientsList.length} Patients</span>
+                </div>
                 <span style={styles.recentSectionSub}>Click any patient to open and start case entry</span>
               </div>
               <div style={styles.recentPatientsGrid}>
-                {recentPatientsList.map((p) => (
-                  <div
-                    key={p._id || p.patientId}
-                    style={styles.recentPatientCard}
-                    onClick={() => handleSelectPatient(p, true)}
-                    title={`Click to open Case Entry for ${p.name}`}
-                  >
-                    <div style={styles.recentPatientCardTop}>
-                      <span style={styles.recentPatientName}>{p.name}</span>
-                      <span style={styles.recentPatientPid}>{p.patientId}</span>
+                {recentPatientsList.map((p) => {
+                  const isSearched = p.isRecentlySearched || p.searchedAt;
+                  return (
+                    <div
+                      key={p._id || p.patientId}
+                      style={{
+                        ...styles.recentPatientCard,
+                        borderColor: isSearched ? '#A7F3D0' : 'var(--border)',
+                        backgroundColor: isSearched ? '#F8FDF9' : '#FFFFFF',
+                      }}
+                      onClick={() => handleSelectPatient(p, true)}
+                      title={`Click to open Case Entry for ${p.name}`}
+                    >
+                      <div style={styles.recentPatientCardTop}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, overflow: 'hidden' }}>
+                          <span style={styles.recentPatientName}>{p.name}</span>
+                          {isSearched && (
+                            <span style={styles.searchedPill}>Searched</span>
+                          )}
+                        </div>
+                        <span style={styles.recentPatientPid}>{p.patientId}</span>
+                      </div>
+                      <div style={styles.recentPatientCardMeta}>
+                        <span>{p.relation || (p.isHead ? 'Self' : 'Member')}</span>
+                        <span>&bull;</span>
+                        <span>Age {p.age || '-'}</span>
+                        {p.bloodGroup && (
+                          <>
+                            <span>&bull;</span>
+                            <span>{p.bloodGroup}</span>
+                          </>
+                        )}
+                        {(p.area || p.family?.area) && (
+                          <>
+                            <span>&bull;</span>
+                            <span>{p.area || p.family?.area}</span>
+                          </>
+                        )}
+                      </div>
+                      <div style={styles.recentPatientStartBtn}>
+                        <Plus size={13} />
+                        <span>Start Case Entry</span>
+                      </div>
                     </div>
-                    <div style={styles.recentPatientCardMeta}>
-                      <span>{p.relation || (p.isHead ? 'Head' : 'Member')}</span>
-                      <span>&bull;</span>
-                      <span>Age {p.age || '-'}</span>
-                      {p.bloodGroup && (
-                        <>
-                          <span>&bull;</span>
-                          <span>{p.bloodGroup}</span>
-                        </>
-                      )}
-                      {p.area && (
-                        <>
-                          <span>&bull;</span>
-                          <span>{p.area}</span>
-                        </>
-                      )}
-                    </div>
-                    <div style={styles.recentPatientStartBtn}>
-                      <Plus size={13} />
-                      <span>Start Case Entry</span>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -4114,6 +4221,27 @@ const styles = {
     textTransform: 'uppercase',
     letterSpacing: '0.5px',
     color: 'var(--text)',
+  },
+  recentCountBadge: {
+    fontSize: '10px',
+    fontWeight: 700,
+    color: 'var(--primary)',
+    backgroundColor: 'var(--primary-soft)',
+    padding: '2px 7px',
+    borderRadius: '10px',
+    border: '1px solid rgba(20, 107, 92, 0.2)',
+  },
+  searchedPill: {
+    fontSize: '9px',
+    fontWeight: 700,
+    color: '#059669',
+    backgroundColor: '#ECFDF5',
+    padding: '1px 5px',
+    borderRadius: '4px',
+    border: '1px solid #A7F3D0',
+    flexShrink: 0,
+    textTransform: 'uppercase',
+    letterSpacing: '0.3px',
   },
   recentSectionSub: {
     fontSize: '11px',
