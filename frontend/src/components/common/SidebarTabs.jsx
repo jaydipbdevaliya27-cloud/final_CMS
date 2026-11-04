@@ -53,12 +53,18 @@ export const SIDEBAR_TABS = [
     icon: TrendingUp,
     shortcut: 'F5',
   },
+  {
+    id: 'doctor-profile',
+    label: 'Doctor Profile',
+    icon: UserCheck,
+    shortcut: 'F8',
+  },
 ];
 
 export const SidebarTabs = ({ activeTab, onSelectTab, onSearchFocus, width = 210 }) => {
   const isCompact = width < 140;
 
-  // Global Keyboard Shortcuts handler (F1-F7 & '/')
+  // Global Keyboard Shortcuts handler (F1-F8 & '/')
   useEffect(() => {
     const handleKeyDown = (e) => {
       const tag = e.target.tagName.toLowerCase();
@@ -85,6 +91,9 @@ export const SidebarTabs = ({ activeTab, onSelectTab, onSearchFocus, width = 210
       } else if (e.key === 'F7') {
         e.preventDefault();
         onSelectTab('master-data');
+      } else if (e.key === 'F8') {
+        e.preventDefault();
+        onSelectTab('doctor-profile');
       } else if (e.key === '/' && !isInput) {
         e.preventDefault();
         if (onSearchFocus) onSearchFocus();
@@ -160,7 +169,7 @@ export const SidebarTabs = ({ activeTab, onSelectTab, onSearchFocus, width = 210
 
           <div style={styles.shortcutsBox}>
             <p style={styles.shortcutsLine}>F1 Fam &middot; F2 Mem &middot; F3 Case</p>
-            <p style={styles.shortcutsLine}>F4 Dash &middot; F7 Masters</p>
+            <p style={styles.shortcutsLine}>F4 Dash &middot; F7 Masters &middot; F8 Profile</p>
           </div>
         </div>
       )}

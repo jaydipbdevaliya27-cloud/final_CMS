@@ -16,6 +16,7 @@ import certificateRoutes from './routes/certificateRoutes.js';
 import labReportRoutes from './routes/labReportRoutes.js';
 import universalSearchRoutes from './routes/universalSearchRoutes.js';
 import { cleanupCompositeMasterData } from './controllers/masterDataController.js';
+import { ensureDoctorInitialized } from './controllers/authController.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -24,8 +25,11 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
 // Connect Database
-connectDB().then(() => {
-  cleanupCompositeMasterData();
+connectDB().then(async () => {
+  await cleanupCompositeMasterData();
+  await ensureDoctorInitialized().catch((err) =>
+    console.error('Error initializing doctor account:', err.message)
+  );
 });
 
 const app = express();

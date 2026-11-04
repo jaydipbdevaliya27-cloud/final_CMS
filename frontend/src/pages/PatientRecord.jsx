@@ -1104,7 +1104,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                   setShowSearchDropdown(false);
                 }
               }}
-              placeholder="🔍 Search Patient by Name to Start Case Entry (e.g. Ramesh, Priya, Hitesh)..."
+              placeholder="Search Patient by Name to Start Case Entry (e.g. Ramesh, Priya, Hitesh)..."
               style={{
                 ...styles.searchInput,
                 borderColor: !currentPatient ? 'var(--primary)' : 'var(--border)',

@@ -20,6 +20,37 @@ export const authAPI = {
     const response = await api.get('/auth/me');
     return response.data;
   },
+  updateProfile: async (profileData) => {
+    const response = await api.put('/auth/profile', profileData);
+    return response.data;
+  },
+  changeCredentials: async ({ currentPassword, newUsername, newPassword }) => {
+    const response = await api.put('/auth/change-credentials', {
+      currentPassword,
+      newUsername,
+      newPassword,
+    });
+    return response.data;
+  },
+  getSecurityQuestion: async (username) => {
+    const response = await api.get(`/auth/forgot-password/question/${encodeURIComponent(username)}`);
+    return response.data;
+  },
+  verifySecurityAnswer: async ({ username, securityAnswer }) => {
+    const response = await api.post('/auth/forgot-password/verify', {
+      username,
+      securityAnswer,
+    });
+    return response.data;
+  },
+  resetPassword: async ({ username, resetToken, newPassword }) => {
+    const response = await api.post('/auth/forgot-password/reset', {
+      username,
+      resetToken,
+      newPassword,
+    });
+    return response.data;
+  },
   logout: async () => {
     const response = await api.post('/auth/logout');
     return response.data;

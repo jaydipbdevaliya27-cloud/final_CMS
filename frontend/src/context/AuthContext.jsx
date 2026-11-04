@@ -47,6 +47,26 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Update Clinic & Doctor Profile Info
+  const updateProfile = async (profileData) => {
+    const res = await authAPI.updateProfile(profileData);
+    if (res.success && res.doctor) {
+      setDoctor(res.doctor);
+      return res.doctor;
+    }
+    throw new Error(res.message || 'Profile update failed');
+  };
+
+  // Change Doctor Credentials (Username & Password)
+  const changeCredentials = async (credentialsData) => {
+    const res = await authAPI.changeCredentials(credentialsData);
+    if (res.success && res.doctor) {
+      setDoctor(res.doctor);
+      return res.doctor;
+    }
+    throw new Error(res.message || 'Failed to update credentials');
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -56,6 +76,8 @@ export const AuthProvider = ({ children }) => {
         login,
         logout,
         checkAuth,
+        updateProfile,
+        changeCredentials,
       }}
     >
       {children}

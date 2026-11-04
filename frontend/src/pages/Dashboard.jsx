@@ -9,6 +9,7 @@ import { AddMember } from './AddMember';
 import { PatientRecord } from './PatientRecord';
 import { Reports } from './Reports';
 import { MedicalCertificate } from './MedicalCertificate';
+import { DoctorProfile } from './DoctorProfile';
 import {
   Stethoscope,
   LogOut,
@@ -1009,6 +1010,13 @@ export const Dashboard = () => {
           </div>
         );
 
+      case 'doctor-profile':
+        return (
+          <div style={styles.tabContentContainer}>
+            <DoctorProfile />
+          </div>
+        );
+
       default:
         return null;
     }
@@ -1024,7 +1032,7 @@ export const Dashboard = () => {
           </div>
           <div>
             <h2 style={styles.brandTitle}>{doctor?.clinicName || 'Clinic Management'}</h2>
-            <span style={styles.brandSub}>Single Doctor Medical Suite</span>
+            <span style={styles.brandSub}>{doctor?.clinicTagline || 'Single Doctor Medical Suite'}</span>
           </div>
         </div>
 
@@ -1210,7 +1218,11 @@ export const Dashboard = () => {
             </button>
           )}
 
-          <div style={styles.doctorBadge}>
+          <div
+            style={{ ...styles.doctorBadge, cursor: 'pointer' }}
+            onClick={() => setActiveTab('doctor-profile')}
+            title="View & Edit Doctor Profile and Login Credentials (F8)"
+          >
             <div style={styles.avatarCircle}>
               {doctor?.name?.charAt(0) || 'D'}
             </div>
