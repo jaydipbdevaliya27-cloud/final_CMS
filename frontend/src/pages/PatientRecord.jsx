@@ -2880,7 +2880,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                   {/* Quick Master Data Chips (Loaded from clinic_management_db) */}
                   {masterDietaryList.length > 0 && (
                     <div style={styles.quickChipsWrapper}>
-                      <span style={styles.quickChipsLabel}>Click Master Data items to add/remove:</span>
+                      {/* <span style={styles.quickChipsLabel}>Click Master Data items to add/remove:</span>
                       <div style={styles.quickChipsRow}>
                         {masterDietaryList.map((d) => {
                           const isSelected = dietaryItems.some(
@@ -2905,7 +2905,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                             </button>
                           );
                         })}
-                      </div>
+                      </div> */}
                     </div>
                   )}
 
@@ -2932,13 +2932,13 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                   )}
                 </div>
 
-                <div style={styles.printHelpNotice}>
+                {/* <div style={styles.printHelpNotice}>
                   {printMode === 'full' ? (
                     <span>ℹ️ <strong>Full Letterhead Mode</strong>: Prints complete <strong>Dr. Chirag Paghdal</strong> letterpad with watermark, patient details, converted Rx dosage, dietary advice & Harsh Medical footer.</span>
                   ) : (
                     <span>🖨️ <strong>Pre-Printed Pad Mode</strong>: Letterhead graphics are hidden during print so you can insert your <strong>physical printed paper pad</strong> directly into printer!</span>
                   )}
-                </div>
+                </div> */}
               </div>
 
               {/* PRINTABLE PRESCRIPTION PAPER (#printable-rx) */}
