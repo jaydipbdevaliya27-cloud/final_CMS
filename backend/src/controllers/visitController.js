@@ -137,12 +137,6 @@ export const recordVisit = async (req, res) => {
     for (const tr of cleanTreatments) {
       if (tr.item) await autoSaveMasterItem('medicine', tr.item);
     }
-    if (dietary && typeof dietary === 'string') {
-      const tokens = dietary.split(',').map((d) => d.trim()).filter(Boolean);
-      for (const item of tokens) {
-        await autoSaveMasterItem('dietary', item);
-      }
-    }
 
     return res.status(201).json({
       success: true,
@@ -303,12 +297,6 @@ export const updateVisit = async (req, res) => {
     }
     for (const tr of cleanTreatments) {
       if (tr.item) await autoSaveMasterItem('medicine', tr.item);
-    }
-    if (dietary && typeof dietary === 'string') {
-      const tokens = dietary.split(',').map((d) => d.trim()).filter(Boolean);
-      for (const item of tokens) {
-        await autoSaveMasterItem('dietary', item);
-      }
     }
 
     return res.status(200).json({

@@ -1522,9 +1522,11 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                       <div style={styles.recentPatientCardTop}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, overflow: 'hidden' }}>
                           <span style={styles.recentPatientName}>{p.name}</span>
-                          {isSearched && (
-                            <span style={styles.searchedPill}>Searched</span>
-                          )}
+                          {isSearched
+                            // && (
+                            //   <span style={styles.searchedPill}>Searched</span>
+                            // )
+                          }
                         </div>
                         <span style={styles.recentPatientPid}>{p.patientId}</span>
                       </div>

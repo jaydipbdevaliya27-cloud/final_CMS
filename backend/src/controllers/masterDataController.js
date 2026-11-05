@@ -10,6 +10,8 @@ const escapeRegex = (str) => {
 // so composite strings are never stored into Master Data
 export const autoSaveMasterItem = async (type, value, shortcut = '') => {
   if (!value || typeof value !== 'string') return;
+  // Dietary items are temporary print/prescription advice only and must never be auto-saved to Master Data
+  if (!type || type === 'dietary') return;
   const trimmed = value.trim();
   if (!trimmed) return;
 
