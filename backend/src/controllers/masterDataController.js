@@ -83,6 +83,33 @@ export const cleanupCompositeMasterData = async () => {
       }
       console.log('[Master Data] Seeded default clinical dietary advice items.');
     }
+
+    // Seed default navigation shortcuts if none exist
+    const navCount = await MasterData.countDocuments({ type: 'navigation' });
+    if (navCount === 0) {
+      const defaultNav = [
+        { value: 'Family Head Reg. (Register Family Head)', shortcut: 'F1' },
+        { value: 'Add Member (Add Patient to Existing Family)', shortcut: 'F2' },
+        { value: 'Patient Record (OPD Consultation & Clinical History)', shortcut: 'F3' },
+        { value: 'Dashboard (Clinical Overview & OPD Stats)', shortcut: 'F4' },
+        { value: 'Reports (Financial, Billing & Patient Logs)', shortcut: 'F5' },
+        { value: 'Medical Certificate (Generate & Print Certificates)', shortcut: 'F6' },
+        { value: 'Master Data (Medicines, Diagnoses & Configuration)', shortcut: 'F7' },
+        { value: 'Doctor Profile (Manage Credentials & Clinic Settings)', shortcut: 'F8' },
+        { value: 'Universal Search Bar (Search Patient, FAM ID, Mobile, Area)', shortcut: '/' },
+        { value: 'New Case Entry (Open New Visit in Patient Record)', shortcut: 'Alt+N' },
+        { value: 'Save Case Entry (Save Clinical Visit without Printing)', shortcut: 'Ctrl+S' },
+        { value: 'Save & Print Prescription (Save Visit & Open Clean Letterhead)', shortcut: 'Ctrl+Enter' },
+      ];
+      for (const n of defaultNav) {
+        await MasterData.create({
+          type: 'navigation',
+          value: n.value,
+          shortcut: n.shortcut,
+        });
+      }
+      console.log('[Master Data] Seeded default navigation shortcuts.');
+    }
   } catch (e) {
     console.error('Error cleaning composite master data:', e.message);
   }
@@ -102,6 +129,32 @@ export const getMasterItems = async (req, res) => {
 
     if (type) {
       query.type = type;
+      if (type === 'navigation') {
+        const navCount = await MasterData.countDocuments({ type: 'navigation' });
+        if (navCount === 0) {
+          const defaultNav = [
+            { value: 'Family Head Reg. (Register Family Head)', shortcut: 'F1' },
+            { value: 'Add Member (Add Patient to Existing Family)', shortcut: 'F2' },
+            { value: 'Patient Record (OPD Consultation & Clinical History)', shortcut: 'F3' },
+            { value: 'Dashboard (Clinical Overview & OPD Stats)', shortcut: 'F4' },
+            { value: 'Reports (Financial, Billing & Patient Logs)', shortcut: 'F5' },
+            { value: 'Medical Certificate (Generate & Print Certificates)', shortcut: 'F6' },
+            { value: 'Master Data (Medicines, Diagnoses & Configuration)', shortcut: 'F7' },
+            { value: 'Doctor Profile (Manage Credentials & Clinic Settings)', shortcut: 'F8' },
+            { value: 'Universal Search Bar (Search Patient, FAM ID, Mobile, Area)', shortcut: '/' },
+            { value: 'New Case Entry (Open New Visit in Patient Record)', shortcut: 'Alt+N' },
+            { value: 'Save Case Entry (Save Clinical Visit without Printing)', shortcut: 'Ctrl+S' },
+            { value: 'Save & Print Prescription (Save Visit & Open Clean Letterhead)', shortcut: 'Ctrl+Enter' },
+          ];
+          for (const n of defaultNav) {
+            await MasterData.create({
+              type: 'navigation',
+              value: n.value,
+              shortcut: n.shortcut,
+            });
+          }
+        }
+      }
     }
 
     if (search && search.trim()) {

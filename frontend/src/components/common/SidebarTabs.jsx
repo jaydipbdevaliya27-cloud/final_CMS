@@ -1,4 +1,5 @@
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import { masterDataAPI } from '../../services/api';
 import {
   Columns2,
   Users,
@@ -64,37 +65,107 @@ export const SIDEBAR_TABS = [
 export const SidebarTabs = ({ activeTab, onSelectTab, onSearchFocus, width = 210 }) => {
   const isCompact = width < 140;
 
-  // Global Keyboard Shortcuts handler (F1-F8 & '/')
+  const [navShortcuts, setNavShortcuts] = useState({
+    'family-head': 'F1',
+    'add-member': 'F2',
+    'patient-record': 'F3',
+    'dashboard': 'F4',
+    'reports': 'F5',
+    'medical-certificate': 'F6',
+    'master-data': 'F7',
+    'doctor-profile': 'F8',
+    'universal-search': '/',
+  });
+
+  const loadNavShortcuts = async () => {
+    try {
+      const res = await masterDataAPI.getItems('navigation', '', 1, 100);
+      if (res?.success && Array.isArray(res.data) && res.data.length > 0) {
+        const map = {
+          'family-head': 'F1',
+          'add-member': 'F2',
+          'patient-record': 'F3',
+          'dashboard': 'F4',
+          'reports': 'F5',
+          'medical-certificate': 'F6',
+          'master-data': 'F7',
+          'doctor-profile': 'F8',
+          'universal-search': '/',
+        };
+
+        res.data.forEach((item) => {
+          if (!item.shortcut || !item.value) return;
+          const val = item.value.toLowerCase();
+          const key = item.shortcut.trim().toUpperCase();
+
+          if (val.includes('family head')) map['family-head'] = key;
+          else if (val.includes('add member') || val.includes('family member')) map['add-member'] = key;
+          else if (val.includes('patient record') || val.includes('opd consultation') || val.includes('case consultation')) map['patient-record'] = key;
+          else if (val.includes('dashboard')) map['dashboard'] = key;
+          else if (val.includes('report')) map['reports'] = key;
+          else if (val.includes('medical certificate') || val.includes('certificate')) map['medical-certificate'] = key;
+          else if (val.includes('master data')) map['master-data'] = key;
+          else if (val.includes('doctor profile') || val.includes('profile')) map['doctor-profile'] = key;
+          else if (val.includes('search')) map['universal-search'] = key;
+        });
+
+        setNavShortcuts(map);
+      }
+    } catch (e) {
+      // Keep defaults
+    }
+  };
+
+  useEffect(() => {
+    loadNavShortcuts();
+    const handleUpdate = () => loadNavShortcuts();
+    window.addEventListener('cms-navigation-shortcuts-updated', handleUpdate);
+    return () => window.removeEventListener('cms-navigation-shortcuts-updated', handleUpdate);
+  }, []);
+
+  // Global Keyboard Shortcuts handler (Dynamic shortcuts from Master Data)
   useEffect(() => {
     const handleKeyDown = (e) => {
       const tag = e.target.tagName.toLowerCase();
       const isInput = tag === 'input' || tag === 'textarea' || tag === 'select';
 
-      if (e.key === 'F1') {
+      const pressedKey = (e.key || '').toUpperCase();
+      let combo = '';
+      if (e.altKey) combo += 'ALT+';
+      if (e.ctrlKey || e.metaKey) combo += 'CTRL+';
+      combo += pressedKey;
+
+      const checkMatch = (targetKey) => {
+        if (!targetKey) return false;
+        const norm = targetKey.trim().toUpperCase();
+        return norm === pressedKey || norm === combo;
+      };
+
+      if (checkMatch(navShortcuts['family-head'])) {
         e.preventDefault();
         onSelectTab('family-head');
-      } else if (e.key === 'F2') {
+      } else if (checkMatch(navShortcuts['add-member'])) {
         e.preventDefault();
         onSelectTab('add-member');
-      } else if (e.key === 'F3') {
+      } else if (checkMatch(navShortcuts['patient-record'])) {
         e.preventDefault();
         onSelectTab('patient-record');
-      } else if (e.key === 'F4') {
+      } else if (checkMatch(navShortcuts['dashboard'])) {
         e.preventDefault();
         onSelectTab('dashboard');
-      } else if (e.key === 'F5') {
+      } else if (checkMatch(navShortcuts['reports'])) {
         e.preventDefault();
         onSelectTab('reports');
-      } else if (e.key === 'F6') {
+      } else if (checkMatch(navShortcuts['medical-certificate'])) {
         e.preventDefault();
         onSelectTab('medical-certificate');
-      } else if (e.key === 'F7') {
+      } else if (checkMatch(navShortcuts['master-data'])) {
         e.preventDefault();
         onSelectTab('master-data');
-      } else if (e.key === 'F8') {
+      } else if (checkMatch(navShortcuts['doctor-profile'])) {
         e.preventDefault();
         onSelectTab('doctor-profile');
-      } else if (e.key === '/' && !isInput) {
+      } else if (!isInput && checkMatch(navShortcuts['universal-search'])) {
         e.preventDefault();
         if (onSearchFocus) onSearchFocus();
       }
@@ -102,7 +173,7 @@ export const SidebarTabs = ({ activeTab, onSelectTab, onSearchFocus, width = 210
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onSelectTab, onSearchFocus]);
+  }, [onSelectTab, onSearchFocus, navShortcuts]);
 
   return (
     <aside style={{ ...styles.sidebar, width: `${width}px` }}>
@@ -111,6 +182,7 @@ export const SidebarTabs = ({ activeTab, onSelectTab, onSearchFocus, width = 210
         {SIDEBAR_TABS.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
+          const dynamicShortcut = navShortcuts[tab.id] || tab.shortcut;
 
           return (
             <button
@@ -122,7 +194,7 @@ export const SidebarTabs = ({ activeTab, onSelectTab, onSearchFocus, width = 210
                 justifyContent: isCompact ? 'center' : 'space-between',
                 padding: isCompact ? '8px 4px' : '7px 10px',
               }}
-              title={`${tab.label} (${tab.shortcut})`}
+              title={`${tab.label} (${dynamicShortcut})`}
             >
               <div style={styles.tabLeft}>
                 <Icon
@@ -150,7 +222,7 @@ export const SidebarTabs = ({ activeTab, onSelectTab, onSearchFocus, width = 210
                     ...(isActive ? styles.activeShortcutBadge : styles.inactiveShortcutBadge),
                   }}
                 >
-                  {tab.shortcut}
+                  {dynamicShortcut}
                 </span>
               )}
             </button>
@@ -168,8 +240,12 @@ export const SidebarTabs = ({ activeTab, onSelectTab, onSearchFocus, width = 210
           </div>
 
           <div style={styles.shortcutsBox}>
-            <p style={styles.shortcutsLine}>F1 Fam &middot; F2 Mem &middot; F3 Case</p>
-            <p style={styles.shortcutsLine}>F4 Dash &middot; F7 Masters &middot; F8 Profile</p>
+            <p style={styles.shortcutsLine}>
+              {navShortcuts['family-head'] || 'F1'} Fam &middot; {navShortcuts['add-member'] || 'F2'} Mem &middot; {navShortcuts['patient-record'] || 'F3'} Case
+            </p>
+            <p style={styles.shortcutsLine}>
+              {navShortcuts['dashboard'] || 'F4'} Dash &middot; {navShortcuts['master-data'] || 'F7'} Masters &middot; {navShortcuts['doctor-profile'] || 'F8'} Profile
+            </p>
           </div>
         </div>
       )}

@@ -127,6 +127,159 @@ export const CATEGORIES = [
   },
 ];
 
+export const NAVIGATION_TARGETS = [
+  {
+    group: 'Sidebar Navigation Tabs',
+    items: [
+      {
+        value: 'Family Head Reg. (Register Family Head)',
+        shortcut: 'F1',
+        description: 'Open Family Head Registration form (F1)',
+      },
+      {
+        value: 'Add Member (Add Patient to Existing Family)',
+        shortcut: 'F2',
+        description: 'Open Add Family Member form (F2)',
+      },
+      {
+        value: 'Patient Record (OPD Consultation & Clinical History)',
+        shortcut: 'F3',
+        description: 'Open Patient Consultation & Visit Records (F3)',
+      },
+      {
+        value: 'Dashboard (Clinical Overview & OPD Stats)',
+        shortcut: 'F4',
+        description: 'Open Main Dashboard with KPI analytics (F4)',
+      },
+      {
+        value: 'Reports (Financial, Billing & Patient Logs)',
+        shortcut: 'F5',
+        description: 'Open Financial, Due & Practice Reports (F5)',
+      },
+      {
+        value: 'Medical Certificate (Generate & Print Certificates)',
+        shortcut: 'F6',
+        description: 'Open Medical & Fitness Certificate Generator (F6)',
+      },
+      {
+        value: 'Master Data (Medicines, Diagnoses & Configuration)',
+        shortcut: 'F7',
+        description: 'Open Master Data Management (F7)',
+      },
+      {
+        value: 'Doctor Profile (Manage Credentials & Clinic Settings)',
+        shortcut: 'F8',
+        description: 'Open Doctor Profile & Password Security (F8)',
+      },
+    ],
+  },
+  {
+    group: 'Search & Global Navigation',
+    items: [
+      {
+        value: 'Universal Search Bar (Search Patient, FAM ID, Mobile, Area)',
+        shortcut: '/',
+        description: 'Focus top universal search bar from anywhere',
+      },
+    ],
+  },
+  {
+    group: 'Clinical Case Entry & Prescriptions',
+    items: [
+      {
+        value: 'New Case Entry (Open New Visit in Patient Record)',
+        shortcut: 'Alt+N',
+        description: 'Open clean clinical case consultation form',
+      },
+      {
+        value: 'Save Case Entry (Save Clinical Visit without Printing)',
+        shortcut: 'Ctrl+S',
+        description: 'Save consultation & update due balance instantly',
+      },
+      {
+        value: 'Save & Print Prescription (Save Visit & Open Clean Letterhead)',
+        shortcut: 'Ctrl+Enter',
+        description: 'Save case and immediately launch print letterhead preview',
+      },
+      {
+        value: 'Print Prescription (Clean Letterhead Mode)',
+        shortcut: 'Ctrl+P',
+        description: 'Print letterhead prescription preview',
+      },
+    ],
+  },
+  {
+    group: 'Modal & Form Navigation',
+    items: [
+      {
+        value: 'Close Active Modal / Cancel Dialog',
+        shortcut: 'Esc',
+        description: 'Dismiss current popup, modal or clear form',
+      },
+      {
+        value: 'Next Field / Accept Autocomplete Suggestion',
+        shortcut: 'Enter',
+        description: 'Select highlighted suggestion or jump to next input',
+      },
+    ],
+  },
+];
+
+export const SHORTCUT_KEYS = [
+  {
+    group: 'Function Keys (F1 - F12)',
+    items: [
+      { key: 'F1', label: 'F1 — Standard Family Head Registration' },
+      { key: 'F2', label: 'F2 — Standard Add Member' },
+      { key: 'F3', label: 'F3 — Standard Patient Record & Case Entry' },
+      { key: 'F4', label: 'F4 — Standard Dashboard' },
+      { key: 'F5', label: 'F5 — Standard Reports' },
+      { key: 'F6', label: 'F6 — Standard Medical Certificate' },
+      { key: 'F7', label: 'F7 — Standard Master Data' },
+      { key: 'F8', label: 'F8 — Standard Doctor Profile' },
+      { key: 'F9', label: 'F9 — Function Key 9' },
+      { key: 'F10', label: 'F10 — Function Key 10' },
+      { key: 'F11', label: 'F11 — Function Key 11' },
+      { key: 'F12', label: 'F12 — Function Key 12' },
+    ],
+  },
+  {
+    group: 'Alt Key Combinations',
+    items: [
+      { key: 'Alt+N', label: 'Alt + N — New Case / Entry' },
+      { key: 'Alt+S', label: 'Alt + S — Save Case' },
+      { key: 'Alt+P', label: 'Alt + P — Print Prescription' },
+      { key: 'Alt+D', label: 'Alt + D — Dashboard' },
+      { key: 'Alt+F', label: 'Alt + F — Family Head' },
+      { key: 'Alt+M', label: 'Alt + M — Add Member' },
+      { key: 'Alt+R', label: 'Alt + R — Reports' },
+      { key: 'Alt+C', label: 'Alt + C — Certificate' },
+      { key: 'Alt+B', label: 'Alt + B — Focus BP Field' },
+    ],
+  },
+  {
+    group: 'Ctrl Key Combinations',
+    items: [
+      { key: 'Ctrl+S', label: 'Ctrl + S — Save Case' },
+      { key: 'Ctrl+Enter', label: 'Ctrl + Enter — Save & Print Prescription' },
+      { key: 'Ctrl+P', label: 'Ctrl + P — System Print Dialog' },
+      { key: 'Ctrl+F', label: 'Ctrl + F — Find / Search' },
+    ],
+  },
+  {
+    group: 'Special & Single Keys',
+    items: [
+      { key: '/', label: '/ (Slash) — Universal Search Focus' },
+      { key: 'Enter', label: 'Enter — Next Field / Select Suggestion' },
+      { key: 'Esc', label: 'Esc — Close Modal / Cancel Dialog' },
+      { key: 'Tab', label: 'Tab — Next Field Focus' },
+    ],
+  },
+];
+
+const ALL_FLAT_TARGETS = NAVIGATION_TARGETS.flatMap((g) => g.items);
+const ALL_FLAT_KEYS = SHORTCUT_KEYS.flatMap((g) => g.items);
+
 export const MasterDataManagement = () => {
   const [activeCategory, setActiveCategory] = useState(CATEGORIES[0]);
   const [items, setItems] = useState([]);
@@ -145,6 +298,8 @@ export const MasterDataManagement = () => {
   const [editingItem, setEditingItem] = useState(null);
   const [formShortcut, setFormShortcut] = useState('');
   const [formValue, setFormValue] = useState('');
+  const [selectedTarget, setSelectedTarget] = useState('');
+  const [selectedKey, setSelectedKey] = useState('');
   const [modalError, setModalError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
@@ -186,21 +341,74 @@ export const MasterDataManagement = () => {
     setEditingItem(null);
     setFormShortcut('');
     setFormValue('');
+    setSelectedTarget('');
+    setSelectedKey('');
     setModalError('');
     setIsModalOpen(true);
   };
 
   const handleOpenEditModal = (item) => {
     setEditingItem(item);
-    setFormShortcut(item.shortcut || '');
-    setFormValue(item.value || '');
     setModalError('');
     setIsModalOpen(true);
+
+    if (activeCategory.id === 'navigation') {
+      const foundTarget = ALL_FLAT_TARGETS.find(
+        (t) => t.value.trim().toLowerCase() === (item.value || '').trim().toLowerCase()
+      );
+      if (foundTarget) {
+        setSelectedTarget(foundTarget.value);
+        setFormValue(foundTarget.value);
+      } else {
+        setSelectedTarget('__custom__');
+        setFormValue(item.value || '');
+      }
+
+      const foundKey = ALL_FLAT_KEYS.find(
+        (k) => k.key.trim().toUpperCase() === (item.shortcut || '').trim().toUpperCase()
+      );
+      if (foundKey) {
+        setSelectedKey(foundKey.key);
+        setFormShortcut(foundKey.key);
+      } else {
+        setSelectedKey('__custom__');
+        setFormShortcut(item.shortcut || '');
+      }
+    } else {
+      setFormShortcut(item.shortcut || '');
+      setFormValue(item.value || '');
+    }
+  };
+
+  const handleTargetChange = (val) => {
+    setSelectedTarget(val);
+    if (val === '__custom__') {
+      setFormValue('');
+    } else {
+      setFormValue(val);
+      // Auto-suggest standard key if no key is chosen yet
+      const matched = ALL_FLAT_TARGETS.find((t) => t.value === val);
+      if (matched && matched.shortcut && !selectedKey) {
+        setSelectedKey(matched.shortcut);
+        setFormShortcut(matched.shortcut);
+      }
+    }
+  };
+
+  const handleKeyChange = (val) => {
+    setSelectedKey(val);
+    if (val === '__custom__') {
+      setFormShortcut('');
+    } else {
+      setFormShortcut(val);
+    }
   };
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingItem(null);
+    setSelectedTarget('');
+    setSelectedKey('');
     setModalError('');
   };
 
@@ -208,8 +416,25 @@ export const MasterDataManagement = () => {
     e.preventDefault();
     setModalError('');
 
-    if (!formValue.trim()) {
-      setModalError(`Please enter ${activeCategory.singular} name.`);
+    const finalVal = activeCategory.id === 'navigation'
+      ? (selectedTarget === '__custom__' ? formValue.trim() : (selectedTarget || formValue.trim()))
+      : formValue.trim();
+
+    const finalShort = activeCategory.id === 'navigation'
+      ? (selectedKey === '__custom__' ? formShortcut.trim().toUpperCase() : (selectedKey || formShortcut.trim().toUpperCase()))
+      : formShortcut.trim().toUpperCase();
+
+    if (!finalVal) {
+      setModalError(
+        activeCategory.id === 'navigation'
+          ? 'Please select or enter where to assign the navigation shortcut.'
+          : `Please enter ${activeCategory.singular} name.`
+      );
+      return;
+    }
+
+    if (activeCategory.id === 'navigation' && !finalShort) {
+      setModalError('Please select or enter a shortcut key.');
       return;
     }
 
@@ -217,22 +442,28 @@ export const MasterDataManagement = () => {
       setIsSaving(true);
       if (editingItem) {
         const res = await masterDataAPI.updateItem(editingItem._id, {
-          value: formValue.trim(),
-          shortcut: formShortcut.trim().toUpperCase(),
+          value: finalVal,
+          shortcut: finalShort,
         });
         if (res.success) {
-          showToast(`Updated "${formValue.trim()}" successfully.`);
+          showToast(`Updated "${finalVal}" successfully.`);
+          if (activeCategory.id === 'navigation') {
+            window.dispatchEvent(new CustomEvent('cms-navigation-shortcuts-updated'));
+          }
           handleCloseModal();
           loadData();
         }
       } else {
         const res = await masterDataAPI.addItem({
           type: activeCategory.id,
-          value: formValue.trim(),
-          shortcut: formShortcut.trim().toUpperCase(),
+          value: finalVal,
+          shortcut: finalShort,
         });
         if (res.success) {
-          showToast(`Added "${formValue.trim()}" to ${activeCategory.plural}.`);
+          showToast(`Added "${finalVal}" to ${activeCategory.plural}.`);
+          if (activeCategory.id === 'navigation') {
+            window.dispatchEvent(new CustomEvent('cms-navigation-shortcuts-updated'));
+          }
           handleCloseModal();
           loadData();
         }
@@ -258,6 +489,9 @@ export const MasterDataManagement = () => {
       const res = await masterDataAPI.deleteItem(item._id);
       if (res.success) {
         showToast(`Deleted "${item.value}" from master records.`);
+        if (activeCategory.id === 'navigation') {
+          window.dispatchEvent(new CustomEvent('cms-navigation-shortcuts-updated'));
+        }
         loadData();
       }
     } catch (err) {
@@ -511,33 +745,132 @@ export const MasterDataManagement = () => {
             )}
 
             <form onSubmit={handleSaveModal} style={styles.modalForm}>
-              <div style={styles.inputGroup}>
-                <label style={styles.label}>
-                  {activeCategory.singular} Full Name <span style={{ color: 'var(--danger)' }}>*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder={activeCategory.namePlaceholder}
-                  value={formValue}
-                  onChange={(e) => setFormValue(e.target.value)}
-                  style={styles.modalInput}
-                  autoFocus
-                />
-              </div>
+              {activeCategory.id === 'navigation' ? (
+                <>
+                  {/* 1. Target Destination / Workflow Selection */}
+                  <div style={styles.inputGroup}>
+                    <label style={styles.label}>
+                      Where to Assign Navigation Shortcut <span style={{ color: 'var(--danger)' }}>*</span>
+                    </label>
+                    <select
+                      value={selectedTarget}
+                      onChange={(e) => handleTargetChange(e.target.value)}
+                      style={styles.modalSelect}
+                      required
+                    >
+                      <option value="">-- Select Target Workflow / View --</option>
+                      {NAVIGATION_TARGETS.map((grp) => (
+                        <optgroup key={grp.group} label={grp.group}>
+                          {grp.items.map((it) => (
+                            <option key={it.value} value={it.value}>
+                              {it.value}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ))}
+                      <optgroup label="Custom Option">
+                        <option value="__custom__">+ Type Custom Action / Target...</option>
+                      </optgroup>
+                    </select>
 
-              <div style={styles.inputGroup}>
-                <label style={styles.label}>
-                  Shortcut / Code <span style={styles.optionalText}>(Optional)</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder={activeCategory.codePlaceholder}
-                  value={formShortcut}
-                  onChange={(e) => setFormShortcut(e.target.value)}
-                  style={styles.modalInput}
-                />
-              </div>
+                    {selectedTarget === '__custom__' && (
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. Export Reports to Excel"
+                        value={formValue}
+                        onChange={(e) => setFormValue(e.target.value)}
+                        style={{ ...styles.modalInput, marginTop: '8px' }}
+                        autoFocus
+                      />
+                    )}
+                  </div>
+
+                  {/* 2. Shortcut Key Selection */}
+                  <div style={styles.inputGroup}>
+                    <label style={styles.label}>
+                      Shortcut Key (Key Combination) <span style={{ color: 'var(--danger)' }}>*</span>
+                    </label>
+                    <select
+                      value={selectedKey}
+                      onChange={(e) => handleKeyChange(e.target.value)}
+                      style={styles.modalSelect}
+                      required
+                    >
+                      <option value="">-- Select Shortcut Key --</option>
+                      {SHORTCUT_KEYS.map((grp) => (
+                        <optgroup key={grp.group} label={grp.group}>
+                          {grp.items.map((k) => (
+                            <option key={k.key} value={k.key}>
+                              {k.label}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ))}
+                      <optgroup label="Custom Option">
+                        <option value="__custom__">+ Type Custom Key Combination...</option>
+                      </optgroup>
+                    </select>
+
+                    {selectedKey === '__custom__' && (
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. Ctrl+Shift+S or Alt+1"
+                        value={formShortcut}
+                        onChange={(e) => setFormShortcut(e.target.value)}
+                        style={{ ...styles.modalInput, marginTop: '8px' }}
+                      />
+                    )}
+                  </div>
+
+                  {/* 3. Live Configuration Preview Card */}
+                  {(selectedTarget || formValue) && (selectedKey || formShortcut) && (
+                    <div style={styles.shortcutLivePreview}>
+                      <span style={styles.previewHeading}>Active Mapping Preview:</span>
+                      <div style={styles.previewRow}>
+                        <span style={styles.previewKey}>
+                          {selectedKey === '__custom__' ? formShortcut : selectedKey}
+                        </span>
+                        <span style={styles.previewArrow}>➔</span>
+                        <span style={styles.previewTarget}>
+                          {selectedTarget === '__custom__' ? formValue : selectedTarget}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div style={styles.inputGroup}>
+                    <label style={styles.label}>
+                      {activeCategory.singular} Full Name <span style={{ color: 'var(--danger)' }}>*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder={activeCategory.namePlaceholder}
+                      value={formValue}
+                      onChange={(e) => setFormValue(e.target.value)}
+                      style={styles.modalInput}
+                      autoFocus
+                    />
+                  </div>
+
+                  <div style={styles.inputGroup}>
+                    <label style={styles.label}>
+                      Shortcut / Code <span style={styles.optionalText}>(Optional)</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder={activeCategory.codePlaceholder}
+                      value={formShortcut}
+                      onChange={(e) => setFormShortcut(e.target.value)}
+                      style={styles.modalInput}
+                    />
+                  </div>
+                </>
+              )}
 
               <div style={styles.modalActions}>
                 <button
@@ -950,6 +1283,65 @@ const styles = {
     border: '1px solid var(--border)',
     borderRadius: '8px',
     color: 'var(--text)',
+  },
+  modalSelect: {
+    width: '100%',
+    padding: '11px 14px',
+    fontSize: '0.92rem',
+    backgroundColor: 'var(--surface-alt)',
+    border: '1px solid var(--border)',
+    borderRadius: '8px',
+    color: 'var(--text)',
+    outline: 'none',
+    cursor: 'pointer',
+    fontWeight: 600,
+  },
+  shortcutLivePreview: {
+    padding: '12px 14px',
+    backgroundColor: '#EEF8F5',
+    border: '1px solid #BBF7D0',
+    borderRadius: '8px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px',
+    marginTop: '2px',
+  },
+  previewHeading: {
+    fontSize: '0.72rem',
+    fontWeight: 700,
+    color: '#065F46',
+    textTransform: 'uppercase',
+    letterSpacing: '0.04em',
+  },
+  previewRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+  },
+  previewKey: {
+    display: 'inline-block',
+    padding: '4px 10px',
+    backgroundColor: '#0E4F44',
+    color: '#FFFFFF',
+    borderRadius: '6px',
+    fontWeight: 800,
+    fontSize: '0.85rem',
+    letterSpacing: '0.03em',
+    boxShadow: '0 1px 2px rgba(0,0,0,0.15)',
+  },
+  previewArrow: {
+    fontSize: '14px',
+    fontWeight: 800,
+    color: '#0E4F44',
+  },
+  previewTarget: {
+    fontSize: '0.86rem',
+    fontWeight: 700,
+    color: '#0F172A',
+    flex: 1,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
   modalActions: {
     display: 'flex',
