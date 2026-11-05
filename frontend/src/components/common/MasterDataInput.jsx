@@ -4,6 +4,9 @@ import { useDebounce } from '../../hooks/useDebounce';
 
 // Global in-memory cache for fast, zero-latency shortcut matching across all MasterDataInput instances
 export const masterDataCache = {};
+if (typeof window !== 'undefined') {
+  window.masterDataCache = masterDataCache;
+}
 const cacheFetchPromises = {};
 
 export const preloadMasterData = async (type) => {
@@ -15,7 +18,7 @@ export const preloadMasterData = async (type) => {
   }
 
   cacheFetchPromises[type] = masterDataAPI
-    .getItems(type, '', 1, 300)
+    .getItems(type, '', 1, 500)
     .then((res) => {
       if (res.success && Array.isArray(res.data)) {
         masterDataCache[type] = res.data;
@@ -32,6 +35,19 @@ export const preloadMasterData = async (type) => {
     });
 
   return cacheFetchPromises[type];
+};
+
+export const invalidateMasterCache = (type) => {
+  if (type) {
+    delete masterDataCache[type];
+    delete cacheFetchPromises[type];
+    preloadMasterData(type).catch(() => {});
+  } else {
+    Object.keys(masterDataCache).forEach((k) => {
+      delete masterDataCache[k];
+      delete cacheFetchPromises[k];
+    });
+  }
 };
 
 export const resolveMasterShortcut = (type, rawText) => {
@@ -149,12 +165,37 @@ export const MasterDataInput = ({
   const currentToken = getActiveToken(value);
   const debouncedToken = useDebounce(currentToken, 200);
 
-  // Fetch suggestions asynchronously as fallback or for un-cached items
+  // 1. Instant 0ms synchronous filtering from RAM cache (eliminates typing latency)
+  useEffect(() => {
+    if (!currentToken || !currentToken.trim()) {
+      setSuggestions([]);
+      return;
+    }
+    const cached = masterDataCache[type] || [];
+    if (cached.length > 0) {
+      const immediateMatches = filterMasterItems(currentToken, cached);
+      setSuggestions(immediateMatches);
+      setHighlightedIndex(0);
+    }
+  }, [currentToken, type]);
+
+  // 2. Fetch suggestions asynchronously as fallback or when memory cache is empty
   useEffect(() => {
     let active = true;
+    const cached = masterDataCache[type] || [];
+
+    // If cache already has matches for this token, skip redundant network call
+    if (cached.length > 0 && debouncedToken && debouncedToken.trim().length > 0) {
+      const localMatches = filterMasterItems(debouncedToken, cached);
+      if (localMatches.length > 0) {
+        setSuggestions(localMatches);
+        return;
+      }
+    }
+
     const fetchItems = async () => {
       try {
-        const res = await masterDataAPI.getItems(type, debouncedToken || '');
+        const res = await masterDataAPI.getItems(type, debouncedToken || '', 1, 50);
         if (active && res.success) {
           const items = res.data || [];
           // Update global cache with freshly received items
@@ -165,8 +206,8 @@ export const MasterDataInput = ({
             }
           }
 
-          const cached = masterDataCache[type] || [];
-          const sorted = filterMasterItems(debouncedToken, cached.length > 0 ? cached : items);
+          const currentCached = masterDataCache[type] || [];
+          const sorted = filterMasterItems(debouncedToken, currentCached.length > 0 ? currentCached : items);
           setSuggestions(sorted.length > 0 ? sorted : items);
           setHighlightedIndex(0);
         }

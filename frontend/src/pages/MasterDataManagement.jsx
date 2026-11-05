@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { masterDataAPI } from '../services/api';
 import { useDebounce } from '../hooks/useDebounce';
+import { invalidateMasterCache } from '../components/common/MasterDataInput';
 import {
   Search,
   Plus,
@@ -447,6 +448,7 @@ export const MasterDataManagement = () => {
         });
         if (res.success) {
           showToast(`Updated "${finalVal}" successfully.`);
+          invalidateMasterCache(activeCategory.id);
           if (activeCategory.id === 'navigation') {
             window.dispatchEvent(new CustomEvent('cms-navigation-shortcuts-updated'));
           }
@@ -461,6 +463,7 @@ export const MasterDataManagement = () => {
         });
         if (res.success) {
           showToast(`Added "${finalVal}" to ${activeCategory.plural}.`);
+          invalidateMasterCache(activeCategory.id);
           if (activeCategory.id === 'navigation') {
             window.dispatchEvent(new CustomEvent('cms-navigation-shortcuts-updated'));
           }
@@ -489,6 +492,7 @@ export const MasterDataManagement = () => {
       const res = await masterDataAPI.deleteItem(item._id);
       if (res.success) {
         showToast(`Deleted "${item.value}" from master records.`);
+        invalidateMasterCache(activeCategory.id);
         if (activeCategory.id === 'navigation') {
           window.dispatchEvent(new CustomEvent('cms-navigation-shortcuts-updated'));
         }

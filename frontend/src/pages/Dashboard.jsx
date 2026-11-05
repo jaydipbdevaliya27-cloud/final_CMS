@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useDebounce } from '../hooks/useDebounce';
 import { familyAPI, universalSearchAPI, reportAPI } from '../services/api';
+import { preloadMasterData } from '../components/common/MasterDataInput';
+import { preloadPatients, searchPatientsInMemory } from '../utils/patientCache';
 import { SidebarTabs } from '../components/common/SidebarTabs';
 import { FamilyHeadRegistration } from './FamilyHeadRegistration';
 import { MasterDataManagement } from './MasterDataManagement';
@@ -101,6 +103,15 @@ export const Dashboard = () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
+  }, []);
+
+  // Background pre-fetch all clinical master data & patients into RAM for instant 0ms search
+  useEffect(() => {
+    preloadPatients().catch(() => {});
+    const categories = ['medicine', 'complaint', 'investigation', 'dietary', 'allergy', 'navigation', 'society', 'area'];
+    categories.forEach((cat) => {
+      preloadMasterData(cat).catch(() => {});
+    });
   }, []);
 
   const handleInstallPWA = async () => {
@@ -217,7 +228,24 @@ export const Dashboard = () => {
     };
   }, [isDraggingSidebar]);
 
-  // Perform debounced universal search (Name, Family ID, Patient ID, Area, Phone)
+  // Instant 0ms universal search input change handler
+  const handleUniversalSearchChange = (val) => {
+    setSearchQuery(val);
+    if (!val || !val.trim()) {
+      setSearchResults([]);
+      setShowSearchDropdown(false);
+      return;
+    }
+    // Instant synchronous 0ms memory search from RAM
+    const instantMatches = searchPatientsInMemory(val);
+    if (instantMatches.length > 0) {
+      setSearchResults(instantMatches.slice(0, 30));
+      setSearchHighlightIndex(0);
+      setShowSearchDropdown(true);
+    }
+  };
+
+  // Perform debounced universal search (Fallback for un-cached terms)
   useEffect(() => {
     let active = true;
     const executeSearch = async () => {
@@ -226,6 +254,16 @@ export const Dashboard = () => {
         setIsSearching(false);
         return;
       }
+
+      // Check RAM cache first
+      const instantMatches = searchPatientsInMemory(debouncedSearchQuery);
+      if (instantMatches.length > 0) {
+        setSearchResults(instantMatches.slice(0, 30));
+        setSearchHighlightIndex(0);
+        setShowSearchDropdown(true);
+        return;
+      }
+
       try {
         setIsSearching(true);
         const res = await universalSearchAPI.search(debouncedSearchQuery);
@@ -1047,7 +1085,7 @@ export const Dashboard = () => {
             onFocus={() => {
               if (searchResults.length > 0) setShowSearchDropdown(true);
             }}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => handleUniversalSearchChange(e.target.value)}
             onKeyDown={(e) => {
               const list = Array.isArray(searchResults) ? searchResults : [];
               if (e.key === 'ArrowDown') {

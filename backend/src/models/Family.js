@@ -51,6 +51,11 @@ const familySchema = new mongoose.Schema(
   }
 );
 
+// Performance & search indexes
+familySchema.index({ phone: 1 });
+familySchema.index({ headName: 1 });
+familySchema.index({ createdAt: -1 });
+
 const Family = mongoose.model('Family', familySchema);
 
 export default Family;

@@ -73,6 +73,11 @@ const patientSchema = new mongoose.Schema(
   }
 );
 
+// Search & performance indexes
+patientSchema.index({ name: 1 });
+patientSchema.index({ phone: 1 });
+patientSchema.index({ createdAt: -1 });
+
 const Patient = mongoose.model('Patient', patientSchema);
 
 export default Patient;

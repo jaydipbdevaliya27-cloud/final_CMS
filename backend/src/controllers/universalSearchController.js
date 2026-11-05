@@ -67,7 +67,9 @@ export const universalSearch = async (req, res) => {
           { familyId: safeRegex },
           ...(candidateFamIdArr.length > 0 ? [{ familyId: { $in: candidateFamIdArr } }] : []),
         ],
-      }).lean();
+      })
+        .limit(10)
+        .lean();
 
       const matchedFamilyIds = families.map((f) => f.familyId);
 
@@ -75,6 +77,7 @@ export const universalSearch = async (req, res) => {
       const members = await Patient.find({ familyId: { $in: matchedFamilyIds } })
         .select('patientId familyId name fullName relation isHead age gender bloodGroup allergies society area phone totalDue createdAt')
         .sort({ isHead: -1, createdAt: 1 })
+        .limit(30)
         .lean();
 
       return res.status(200).json({
@@ -105,6 +108,7 @@ export const universalSearch = async (req, res) => {
       const patients = await Patient.find({ $or: patientOrConditions })
         .select('patientId familyId name fullName relation isHead age gender bloodGroup allergies society area phone totalDue createdAt')
         .sort({ createdAt: -1 })
+        .limit(30)
         .lean();
 
       return res.status(200).json({

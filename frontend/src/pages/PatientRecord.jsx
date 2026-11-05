@@ -6,6 +6,11 @@ import {
   preloadMasterData,
   resolveMasterShortcut,
 } from '../components/common/MasterDataInput';
+import {
+  preloadPatients,
+  searchPatientsInMemory,
+  updateCachedPatient,
+} from '../utils/patientCache';
 import { useDebounce } from '../hooks/useDebounce';
 import { InvestigationReportModal } from '../components/reports/InvestigationReportModal';
 import {
@@ -563,7 +568,27 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
     }
   }, [currentPatient]);
 
-  // --- 2. Live Debounced Search for Patients ---
+  // --- 2. Live Instant In-Memory + Debounced Search for Patients ---
+  useEffect(() => {
+    preloadPatients().catch(() => {});
+  }, []);
+
+  const handlePatientSearchChange = (val) => {
+    setPatientSearch(val);
+    if (!val || !val.trim()) {
+      setSearchResults([]);
+      setShowSearchDropdown(false);
+      return;
+    }
+    // Instant 0ms synchronous in-memory search from RAM
+    const instantMatches = searchPatientsInMemory(val);
+    if (instantMatches.length > 0) {
+      setSearchResults(instantMatches.slice(0, 30));
+      setPatientHighlightIndex(0);
+      setShowSearchDropdown(true);
+    }
+  };
+
   useEffect(() => {
     let active = true;
     const searchPatients = async () => {
@@ -572,6 +597,16 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
         setIsSearching(false);
         return;
       }
+
+      // Check RAM cache first
+      const instantMatches = searchPatientsInMemory(debouncedSearch);
+      if (instantMatches.length > 0) {
+        setSearchResults(instantMatches.slice(0, 30));
+        setPatientHighlightIndex(0);
+        setShowSearchDropdown(true);
+        return;
+      }
+
       try {
         setIsSearching(true);
         const res = await patientAPI.getAll(debouncedSearch);
@@ -579,6 +614,9 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
           setSearchResults(res.data || []);
           setPatientHighlightIndex(0); // Automatically select first match
           setShowSearchDropdown(true);
+          if (Array.isArray(res.data)) {
+            res.data.forEach((p) => updateCachedPatient(p));
+          }
         }
       } catch (err) {
         console.error('Search error:', err);
@@ -1166,7 +1204,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
               ref={patientSearchInputRef}
               type="text"
               value={patientSearch}
-              onChange={(e) => setPatientSearch(e.target.value)}
+              onChange={(e) => handlePatientSearchChange(e.target.value)}
               onFocus={() => {
                 if (searchResults.length > 0) setShowSearchDropdown(true);
               }}

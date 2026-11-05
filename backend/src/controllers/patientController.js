@@ -163,7 +163,9 @@ export const getPatients = async (req, res) => {
           ],
         },
         'familyId'
-      );
+      )
+        .limit(10)
+        .lean();
       const matchingFamilyIds = matchingFamilies.map((f) => f.familyId);
       const allFamIdsToMatch = Array.from(new Set([...candidateFamIdArr, ...matchingFamilyIds]));
 
@@ -179,7 +181,7 @@ export const getPatients = async (req, res) => {
       ];
     }
 
-    const patients = await Patient.find(query).sort({ createdAt: -1 }).lean();
+    const patients = await Patient.find(query).sort({ createdAt: -1 }).limit(30).lean();
 
     // Enrich with family info (headName, familyDue, area, etc.)
     const familyIds = [...new Set(patients.map((p) => p.familyId))];

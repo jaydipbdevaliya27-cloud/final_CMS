@@ -2,6 +2,14 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
 import App from './App.jsx';
+import { masterDataCache } from './components/common/MasterDataInput';
+import { patientCache } from './utils/patientCache';
+
+// Ensure in-memory caches are globally accessible on window from initial load
+if (typeof window !== 'undefined') {
+  window.masterDataCache = masterDataCache;
+  window.patientCache = patientCache;
+}
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
