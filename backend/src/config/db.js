@@ -8,12 +8,13 @@ try {
   // Ignore in environments where setServers is restricted
 }
 
-const DEFAULT_MONGO_URI =
-  'mongodb+srv://jaydipbdevaliya27_db_user:jaydipbdevaliya27_db_user@cluster0.hlg21zw.mongodb.net/clinic_management_db?retryWrites=true&w=majority';
-
 // Ensure proper database name (clinic_management_db) is always targeted
 const sanitizeMongoUri = (raw) => {
-  if (!raw || !raw.trim()) return DEFAULT_MONGO_URI;
+  if (!raw || !raw.trim()) {
+    throw new Error(
+      'MONGODB_URI is not defined in environment variables. Please configure MONGODB_URI in your .env file or environment.'
+    );
+  }
   let uri = raw.trim();
 
   // If URI ends with mongodb.net/ or has no db name before query string
