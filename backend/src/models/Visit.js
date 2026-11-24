@@ -16,7 +16,8 @@ const prescriptionItemSchema = new mongoose.Schema(
     noon: { type: String, trim: true, default: '0' },
     evening: { type: String, trim: true, default: '1' },
     night: { type: String, trim: true, default: '0' },
-    timing: { type: String, enum: ['AF', 'BF'], default: 'AF' },
+    timing: { type: String, default: 'AF' },
+    sosInstruction: { type: String, trim: true, default: '' },
   },
   { _id: false }
 );

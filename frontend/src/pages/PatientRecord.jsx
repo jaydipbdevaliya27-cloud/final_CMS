@@ -47,12 +47,20 @@ import {
 } from 'lucide-react';
 
 // Format human-readable dosage instructions in selected language
-const formatDoseInstruction = (m, n, e, ng, timing, langKey) => {
+const formatDoseInstruction = (m, n, e, ng, timing, langKey, sosInstruction = '') => {
   const mVal = String(m ?? '').trim();
   const nVal = String(n ?? '').trim();
   const eVal = String(e ?? '').trim();
   const ngVal = String(ng ?? '').trim();
   const isBf = timing === 'BF';
+  const isSos = timing === 'SOS';
+
+  if (isSos) {
+    const customText = sosInstruction ? ` (${sosInstruction})` : '';
+    if (langKey === 'hi') return `ज़रूरत पड़ने पर (SOS)${customText}`;
+    if (langKey === 'gu') return `જરૂર પડ્યે (SOS)${customText}`;
+    return `As Needed (SOS)${customText}`;
+  }
 
   const parts = [];
 
@@ -101,11 +109,12 @@ const RX_TRANSLATIONS = {
     colDosageInstructions: 'DOSAGE & WHEN TO TAKE',
     bfLabel: 'Before Food',
     afLabel: 'After Food',
+    sosLabel: 'SOS (As Needed)',
     dietaryTitle: 'DIETARY SUGGESTIONS',
     noPrescription: 'No medical store prescription prescribed for this visit.',
     footerAdvice: '* Please take medicines on time as prescribed.',
     opdTimings: 'OPD Hours: Mon - Sat (9:00 AM - 1:00 PM, 5:00 PM - 9:00 PM)',
-    timingHelp: (m, n, e, ng, timing) => formatDoseInstruction(m, n, e, ng, timing, 'en'),
+    timingHelp: (m, n, e, ng, timing, sosInstruction) => formatDoseInstruction(m, n, e, ng, timing, 'en', sosInstruction),
   },
   hi: {
     langKey: 'hi',
@@ -121,11 +130,12 @@ const RX_TRANSLATIONS = {
     colDosageInstructions: 'खुराक और लेने का समय (When to Take)',
     bfLabel: 'खाने से पहले (भूखे पेट)',
     afLabel: 'खाने के बाद ',
+    sosLabel: 'ज़रूरत पड़ने पर (SOS)',
     dietaryTitle: 'आहार एवं परहेज़ संबंधी सलाह:',
     noPrescription: 'इस विज़िट के लिए कोई दवा नहीं लिखी गई है।',
     footerAdvice: '* कृपया दवाइयाँ समय पर और निर्देशानुसार लें।',
     opdTimings: 'ओपीडी समय: सोम - शनि (सुबह 9:00 - 1:00, शाम 5:00 - 9:00)',
-    timingHelp: (m, n, e, ng, timing) => formatDoseInstruction(m, n, e, ng, timing, 'hi'),
+    timingHelp: (m, n, e, ng, timing, sosInstruction) => formatDoseInstruction(m, n, e, ng, timing, 'hi', sosInstruction),
   },
   gu: {
     langKey: 'gu',
@@ -141,11 +151,12 @@ const RX_TRANSLATIONS = {
     colDosageInstructions: 'માત્રા અને ક્યારે લેવી (When to Take)',
     bfLabel: 'જમ્યા પહેલાં (ભૂખ્યા પેટે)',
     afLabel: 'જમ્યા પછી',
+    sosLabel: 'જરૂર પડ્યે (SOS)',
     dietaryTitle: 'ખોરાક અને પરેજી અંગેની સૂચનાઓ:',
     noPrescription: 'આ મુલાકાત માટે કોઈ દવા લખેલ નથી.',
     footerAdvice: '* કૃપા કરીને દવાઓ સમયસર અને સૂચના મુજબ લો.',
     opdTimings: 'ઓપીડી સમય: સોમ - શનિ (સવારે 9:00 - 1:00, સાંજે 5:00 - 9:00)',
-    timingHelp: (m, n, e, ng, timing) => formatDoseInstruction(m, n, e, ng, timing, 'gu'),
+    timingHelp: (m, n, e, ng, timing, sosInstruction) => formatDoseInstruction(m, n, e, ng, timing, 'gu', sosInstruction),
   },
 };
 
@@ -160,7 +171,7 @@ const formatRxDate = (dateVal) => {
   }
 };
 
-export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
+export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember, isActiveTab = true }) => {
   const { doctor } = useAuth();
   // --- Search & Patient State ---
   const [patientSearch, setPatientSearch] = useState('');
@@ -264,6 +275,66 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
   const [familyVisits, setFamilyVisits] = useState([]);
   const [familyDueTab, setFamilyDueTab] = useState('members'); // 'members' or 'visits'
   const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [showInlineHistory, setShowInlineHistory] = useState(false);
+
+  // Editable Demographics & Auto-calculated Age
+  const [patientDob, setPatientDob] = useState('');
+  const [patientAge, setPatientAge] = useState('');
+  const [patientPhone, setPatientPhone] = useState('');
+  const [patientHouseNo, setPatientHouseNo] = useState('');
+  const [patientSociety, setPatientSociety] = useState('');
+  const [patientArea, setPatientArea] = useState('');
+
+  // Automatically vanish case history when switching to another tab
+  useEffect(() => {
+    if (!isActiveTab) {
+      setShowInlineHistory(false);
+    }
+  }, [isActiveTab]);
+
+  // Age calculation helper in Years, Months, and Days
+  const calculateDetailedAge = (dobString) => {
+    if (!dobString) return '';
+    const birthDate = new Date(dobString);
+    if (isNaN(birthDate.getTime())) return '';
+    const today = new Date();
+    let years = today.getFullYear() - birthDate.getFullYear();
+    let months = today.getMonth() - birthDate.getMonth();
+    let days = today.getDate() - birthDate.getDate();
+
+    if (days < 0) {
+      months -= 1;
+      const prevMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+      days += prevMonth.getDate();
+    }
+    if (months < 0) {
+      years -= 1;
+      months += 12;
+    }
+    if (years < 0) return '0 Y';
+
+    const parts = [];
+    if (years > 0) parts.push(`${years} Y`);
+    if (months > 0 || years === 0) parts.push(`${months} M`);
+    if (days > 0 || (years === 0 && months === 0)) parts.push(`${days} D`);
+    return parts.join(' ');
+  };
+
+  const handleDobChange = (dobVal) => {
+    setPatientDob(dobVal);
+    if (dobVal) {
+      const birthDate = new Date(dobVal);
+      if (!isNaN(birthDate.getTime())) {
+        const today = new Date();
+        let y = today.getFullYear() - birthDate.getFullYear();
+        const m = today.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+          y--;
+        }
+        setPatientAge(String(Math.max(0, y)));
+      }
+    }
+  };
 
   // Quick inputs state for new layout cards
   const [tempAllergy, setTempAllergy] = useState('');
@@ -286,6 +357,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
     evening: '1',
     night: '0',
     timing: 'AF',
+    sosInstruction: '',
   });
   const [dietaryCodeInput, setDietaryCodeInput] = useState('');
   const [dietaryTextInput, setDietaryTextInput] = useState('');
@@ -358,6 +430,59 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
   useEffect(() => {
     showNewCaseFormRef.current = showNewCaseForm;
   }, [showNewCaseForm]);
+
+  // --- Draft Persistence: Keep typed data safe across tab switches and refreshes ---
+  const DRAFT_KEY = 'cms_patient_record_draft';
+  const isInitialDraftLoaded = useRef(false);
+
+  useEffect(() => {
+    if (isInitialDraftLoaded.current) return;
+    isInitialDraftLoaded.current = true;
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (raw) {
+        const d = JSON.parse(raw);
+        if (d.currentPatient) {
+          setCurrentPatient(d.currentPatient);
+          currentPatientRef.current = d.currentPatient;
+        }
+        if (d.visitForm) {
+          setVisitForm(d.visitForm);
+          visitFormRef.current = d.visitForm;
+        }
+        if (d.patientDob !== undefined) setPatientDob(d.patientDob);
+        if (d.patientAge !== undefined) setPatientAge(d.patientAge);
+        if (d.patientPhone !== undefined) setPatientPhone(d.patientPhone);
+        if (d.patientHouseNo !== undefined) setPatientHouseNo(d.patientHouseNo);
+        if (d.patientSociety !== undefined) setPatientSociety(d.patientSociety);
+        if (d.patientArea !== undefined) setPatientArea(d.patientArea);
+      }
+    } catch (e) {
+      console.warn('Could not restore draft:', e);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isInitialDraftLoaded.current) return;
+    if (!currentPatient && !visitForm.bp && !visitForm.complaint && (visitForm.treatments || []).length === 0 && (visitForm.prescriptions || []).length === 0) {
+      return;
+    }
+    try {
+      localStorage.setItem(
+        DRAFT_KEY,
+        JSON.stringify({
+          currentPatient,
+          visitForm,
+          patientDob,
+          patientAge,
+          patientPhone,
+          patientHouseNo,
+          patientSociety,
+          patientArea,
+        })
+      );
+    } catch (e) {}
+  }, [currentPatient, visitForm, patientDob, patientAge, patientPhone, patientHouseNo, patientSociety, patientArea]);
 
   const handleSaveVisitRef = useRef();
   const isSavingVisitRef = useRef(false);
@@ -691,6 +816,13 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
     if (!patient) return;
     addToRecentSearched(patient);
     setCurrentPatient(patient);
+    setPatientDob(patient.dob || '');
+    setPatientAge(patient.age !== undefined && patient.age !== null ? String(patient.age) : '');
+    setPatientPhone(patient.phone || '');
+    setPatientHouseNo(patient.houseNo || patient.family?.houseNo || '');
+    setPatientSociety(patient.society || patient.family?.society || '');
+    setPatientArea(patient.area || patient.family?.area || '');
+    setShowInlineHistory(true); // Automatically show case history just below
     setShowSearchDropdown(false);
     setPatientSearch('');
     if (autoStartCase) {
@@ -882,6 +1014,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
       evening: String(rxForm.evening || '1').trim(),
       night: String(rxForm.night || '0').trim(),
       timing: rxForm.timing || 'AF',
+      sosInstruction: (rxForm.sosInstruction || '').trim(),
     };
     setVisitForm((prev) => {
       const current = prev || visitFormRef.current || visitForm;
@@ -890,7 +1023,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
       visitFormRef.current = updated;
       return updated;
     });
-    setRxForm({ medicine: '', qty: '10', morning: '1', noon: '0', evening: '1', night: '0', timing: 'AF' });
+    setRxForm({ medicine: '', qty: '10', morning: '1', noon: '0', evening: '1', night: '0', timing: 'AF', sosInstruction: '' });
   };
 
   const handleApplyDietary = () => {
@@ -1210,6 +1343,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
           evening: String(p?.evening || '').trim() || '1',
           night: String(p?.night || '').trim() || '0',
           timing: p?.timing || 'AF',
+          sosInstruction: (p?.sosInstruction || '').trim(),
         };
       })
       .filter((p) => p && p.medicine && String(p.medicine).trim());
@@ -1251,6 +1385,11 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
         familyId: patient.familyId,
         patientName: patient.name,
         visitDate: form.visitDate || getTodayDateStr(),
+        dob: patientDob,
+        age: patientAge,
+        phone: patientPhone,
+        society: patientSociety,
+        area: patientArea,
         bp: form.bp || '',
         sugar: form.sugar || '',
         other: form.other || '',
@@ -1275,6 +1414,10 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
       }
 
       if (res.success) {
+        try {
+          localStorage.removeItem(DRAFT_KEY);
+        } catch (e) {}
+
         showToast(
           editingId
             ? 'Visit record updated successfully!'
@@ -1508,11 +1651,11 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                     {currentPatient && (
                       <button
                         type="button"
-                        onClick={() => setShowHistoryModal(true)}
+                        onClick={() => setShowInlineHistory((prev) => !prev)}
                         style={styles.photoHistoryLinkBtn}
-                        title="Click to view full past visits & prescriptions history"
+                        title="Click to toggle full past visits & case history"
                       >
-                        *(History {patientVisits.length > 0 ? `(${patientVisits.length})` : ''})*
+                        *(History {patientVisits.length > 0 ? `(${patientVisits.length})` : ''} {showInlineHistory ? '▲' : '▼'})*
                       </button>
                     )}
                   </div>
@@ -1624,48 +1767,60 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
               <div style={styles.photoRow3Col}>
                 <div style={styles.photoFieldGroup}>
                   <label style={styles.photoLabel}>Age: <span style={{ color: '#DC2626' }}>*</span></label>
-                  <input
-                    type="text"
-                    readOnly
-                    value={currentPatient?.age || ''}
-                    placeholder="e.g. 23"
-                    style={{ ...styles.photoInput, backgroundColor: '#F8FAFC' }}
-                  />
+                  <div style={{ display: 'flex', gap: '3px' }}>
+                    <input
+                      type="text"
+                      value={patientAge}
+                      onChange={(e) => setPatientAge(e.target.value)}
+                      placeholder="e.g. 23"
+                      style={{ ...styles.photoInput, width: '42px', flexShrink: 0 }}
+                    />
+                    <input
+                      type="text"
+                      readOnly
+                      value={calculateDetailedAge(patientDob)}
+                      placeholder="Years Months Days"
+                      title="Auto-calculated exact age in Years, Months, and Days from DOB"
+                      style={{ ...styles.photoInput, flex: 1, backgroundColor: '#F8FAFC', color: '#1E40AF', fontWeight: 600, fontSize: '10px' }}
+                    />
+                  </div>
                 </div>
 
                 <div style={styles.photoFieldGroup}>
                   <label style={styles.photoLabel}>DOB (Select):</label>
                   <input
-                    type="text"
-                    readOnly
-                    value={currentPatient?.dob || '-'}
-                    placeholder="dd-mm-yyyy"
-                    style={{ ...styles.photoInput, backgroundColor: '#F8FAFC' }}
+                    type="date"
+                    value={patientDob}
+                    onChange={(e) => handleDobChange(e.target.value)}
+                    style={styles.photoInput}
                   />
                 </div>
 
                 <div style={styles.photoFieldGroup}>
                   <label style={styles.photoLabel}>Mobile No:</label>
                   <input
-                    type="text"
-                    readOnly
-                    value={currentPatient?.phone || '-'}
-                    placeholder="Mobile"
-                    style={{ ...styles.photoInput, backgroundColor: '#F8FAFC' }}
+                    type="tel"
+                    inputMode="tel"
+                    pattern="[0-9]*"
+                    maxLength={15}
+                    value={patientPhone}
+                    onChange={(e) => setPatientPhone(e.target.value)}
+                    placeholder="Mobile No"
+                    style={styles.photoInput}
                   />
                 </div>
               </div>
 
               {/* Row 4: House No, Society / Area */}
               <div style={styles.photoRow2Col}>
-                <div style={{ ...styles.photoFieldGroup, width: '135px', flexShrink: 0 }}>
+                <div style={{ ...styles.photoFieldGroup, width: '110px', flexShrink: 0 }}>
                   <label style={styles.photoLabel}>House No:</label>
                   <input
                     type="text"
-                    readOnly
-                    value={currentPatient?.houseNo || currentPatient?.family?.houseNo || ''}
+                    value={patientHouseNo}
+                    onChange={(e) => setPatientHouseNo(e.target.value)}
                     placeholder="House #"
-                    style={{ ...styles.photoInput, backgroundColor: '#F8FAFC' }}
+                    style={styles.photoInput}
                   />
                 </div>
 
@@ -1673,10 +1828,10 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                   <label style={styles.photoLabel}>Society / Area: <span style={{ color: '#DC2626' }}>*</span></label>
                   <input
                     type="text"
-                    readOnly
-                    value={currentPatient?.society || currentPatient?.area || currentPatient?.family?.society || currentPatient?.family?.area || ''}
-                    placeholder="Society / Area"
-                    style={{ ...styles.photoInput, backgroundColor: '#F8FAFC' }}
+                    value={patientSociety}
+                    onChange={(e) => setPatientSociety(e.target.value)}
+                    placeholder="Society / Area (Auto-saves to Master Data)"
+                    style={styles.photoInput}
                   />
                 </div>
               </div>
@@ -1719,6 +1874,176 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
               </div>
             </div>
           </div>
+
+          {/* CASE HISTORY TABLE (MATCHING PHOTO: SCROLLABLE, DISAPPEARS ON TAB SWITCH, TOGGLES ON CLICK) */}
+          {showInlineHistory && currentPatient && (
+            <div style={styles.photoHistoryContainer}>
+              <div style={styles.photoHistoryHeader}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Clock size={13} color="#1E40AF" />
+                  <span style={styles.photoHistoryTitle}>
+                    Case History: {currentPatient.name} ({patientVisits.length} Records)
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowInlineHistory(false)}
+                    style={styles.photoHistoryCloseBtn}
+                    title="Hide Case History (Click *(History)* to show again)"
+                  >
+                    <span>Hide History ▲</span>
+                  </button>
+                </div>
+              </div>
+
+              <div style={styles.photoHistoryScrollArea}>
+                {loadingVisits ? (
+                  <div style={styles.photoHistoryLoading}>Loading patient visits...</div>
+                ) : patientVisits.length === 0 ? (
+                  <div style={styles.photoHistoryEmpty}>No prior visits recorded for this patient.</div>
+                ) : (
+                  <table style={styles.photoHistoryTable}>
+                    <thead>
+                      <tr>
+                        <th style={{ ...styles.photoHistoryTh, width: '105px' }}>Date & Time</th>
+                        <th style={{ ...styles.photoHistoryTh, width: '130px' }}>Patient Name</th>
+                        <th style={styles.photoHistoryTh}>Complaints</th>
+                        <th style={{ ...styles.photoHistoryTh, width: '85px' }}>IPD Detail</th>
+                        <th style={styles.photoHistoryTh}>Clinic Med</th>
+                        <th style={styles.photoHistoryTh}>Prescription</th>
+                        <th style={{ ...styles.photoHistoryTh, width: '100px' }}>Lab Alerts</th>
+                        <th style={{ ...styles.photoHistoryTh, width: '65px', textAlign: 'right' }}>Charged (₹)</th>
+                        <th style={{ ...styles.photoHistoryTh, width: '55px', textAlign: 'right' }}>Due (₹)</th>
+                        <th style={{ ...styles.photoHistoryTh, width: '85px', textAlign: 'center' }}>Act</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {patientVisits.map((v) => {
+                        const formattedDate = v.visitDate || (v.createdAt ? v.createdAt.split('T')[0] : '');
+                        const formattedTime = v.createdAt
+                          ? new Date(v.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+                          : '';
+                        const ipdList = Array.isArray(v.ipdDetails) ? v.ipdDetails : (v.ipdDetails ? [v.ipdDetails] : []);
+                        
+                        return (
+                          <tr key={v._id} style={styles.photoHistoryTr}>
+                            <td style={styles.photoHistoryTd}>
+                              <div style={{ fontWeight: 700, color: '#1E293B', fontSize: 10 }}>{formattedDate}</div>
+                              <div style={{ fontSize: 9, color: '#2563EB', fontWeight: 600 }}>{formattedTime}</div>
+                            </td>
+                            <td style={styles.photoHistoryTdBold}>{v.patientName || currentPatient.name}</td>
+                            <td style={styles.photoHistoryTd}>
+                              {v.complaint || '-'}
+                            </td>
+                            <td style={styles.photoHistoryTd}>
+                              {ipdList.length > 0
+                                ? ipdList.map((ipd, idx) => (
+                                    <div key={idx} style={{ fontSize: 10, color: '#9A3412', fontWeight: 600 }}>
+                                      {typeof ipd === 'string' ? ipd : ipd?.item}
+                                    </div>
+                                  ))
+                                : '-'}
+                            </td>
+                            <td style={styles.photoHistoryTd}>
+                              {v.treatments && v.treatments.length > 0 ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                  {v.treatments.map((t, idx) => (
+                                    <span key={idx} style={{ fontSize: 10, color: '#334155' }}>
+                                      &bull; {t.item} ({t.qty || 1})
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : '-'}
+                            </td>
+                            <td style={styles.photoHistoryTd}>
+                              {v.prescriptions && v.prescriptions.length > 0 ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                  {v.prescriptions.map((p, idx) => (
+                                    <span key={idx} style={{ fontSize: 10, color: '#1E40AF' }}>
+                                      &bull; {p.medicine} ({p.qty || '-'}) {p.timing === 'SOS' ? `[SOS${p.sosInstruction ? `: ${p.sosInstruction}` : ''}]` : `[${p.timing}]`}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : '-'}
+                            </td>
+                            <td style={styles.photoHistoryTd}>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+                                {v.bp && <span style={styles.historyAlertBp}>BP: {v.bp}</span>}
+                                {v.sugar && <span style={styles.historyAlertSugar}>SUG: {v.sugar}</span>}
+                                {v.other && <span style={styles.historyAlertOther}>{v.other}</span>}
+                                {v.investigation && (
+                                  <span style={styles.historyAlertLab}>{v.investigation}</span>
+                                )}
+                                {!v.bp && !v.sugar && !v.other && !v.investigation && <span style={{ color: '#94A3B8' }}>-</span>}
+                              </div>
+                            </td>
+                            <td style={{ ...styles.photoHistoryTd, textAlign: 'right', fontWeight: 800, color: '#EA580C' }}>
+                              ₹{v.charge || 0}
+                            </td>
+                            <td style={{ ...styles.photoHistoryTd, textAlign: 'right', fontWeight: 700, color: (v.due || 0) > 0 ? '#DC2626' : '#166534' }}>
+                              ₹{v.due || 0}
+                            </td>
+                            <td style={{ ...styles.photoHistoryTd, textAlign: 'center' }}>
+                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                                {/* View Chit */}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setPrintVisit({ ...v, patient: currentPatient });
+                                    setPrintDietary(v.dietary || '');
+                                    setShowPrintModal(true);
+                                  }}
+                                  style={styles.historyActBtn}
+                                  title="View Medical Chit / Prescription"
+                                >
+                                  <FileText size={12} color="#0284C7" />
+                                </button>
+
+                                {/* Edit Visit */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleStartEditVisit(v)}
+                                  style={styles.historyActBtn}
+                                  title="Edit / Reload Case into Form"
+                                >
+                                  <Edit3 size={12} color="#D97706" />
+                                </button>
+
+                                {/* Print */}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setPrintVisit({ ...v, patient: currentPatient });
+                                    setPrintDietary(v.dietary || '');
+                                    setShowPrintModal(true);
+                                  }}
+                                  style={styles.historyActBtn}
+                                  title="Print Prescription"
+                                >
+                                  <Printer size={12} color="#2563EB" />
+                                </button>
+
+                                {/* Delete */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteVisit(v._id)}
+                                  style={styles.historyActBtn}
+                                  title="Delete Visit Record"
+                                >
+                                  <Trash2 size={12} color="#DC2626" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* CARD 2: Allergy (Red Theme) */}
           <div style={{ ...styles.photoCard, borderColor: '#FCA5A5' }}>
@@ -1923,7 +2248,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
               <div style={styles.photoInputAddRow}>
                 <div style={{ flex: 1 }}>
                   <MasterDataInput
-                    type="ipd"
+                    type="medicine"
                     value={tempIpd}
                     onChange={(val) => setTempIpd(val)}
                     onEnterNext={() => handleAddIpdDetail()}
@@ -2151,8 +2476,8 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                     title="Night"
                   />
                 </div>
-                {/* Meal Instruction select */}
-                <div style={{ width: '92px', flexShrink: 0 }}>
+                {/* Meal Instruction select with AF, BF, SOS */}
+                <div style={{ width: rxForm.timing === 'SOS' ? '70px' : '92px', flexShrink: 0 }}>
                   <select
                     value={rxForm.timing}
                     onChange={(e) => setRxForm((prev) => ({ ...prev, timing: e.target.value }))}
@@ -2160,8 +2485,33 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                   >
                     <option value="AF">After Food</option>
                     <option value="BF">Before Food</option>
+                    <option value="SOS">SOS</option>
                   </select>
                 </div>
+
+                {/* Custom SOS Datalist Input (Shown when SOS is selected) */}
+                {rxForm.timing === 'SOS' && (
+                  <div style={{ width: '135px', flexShrink: 0 }}>
+                    <input
+                      type="text"
+                      list="sosSuggestionsList"
+                      value={rxForm.sosInstruction || ''}
+                      onChange={(e) => setRxForm((prev) => ({ ...prev, sosInstruction: e.target.value }))}
+                      placeholder="Custom SOS (e.g. In severe pain)..."
+                      style={styles.photoInput}
+                    />
+                    <datalist id="sosSuggestionsList">
+                      <option value="Only if severe pain" />
+                      <option value="Only if fever > 100°F" />
+                      <option value="When headache occurs" />
+                      <option value="If vomiting occurs" />
+                      <option value="At bedtime if needed" />
+                      <option value="Only during cough attack" />
+                      <option value="If gas or acidity occurs" />
+                      <option value="When needed for allergy" />
+                    </datalist>
+                  </div>
+                )}
                 <button
                   type="button"
                   onClick={handleAddPrescriptionItem}
@@ -2179,7 +2529,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                       <th style={styles.photoTh}>Medicine</th>
                       <th style={{ ...styles.photoTh, width: '42px', textAlign: 'center' }}>Qty</th>
                       <th style={{ ...styles.photoTh, width: '76px', textAlign: 'center' }}>M-N-E-Nt</th>
-                      <th style={{ ...styles.photoTh, width: '85px', textAlign: 'center' }}>Meal/Instruction</th>
+                      <th style={{ ...styles.photoTh, width: '95px', textAlign: 'center' }}>Meal/Instruction</th>
                       <th style={{ ...styles.photoTh, width: '32px', textAlign: 'center' }}>X</th>
                     </tr>
                   </thead>
@@ -2199,7 +2549,11 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                             {rx.morning || '1'}-{rx.noon || '0'}-{rx.evening || '1'}-{rx.night || '0'}
                           </td>
                           <td style={{ ...styles.photoTd, textAlign: 'center' }}>
-                            {rx.timing === 'BF' ? 'Before Food' : 'After Food'}
+                            {rx.timing === 'SOS'
+                              ? `SOS${rx.sosInstruction ? ` (${rx.sosInstruction})` : ''}`
+                              : rx.timing === 'BF'
+                              ? 'Before Food'
+                              : 'After Food'}
                           </td>
                           <td style={{ ...styles.photoTd, textAlign: 'center' }}>
                             <button
@@ -3172,7 +3526,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
                         {printVisit.prescriptions.map((rx, idx) => {
                           const doseNumbers = `${rx.morning || '0'} - ${rx.noon || '0'} - ${rx.evening || '0'} - ${rx.night || '0'}`;
                           const isBf = rx.timing === 'BF';
-                          const humanDose = formatDoseInstruction(rx.morning, rx.noon, rx.evening, rx.night, rx.timing, printLanguage);
+                          const humanDose = formatDoseInstruction(rx.morning, rx.noon, rx.evening, rx.night, rx.timing, printLanguage, rx.sosInstruction);
 
                           return (
                             <tr key={idx}>
@@ -3834,24 +4188,31 @@ const styles = {
     gap: '8px',
     padding: '4px 6px',
     boxSizing: 'border-box',
-    overflow: 'hidden',
+    overflowY: 'auto',
+    flexWrap: 'wrap',
     backgroundColor: '#F1F5F9',
   },
   photoLeftCol: {
-    width: '48%',
+    flex: '1 1 480px',
+    minWidth: '340px',
+    maxWidth: '100%',
     display: 'flex',
     flexDirection: 'column',
     gap: '5px',
     overflowY: 'auto',
     paddingRight: '2px',
+    boxSizing: 'border-box',
   },
   photoRightCol: {
-    width: '52%',
+    flex: '1 1 500px',
+    minWidth: '340px',
+    maxWidth: '100%',
     display: 'flex',
     flexDirection: 'column',
     gap: '5px',
     overflowY: 'auto',
     paddingRight: '2px',
+    boxSizing: 'border-box',
   },
   photoCard: {
     backgroundColor: '#FFFFFF',
@@ -3935,16 +4296,19 @@ const styles = {
   },
   photoRow1Col: {
     display: 'flex',
+    flexWrap: 'wrap',
     width: '100%',
     gap: '6px',
   },
   photoRow2Col: {
     display: 'flex',
+    flexWrap: 'wrap',
     width: '100%',
     gap: '6px',
   },
   photoRow3Col: {
     display: 'flex',
+    flexWrap: 'wrap',
     width: '100%',
     gap: '6px',
   },
@@ -3952,17 +4316,21 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     gap: '1px',
-    flex: 1,
-    minWidth: 0,
+    flex: '1 1 110px',
+    minWidth: '95px',
+    boxSizing: 'border-box',
   },
   photoLabel: {
     fontSize: '10px',
     fontWeight: 700,
     color: '#334155',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
   },
   photoInput: {
     width: '100%',
-    height: '24px',
+    height: '26px',
     padding: '2px 5px',
     fontSize: '11px',
     border: '1px solid #94A3B8',
@@ -3971,10 +4339,11 @@ const styles = {
     backgroundColor: '#FFFFFF',
     color: '#0F172A',
     boxSizing: 'border-box',
+    minWidth: 0,
   },
   photoSelect: {
     width: '100%',
-    height: '24px',
+    height: '26px',
     padding: '1px 4px',
     fontSize: '10px',
     border: '1px solid #94A3B8',
@@ -3983,6 +4352,154 @@ const styles = {
     backgroundColor: '#FFFFFF',
     color: '#0F172A',
     boxSizing: 'border-box',
+    minWidth: 0,
+  },
+  photoHistoryContainer: {
+    backgroundColor: '#FFFFFF',
+    border: '1px solid #93C5FD',
+    borderRadius: '4px',
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+    boxShadow: '0 2px 4px rgba(30, 64, 175, 0.08)',
+    marginTop: '2px',
+    marginBottom: '2px',
+  },
+  photoHistoryHeader: {
+    backgroundColor: '#EFF6FF',
+    borderBottom: '1px solid #BFDBFE',
+    padding: '4px 8px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: '26px',
+  },
+  photoHistoryTitle: {
+    fontSize: '11px',
+    fontWeight: 800,
+    color: '#1E40AF',
+    letterSpacing: '0.2px',
+  },
+  photoHistoryCloseBtn: {
+    background: 'none',
+    border: '1px solid #BFDBFE',
+    backgroundColor: '#FFFFFF',
+    borderRadius: '3px',
+    color: '#1D4ED8',
+    fontSize: '10px',
+    fontWeight: 700,
+    padding: '1px 6px',
+    cursor: 'pointer',
+  },
+  photoHistoryScrollArea: {
+    maxHeight: '230px',
+    overflowY: 'auto',
+    overflowX: 'auto',
+    backgroundColor: '#FFFFFF',
+  },
+  photoHistoryLoading: {
+    padding: '12px',
+    textAlign: 'center',
+    fontSize: '11px',
+    color: '#64748B',
+    fontStyle: 'italic',
+  },
+  photoHistoryEmpty: {
+    padding: '12px',
+    textAlign: 'center',
+    fontSize: '11px',
+    color: '#94A3B8',
+    fontStyle: 'italic',
+  },
+  photoHistoryTable: {
+    width: '100%',
+    borderCollapse: 'collapse',
+    fontSize: '10.5px',
+    minWidth: '780px',
+  },
+  photoHistoryTh: {
+    backgroundColor: '#F8FAFC',
+    borderBottom: '1px solid #CBD5E1',
+    borderRight: '1px solid #E2E8F0',
+    padding: '3px 6px',
+    fontSize: '10px',
+    fontWeight: 700,
+    color: '#334155',
+    textAlign: 'left',
+    position: 'sticky',
+    top: 0,
+    zIndex: 2,
+  },
+  photoHistoryTr: {
+    borderBottom: '1px solid #E2E8F0',
+    backgroundColor: '#FFFFFF',
+  },
+  photoHistoryTd: {
+    padding: '3px 6px',
+    color: '#1E293B',
+    verticalAlign: 'top',
+    borderRight: '1px solid #F1F5F9',
+    fontSize: '10px',
+  },
+  photoHistoryTdBold: {
+    padding: '3px 6px',
+    fontWeight: 700,
+    color: '#0F172A',
+    verticalAlign: 'top',
+    borderRight: '1px solid #F1F5F9',
+    fontSize: '10px',
+  },
+  historyAlertBp: {
+    fontSize: '9px',
+    fontWeight: 700,
+    backgroundColor: '#FEE2E2',
+    color: '#B91C1C',
+    border: '1px solid #FECACA',
+    borderRadius: '3px',
+    padding: '0 4px',
+    whiteSpace: 'nowrap',
+  },
+  historyAlertSugar: {
+    fontSize: '9px',
+    fontWeight: 700,
+    backgroundColor: '#FFEDD5',
+    color: '#C2410C',
+    border: '1px solid #FED7AA',
+    borderRadius: '3px',
+    padding: '0 4px',
+    whiteSpace: 'nowrap',
+  },
+  historyAlertOther: {
+    fontSize: '9px',
+    fontWeight: 700,
+    backgroundColor: '#FEF3C7',
+    color: '#B45309',
+    border: '1px solid #FDE68A',
+    borderRadius: '3px',
+    padding: '0 4px',
+    whiteSpace: 'nowrap',
+  },
+  historyAlertLab: {
+    fontSize: '9px',
+    fontWeight: 700,
+    backgroundColor: '#E0F2FE',
+    color: '#0369A1',
+    border: '1px solid #BAE6FD',
+    borderRadius: '3px',
+    padding: '0 4px',
+    whiteSpace: 'nowrap',
+  },
+  historyActBtn: {
+    width: '20px',
+    height: '20px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    border: '1px solid #CBD5E1',
+    backgroundColor: '#FFFFFF',
+    borderRadius: '3px',
+    cursor: 'pointer',
+    padding: 0,
   },
   photoHistoryLinkBtn: {
     background: 'none',
@@ -4041,8 +4558,11 @@ const styles = {
   photoInputAddRow: {
     display: 'flex',
     alignItems: 'center',
+    flexWrap: 'wrap',
     gap: '4px',
+    rowGap: '4px',
     width: '100%',
+    boxSizing: 'border-box',
   },
   photoAddBtnRed: {
     height: '24px',

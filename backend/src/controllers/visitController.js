@@ -68,7 +68,18 @@ export const recordVisit = async (req, res) => {
       : [];
 
     const cleanPrescriptions = Array.isArray(prescriptions)
-      ? prescriptions.filter((p) => p.medicine && p.medicine.trim())
+      ? prescriptions
+          .filter((p) => p.medicine && p.medicine.trim())
+          .map((p) => ({
+            medicine: p.medicine.trim(),
+            qty: p.qty !== undefined && p.qty !== null ? String(p.qty).trim() : '',
+            morning: p.morning !== undefined ? String(p.morning).trim() : '1',
+            noon: p.noon !== undefined ? String(p.noon).trim() : '0',
+            evening: p.evening !== undefined ? String(p.evening).trim() : '1',
+            night: p.night !== undefined ? String(p.night).trim() : '0',
+            timing: p.timing || 'AF',
+            sosInstruction: p.sosInstruction ? String(p.sosInstruction).trim() : '',
+          }))
       : [];
 
     // Optional: Save attached Lab Report if present
@@ -145,9 +156,22 @@ export const recordVisit = async (req, res) => {
       for (const ipdItem of ipdDetails) {
         const itemVal = typeof ipdItem === 'string' ? ipdItem : ipdItem?.item;
         if (itemVal && itemVal.trim()) {
-          await autoSaveMasterItem('ipd', itemVal.trim());
+          // IPD data stored in medicine tab of master data
+          await autoSaveMasterItem('medicine', itemVal.trim());
         }
       }
+    }
+    if (dietary && typeof dietary === 'string') {
+      const tokens = dietary.split(',').map((d) => d.trim()).filter(Boolean);
+      for (const item of tokens) {
+        await autoSaveMasterItem('dietary', item);
+      }
+    }
+    if (req.body.society && typeof req.body.society === 'string' && req.body.society.trim()) {
+      await autoSaveMasterItem('society', req.body.society.trim());
+    }
+    if (req.body.area && typeof req.body.area === 'string' && req.body.area.trim()) {
+      await autoSaveMasterItem('area', req.body.area.trim());
     }
     if (Array.isArray(allergies) && allergies.length > 0) {
       for (const alg of allergies) {
@@ -155,8 +179,18 @@ export const recordVisit = async (req, res) => {
           await autoSaveMasterItem('allergy', alg.trim());
         }
       }
-      // Also update allergies on Patient record
-      await Patient.findOneAndUpdate({ patientId: visit.patientId }, { allergies });
+    }
+
+    // Sync patient demographic updates (dob, age, phone, society, area, allergies)
+    const patUpdates = {};
+    if (req.body.phone !== undefined) patUpdates.phone = req.body.phone;
+    if (req.body.age !== undefined) patUpdates.age = req.body.age;
+    if (req.body.dob !== undefined) patUpdates.dob = req.body.dob;
+    if (req.body.society !== undefined) patUpdates.society = req.body.society;
+    if (req.body.area !== undefined) patUpdates.area = req.body.area;
+    if (Array.isArray(allergies)) patUpdates.allergies = allergies;
+    if (Object.keys(patUpdates).length > 0) {
+      await Patient.findOneAndUpdate({ patientId: visit.patientId }, patUpdates);
     }
 
     return res.status(201).json({
@@ -244,7 +278,18 @@ export const updateVisit = async (req, res) => {
       : [];
 
     const cleanPrescriptions = Array.isArray(prescriptions)
-      ? prescriptions.filter((p) => p.medicine && p.medicine.trim())
+      ? prescriptions
+          .filter((p) => p.medicine && p.medicine.trim())
+          .map((p) => ({
+            medicine: p.medicine.trim(),
+            qty: p.qty !== undefined && p.qty !== null ? String(p.qty).trim() : '',
+            morning: p.morning !== undefined ? String(p.morning).trim() : '1',
+            noon: p.noon !== undefined ? String(p.noon).trim() : '0',
+            evening: p.evening !== undefined ? String(p.evening).trim() : '1',
+            night: p.night !== undefined ? String(p.night).trim() : '0',
+            timing: p.timing || 'AF',
+            sosInstruction: p.sosInstruction ? String(p.sosInstruction).trim() : '',
+          }))
       : [];
 
     visit.visitDate = visitDate || visit.visitDate;
@@ -331,9 +376,22 @@ export const updateVisit = async (req, res) => {
       for (const ipdItem of ipdDetails) {
         const itemVal = typeof ipdItem === 'string' ? ipdItem : ipdItem?.item;
         if (itemVal && itemVal.trim()) {
-          await autoSaveMasterItem('ipd', itemVal.trim());
+          // IPD data stored in medicine tab of master data
+          await autoSaveMasterItem('medicine', itemVal.trim());
         }
       }
+    }
+    if (dietary && typeof dietary === 'string') {
+      const tokens = dietary.split(',').map((d) => d.trim()).filter(Boolean);
+      for (const item of tokens) {
+        await autoSaveMasterItem('dietary', item);
+      }
+    }
+    if (req.body.society && typeof req.body.society === 'string' && req.body.society.trim()) {
+      await autoSaveMasterItem('society', req.body.society.trim());
+    }
+    if (req.body.area && typeof req.body.area === 'string' && req.body.area.trim()) {
+      await autoSaveMasterItem('area', req.body.area.trim());
     }
     if (Array.isArray(allergies) && allergies.length > 0) {
       for (const alg of allergies) {
@@ -341,8 +399,18 @@ export const updateVisit = async (req, res) => {
           await autoSaveMasterItem('allergy', alg.trim());
         }
       }
-      // Also update allergies on Patient record
-      await Patient.findOneAndUpdate({ patientId: visit.patientId }, { allergies });
+    }
+
+    // Sync patient demographic updates (dob, age, phone, society, area, allergies)
+    const patUpdates = {};
+    if (req.body.phone !== undefined) patUpdates.phone = req.body.phone;
+    if (req.body.age !== undefined) patUpdates.age = req.body.age;
+    if (req.body.dob !== undefined) patUpdates.dob = req.body.dob;
+    if (req.body.society !== undefined) patUpdates.society = req.body.society;
+    if (req.body.area !== undefined) patUpdates.area = req.body.area;
+    if (Array.isArray(allergies)) patUpdates.allergies = allergies;
+    if (Object.keys(patUpdates).length > 0) {
+      await Patient.findOneAndUpdate({ patientId: visit.patientId }, patUpdates);
     }
 
     return res.status(200).json({

@@ -1043,14 +1043,8 @@ export const Dashboard = () => {
         );
 
       case 'patient-record':
-        return (
-          <div style={styles.tabContentContainer}>
-            <PatientRecord
-              selectedPatientId={selectedPatientId}
-              onNavigateToAddMember={() => setActiveTab('add-member')}
-            />
-          </div>
-        );
+        // Rendered persistently outside the switch to preserve un-saved clinical case data across tab switching
+        return null;
 
       case 'master-data':
         return (
@@ -1376,6 +1370,24 @@ export const Dashboard = () => {
             width: isSidebarCollapsed ? 'calc(100% - 28px)' : `calc(100% - ${sidebarWidth}px)`,
           }}
         >
+          {/* PatientRecord is ALWAYS kept alive in the DOM so clinical case entry 100% persists across tab switches */}
+          <div
+            style={{
+              ...styles.tabContentContainer,
+              display: activeTab === 'patient-record' ? 'flex' : 'none',
+              height: '100%',
+              width: '100%',
+              flexDirection: 'column',
+              padding: 0,
+            }}
+          >
+            <PatientRecord
+              selectedPatientId={selectedPatientId}
+              onNavigateToAddMember={() => setActiveTab('add-member')}
+              isActiveTab={activeTab === 'patient-record'}
+            />
+          </div>
+
           {renderTabContent()}
         </main>
       </div>
