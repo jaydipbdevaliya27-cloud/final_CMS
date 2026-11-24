@@ -151,6 +151,14 @@ export const visitAPI = {
     const response = await api.post('/visits', data);
     return response.data;
   },
+  getRecent: async (params = {}) => {
+    const response = await api.get('/visits/recent', { params });
+    return response.data;
+  },
+  collectDue: async (data) => {
+    const response = await api.post('/visits/collect-due', data);
+    return response.data;
+  },
   getByPatient: async (patientId) => {
     const response = await api.get('/visits', {
       params: { patientId },
@@ -169,6 +177,12 @@ export const visitAPI = {
   },
   delete: async (id) => {
     const response = await api.delete(`/visits/${id}`);
+    return response.data;
+  },
+  deleteWithPassword: async (id, password) => {
+    const response = await api.delete(`/visits/${id}`, {
+      data: { password },
+    });
     return response.data;
   },
 };

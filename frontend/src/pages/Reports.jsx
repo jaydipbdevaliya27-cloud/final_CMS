@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { reportAPI } from '../services/api';
+import { reportAPI, visitAPI } from '../services/api';
 import { InvestigationReportModal } from '../components/reports/InvestigationReportModal';
 import {
   Printer,
@@ -31,6 +31,82 @@ export const Reports = ({ onNavigateToPatient }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showLabModal, setShowLabModal] = useState(false);
+
+  // Due Collection Modal State
+  const [collectModalOpen, setCollectModalOpen] = useState(false);
+  const [patientToCollect, setPatientToCollect] = useState(null);
+  const [collectAmount, setCollectAmount] = useState('');
+  const [collectPaymentMode, setCollectPaymentMode] = useState('Cash');
+  const [collectNotes, setCollectNotes] = useState('');
+  const [isCollecting, setIsCollecting] = useState(false);
+  const [collectError, setCollectError] = useState('');
+  const [collectSuccessToast, setCollectSuccessToast] = useState('');
+
+  const handleOpenCollect = (row) => {
+    setPatientToCollect(row);
+    setCollectAmount(String(row.totalDue || 0));
+    setCollectPaymentMode('Cash');
+    setCollectNotes('');
+    setCollectError('');
+    setCollectModalOpen(true);
+  };
+
+  const handleConfirmCollect = async (e) => {
+    if (e) e.preventDefault();
+    const num = Number(collectAmount);
+    if (!num || num <= 0) {
+      setCollectError('Please enter a valid collection amount greater than 0.');
+      return;
+    }
+    try {
+      setIsCollecting(true);
+      setCollectError('');
+      const res = await visitAPI.collectDue({
+        patientId: patientToCollect.patientId,
+        amount: num,
+        paymentMode: collectPaymentMode,
+        notes: collectNotes,
+      });
+      if (res?.success) {
+        // Update local reportData immediately
+        setReportData((prev) =>
+          prev.map((r) => {
+            if (r.patientId === patientToCollect.patientId) {
+              return {
+                ...r,
+                totalDue: res.totalDue !== undefined ? res.totalDue : Math.max(0, (r.totalDue || 0) - num),
+                familyDue: res.familyDue !== undefined ? res.familyDue : Math.max(0, (r.familyDue || 0) - num),
+              };
+            }
+            if (r.familyId === patientToCollect.familyId) {
+              return {
+                ...r,
+                familyDue: res.familyDue !== undefined ? res.familyDue : Math.max(0, (r.familyDue || 0) - num),
+              };
+            }
+            return r;
+          })
+        );
+        // Update summary
+        setSummary((prev) => ({
+          ...prev,
+          totalOutstandingDue: Math.max(0, (prev.totalOutstandingDue || 0) - num),
+        }));
+
+        setCollectModalOpen(false);
+        const collectedPatName = patientToCollect.name;
+        setPatientToCollect(null);
+        setCollectSuccessToast(`₹${num.toLocaleString('en-IN')} collected successfully for ${collectedPatName}!`);
+        setTimeout(() => setCollectSuccessToast(''), 4500);
+      } else {
+        setCollectError(res?.message || 'Failed to record due collection');
+      }
+    } catch (err) {
+      setCollectError(err.response?.data?.message || err.message || 'Server error recording collection');
+    } finally {
+      setIsCollecting(false);
+    }
+  };
 
   // Date filters
   const todayStr = new Date().toISOString().split('T')[0];
@@ -1234,16 +1310,21 @@ export const Reports = ({ onNavigateToPatient }) => {
                         ₹{(row.familyDue || 0).toLocaleString('en-IN')}
                       </td>
                       <td style={{ ...styles.td, textAlign: 'center' }}>
-                        {onNavigateToPatient && (
-                          <button
-                            onClick={() => onNavigateToPatient(row.patientId)}
-                            style={styles.openCaseBtn}
-                            title="Open patient case record to collect dues"
-                          >
-                            <ArrowUpRight size={13} />
-                            <span>Collect</span>
-                          </button>
-                        )}
+                        <button
+                          onClick={() => handleOpenCollect(row)}
+                          style={{
+                            ...styles.openCaseBtn,
+                            backgroundColor: '#0D5C4E',
+                            borderColor: '#0A4B3F',
+                            color: '#FFFFFF',
+                            padding: '4px 10px',
+                            fontWeight: '600',
+                          }}
+                          title={`Collect outstanding due of ₹${row.totalDue || 0} from ${row.name}`}
+                        >
+                          <IndianRupee size={12} />
+                          <span>Collect</span>
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -1587,6 +1668,124 @@ export const Reports = ({ onNavigateToPatient }) => {
         doctor={doctor}
         onReportSaved={() => fetchReport()}
       />
+
+      {/* Due Collection Success Toast */}
+      {collectSuccessToast && (
+        <div style={styles.collectToast}>
+          <CheckCircle2 size={16} />
+          <span>{collectSuccessToast}</span>
+        </div>
+      )}
+
+      {/* Due Collection Modal */}
+      {collectModalOpen && patientToCollect && (
+        <div style={styles.collectModalOverlay} onClick={() => setCollectModalOpen(false)}>
+          <div style={styles.collectModalCard} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.collectModalHeader}>
+              <div style={styles.collectModalHeaderIcon}>
+                <IndianRupee size={20} color="#0D5C4E" />
+              </div>
+              <div style={{ flex: 1 }}>
+                <h3 style={styles.collectModalTitle}>Collect Patient Due</h3>
+                <span style={styles.collectModalSub}>Settle outstanding OPD clinic balance</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCollectModalOpen(false)}
+                style={styles.collectModalCloseBtn}
+              >
+                &times;
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmCollect} style={styles.collectModalBody}>
+              <div style={styles.collectPatientInfoCard}>
+                <div style={styles.collectPatientRow}>
+                  <span style={styles.collectPatientName}>{patientToCollect.name}</span>
+                  <span style={styles.collectPidBadge}>{patientToCollect.patientId}</span>
+                </div>
+                <div style={styles.collectDueSummaryRow}>
+                  <div>
+                    <span style={styles.collectDueLabel}>Patient Due: </span>
+                    <span style={styles.collectPatientDueVal}>₹{(patientToCollect.totalDue || 0).toLocaleString('en-IN')}</span>
+                  </div>
+                  <div>
+                    <span style={styles.collectDueLabel}>Family Due: </span>
+                    <span style={styles.collectFamilyDueVal}>₹{(patientToCollect.familyDue || 0).toLocaleString('en-IN')}</span>
+                  </div>
+                </div>
+              </div>
+
+              {collectError && (
+                <div style={styles.collectErrorBox}>
+                  <AlertCircle size={14} color="#DC2626" />
+                  <span>{collectError}</span>
+                </div>
+              )}
+
+              <div style={styles.collectFieldGroup}>
+                <label style={styles.collectFieldLabel}>Collection Amount (₹): *</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={collectAmount}
+                  onChange={(e) => {
+                    setCollectAmount(e.target.value);
+                    if (collectError) setCollectError('');
+                  }}
+                  style={styles.collectAmountInput}
+                  autoFocus
+                  required
+                />
+              </div>
+
+              <div style={styles.collectFieldGroup}>
+                <label style={styles.collectFieldLabel}>Payment Mode:</label>
+                <select
+                  value={collectPaymentMode}
+                  onChange={(e) => setCollectPaymentMode(e.target.value)}
+                  style={styles.collectSelect}
+                >
+                  <option value="Cash">Cash</option>
+                  <option value="UPI">UPI / GPay / PhonePe / Paytm</option>
+                  <option value="Card">Debit / Credit Card</option>
+                  <option value="Net Banking">Net Banking / Transfer</option>
+                  <option value="Cheque">Cheque</option>
+                </select>
+              </div>
+
+              <div style={styles.collectFieldGroup}>
+                <label style={styles.collectFieldLabel}>Notes / Reference (Optional):</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Cleared past due, GPay Ref #1234"
+                  value={collectNotes}
+                  onChange={(e) => setCollectNotes(e.target.value)}
+                  style={styles.collectNotesInput}
+                />
+              </div>
+
+              <div style={styles.collectModalFooter}>
+                <button
+                  type="button"
+                  onClick={() => setCollectModalOpen(false)}
+                  style={styles.collectCancelBtn}
+                  disabled={isCollecting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isCollecting || !collectAmount || Number(collectAmount) <= 0}
+                  style={styles.collectSubmitBtn}
+                >
+                  {isCollecting ? 'Recording...' : `Confirm Collection (₹${Number(collectAmount || 0).toLocaleString('en-IN')})`}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -2107,6 +2306,217 @@ const styles = {
   printSignSub: {
     fontSize: '9px',
     color: '#666666',
+  },
+  collectToast: {
+    position: 'fixed',
+    top: '20px',
+    right: '20px',
+    backgroundColor: '#10B981',
+    color: '#FFFFFF',
+    padding: '10px 18px',
+    borderRadius: '8px',
+    fontWeight: '600',
+    fontSize: '13px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    boxShadow: '0 4px 14px rgba(0, 0, 0, 0.16)',
+    zIndex: 99999,
+  },
+  collectModalOverlay: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 9999,
+    padding: '16px',
+  },
+  collectModalCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: '10px',
+    width: '100%',
+    maxWidth: '440px',
+    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)',
+    overflow: 'hidden',
+  },
+  collectModalHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    padding: '14px 16px',
+    backgroundColor: '#E6F4F1',
+    borderBottom: '1px solid #B2DFDB',
+  },
+  collectModalHeaderIcon: {
+    width: '36px',
+    height: '36px',
+    borderRadius: '50%',
+    backgroundColor: '#FFFFFF',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+  },
+  collectModalTitle: {
+    margin: 0,
+    fontSize: '15px',
+    fontWeight: '700',
+    color: '#0D5C4E',
+  },
+  collectModalSub: {
+    fontSize: '11px',
+    color: '#64748B',
+  },
+  collectModalCloseBtn: {
+    background: 'none',
+    border: 'none',
+    fontSize: '22px',
+    color: '#64748B',
+    cursor: 'pointer',
+    lineHeight: 1,
+    padding: 2,
+  },
+  collectModalBody: {
+    padding: '16px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+  },
+  collectPatientInfoCard: {
+    backgroundColor: '#F8FAFC',
+    border: '1px solid #E2E8F0',
+    borderRadius: '6px',
+    padding: '10px 12px',
+  },
+  collectPatientRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: '6px',
+  },
+  collectPatientName: {
+    fontSize: '13px',
+    fontWeight: '700',
+    color: '#0F172A',
+    textTransform: 'uppercase',
+  },
+  collectPidBadge: {
+    fontFamily: 'monospace',
+    fontWeight: '700',
+    fontSize: '11px',
+    backgroundColor: '#E2E8F0',
+    padding: '1px 6px',
+    borderRadius: '4px',
+    color: '#334155',
+  },
+  collectDueSummaryRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    fontSize: '12px',
+    borderTop: '1px dashed #CBD5E1',
+    paddingTop: '6px',
+  },
+  collectDueLabel: {
+    color: '#64748B',
+  },
+  collectPatientDueVal: {
+    fontWeight: '700',
+    color: '#DC2626',
+    marginLeft: '4px',
+  },
+  collectFamilyDueVal: {
+    fontWeight: '700',
+    color: '#B91C1C',
+    marginLeft: '4px',
+  },
+  collectErrorBox: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    backgroundColor: '#FEF2F2',
+    border: '1px solid #FCA5A5',
+    color: '#B91C1C',
+    borderRadius: '6px',
+    padding: '8px 12px',
+    fontSize: '12px',
+    fontWeight: '600',
+  },
+  collectFieldGroup: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+  },
+  collectFieldLabel: {
+    fontSize: '12px',
+    fontWeight: '700',
+    color: '#334155',
+  },
+  collectAmountInput: {
+    width: '100%',
+    height: '38px',
+    padding: '0 12px',
+    border: '1.5px solid #0D5C4E',
+    borderRadius: '6px',
+    fontSize: '15px',
+    fontWeight: '700',
+    color: '#0D5C4E',
+    outline: 'none',
+    boxSizing: 'border-box',
+  },
+  collectSelect: {
+    width: '100%',
+    height: '36px',
+    padding: '0 10px',
+    border: '1px solid #CBD5E1',
+    borderRadius: '6px',
+    fontSize: '13px',
+    backgroundColor: '#FFFFFF',
+    color: '#0F172A',
+    outline: 'none',
+    boxSizing: 'border-box',
+  },
+  collectNotesInput: {
+    width: '100%',
+    height: '36px',
+    padding: '0 10px',
+    border: '1px solid #CBD5E1',
+    borderRadius: '6px',
+    fontSize: '12px',
+    outline: 'none',
+    boxSizing: 'border-box',
+  },
+  collectModalFooter: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: '8px',
+    marginTop: '6px',
+  },
+  collectCancelBtn: {
+    padding: '8px 14px',
+    backgroundColor: '#F1F5F9',
+    border: '1px solid #CBD5E1',
+    borderRadius: '6px',
+    fontSize: '12px',
+    fontWeight: '600',
+    color: '#475569',
+    cursor: 'pointer',
+  },
+  collectSubmitBtn: {
+    padding: '8px 16px',
+    backgroundColor: '#0D5C4E',
+    border: '1px solid #0A4B3F',
+    borderRadius: '6px',
+    fontSize: '12px',
+    fontWeight: '700',
+    color: '#FFFFFF',
+    cursor: 'pointer',
+    boxShadow: '0 1px 3px rgba(13, 92, 78, 0.3)',
   },
 };
 

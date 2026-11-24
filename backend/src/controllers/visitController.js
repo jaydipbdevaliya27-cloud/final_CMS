@@ -2,6 +2,7 @@ import Visit from '../models/Visit.js';
 import Patient from '../models/Patient.js';
 import Family from '../models/Family.js';
 import LabReport from '../models/LabReport.js';
+import Doctor from '../models/Doctor.js';
 import { autoSaveMasterItem } from './masterDataController.js';
 import { getNextReportId, generateLabSummary } from './labReportController.js';
 
@@ -10,12 +11,14 @@ const recalculateDues = async (patientId, familyId) => {
   try {
     // 1. Patient Total Due
     const patientVisits = await Visit.find({ patientId });
-    const patientDue = patientVisits.reduce((acc, v) => acc + (v.due || 0), 0);
+    const rawPatientDue = patientVisits.reduce((acc, v) => acc + (v.charge || 0) - (v.received || 0), 0);
+    const patientDue = Math.max(0, rawPatientDue);
     await Patient.findOneAndUpdate({ patientId }, { totalDue: patientDue });
 
     // 2. Family Total Due
     const familyVisits = await Visit.find({ familyId });
-    const famDue = familyVisits.reduce((acc, v) => acc + (v.due || 0), 0);
+    const rawFamDue = familyVisits.reduce((acc, v) => acc + (v.charge || 0) - (v.received || 0), 0);
+    const famDue = Math.max(0, rawFamDue);
     await Family.findOneAndUpdate({ familyId }, { familyDue: famDue });
 
     return { patientDue, famDue };
@@ -430,30 +433,242 @@ export const updateVisit = async (req, res) => {
   }
 };
 
-// @desc    Delete a visit
+// @desc    Delete a visit (Protected by Doctor Password)
 // @route   DELETE /api/visits/:id
 // @access  Private
 export const deleteVisit = async (req, res) => {
   try {
-    const visit = await Visit.findByIdAndDelete(req.params.id);
-    if (!visit) {
-      return res.status(404).json({
+    const { password } = req.body || {};
+    if (!password) {
+      return res.status(400).json({
         success: false,
-        message: 'Visit not found',
+        message: 'Doctor password is required to delete a clinical visit record',
       });
     }
 
+    // Verify doctor identity & password
+    const doctorId = req.doctor?._id;
+    const doctor = doctorId ? await Doctor.findById(doctorId) : await Doctor.findOne();
+    if (!doctor) {
+      return res.status(401).json({
+        success: false,
+        message: 'Doctor profile not found or unauthorized',
+      });
+    }
+
+    const isMatch = await doctor.matchPassword(password);
+    if (!isMatch) {
+      return res.status(401).json({
+        success: false,
+        message: 'Incorrect doctor password. Deletion denied.',
+      });
+    }
+
+    const visit = await Visit.findById(req.params.id);
+    if (!visit) {
+      return res.status(404).json({
+        success: false,
+        message: 'Visit record not found',
+      });
+    }
+
+    if (visit.labReportId) {
+      try {
+        await LabReport.findByIdAndDelete(visit.labReportId);
+      } catch (err) {
+        console.warn('Error deleting attached LabReport on visit deletion:', err.message);
+      }
+    }
+
+    await Visit.findByIdAndDelete(req.params.id);
+
     // Recalculate dues after deletion
-    await recalculateDues(visit.patientId, visit.familyId);
+    const { patientDue, famDue } = await recalculateDues(visit.patientId, visit.familyId);
 
     return res.status(200).json({
       success: true,
       message: 'Visit record deleted successfully',
+      totalDue: patientDue,
+      familyDue: famDue,
     });
   } catch (error) {
     return res.status(500).json({
       success: false,
       message: 'Failed to delete visit',
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Collect Due payment from patient
+// @route   POST /api/visits/collect-due
+// @access  Private
+export const collectDue = async (req, res) => {
+  try {
+    const { patientId, amount, paymentMode = 'Cash', notes = '' } = req.body;
+
+    if (!patientId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Patient ID is required',
+      });
+    }
+
+    const numAmount = Math.max(0, Number(amount) || 0);
+    if (numAmount <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'A valid collection amount greater than 0 is required',
+      });
+    }
+
+    const patient = await Patient.findOne({ patientId });
+    if (!patient) {
+      return res.status(404).json({
+        success: false,
+        message: 'Patient record not found',
+      });
+    }
+
+    const visitDate = new Date().toISOString().split('T')[0];
+    const modeUpper = (paymentMode || 'Cash').toUpperCase();
+    const cleanNotes = notes ? notes.trim() : '';
+    const refString = `DUE COLLECTION (${modeUpper})${cleanNotes ? ' - ' + cleanNotes : ''}`;
+
+    const visit = await Visit.create({
+      patientId: patient.patientId,
+      familyId: patient.familyId,
+      patientName: patient.name,
+      visitDate,
+      bp: '',
+      sugar: '',
+      other: '',
+      reference: refString,
+      investigation: '',
+      complaint: '',
+      treatments: [],
+      prescriptions: [],
+      dietary: '',
+      ipdDetails: [],
+      allergies: [],
+      charge: 0,
+      received: numAmount,
+      due: -numAmount,
+    });
+
+    const { patientDue, famDue } = await recalculateDues(patient.patientId, patient.familyId);
+
+    return res.status(201).json({
+      success: true,
+      message: `₹${numAmount.toLocaleString('en-IN')} collected successfully`,
+      visit,
+      totalDue: patientDue,
+      familyDue: famDue,
+    });
+  } catch (error) {
+    console.error('Error collecting due:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to record due collection',
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Get recent OPD visits / cases for Recent History view
+// @route   GET /api/visits/recent
+// @access  Private
+export const getRecentVisits = async (req, res) => {
+  try {
+    const { search = '', period = 'all', date = '', limit = 150 } = req.query;
+
+    const query = {};
+
+    // Date / period filter
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+
+    if (period === 'today') {
+      query.visitDate = todayStr;
+    } else if (period === 'yesterday') {
+      const yDate = new Date();
+      yDate.setDate(yDate.getDate() - 1);
+      const yStr = `${yDate.getFullYear()}-${pad(yDate.getMonth() + 1)}-${pad(yDate.getDate())}`;
+      query.visitDate = yStr;
+    } else if (period === 'custom' && date) {
+      query.visitDate = date;
+    }
+
+    // Search query: patient name, patient id, family id, complaint, reference, phone, or area
+    if (search && search.trim()) {
+      const s = search.trim();
+      const escaped = s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(escaped, 'i');
+
+      // Also search matching patientIds by phone, mobile, area, or society
+      const matchedPatients = await Patient.find({
+        $or: [
+          { name: regex },
+          { patientId: regex },
+          { familyId: regex },
+          { phone: regex },
+          { mobile: regex },
+          { area: regex },
+          { society: regex },
+        ],
+      }).select('patientId').lean();
+
+      const matchedPids = matchedPatients.map((p) => p.patientId);
+
+      query.$or = [
+        { patientName: regex },
+        { patientId: regex },
+        { familyId: regex },
+        { complaint: regex },
+        { reference: regex },
+        { investigation: regex },
+        { patientId: { $in: matchedPids } },
+      ];
+    }
+
+    const visits = await Visit.find(query)
+      .sort({ createdAt: -1, _id: -1 })
+      .limit(Math.min(300, Number(limit) || 150))
+      .lean();
+
+    // Attach patient details (phone, mobile, area, society, current due)
+    const patientIds = [...new Set(visits.map((v) => v.patientId).filter(Boolean))];
+    const patients = await Patient.find({ patientId: { $in: patientIds } })
+      .select('patientId name phone mobile area society totalDue familyId gender age')
+      .lean();
+    const patMap = {};
+    patients.forEach((p) => {
+      patMap[p.patientId] = p;
+    });
+
+    const enriched = visits.map((v) => {
+      const pat = patMap[v.patientId];
+      return {
+        ...v,
+        phone: pat?.phone || pat?.mobile || '',
+        area: pat?.area || pat?.society || '',
+        gender: pat?.gender || '',
+        age: pat?.age || '',
+        currentPatientDue: pat?.totalDue !== undefined ? pat.totalDue : (v.due || 0),
+      };
+    });
+
+    return res.status(200).json({
+      success: true,
+      count: enriched.length,
+      visits: enriched,
+    });
+  } catch (error) {
+    console.error('Error fetching recent visits:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch recent visits',
       error: error.message,
     });
   }

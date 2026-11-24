@@ -9,6 +9,7 @@ import {
   Award,
   TrendingUp,
   UserCheck,
+  History,
 } from 'lucide-react';
 
 export const SIDEBAR_TABS = [
@@ -37,10 +38,16 @@ export const SIDEBAR_TABS = [
     shortcut: 'F3',
   },
   {
+    id: 'recent-history',
+    label: 'Recent History',
+    icon: History,
+    shortcut: 'F7',
+  },
+  {
     id: 'master-data',
     label: 'Master Data',
     icon: Layers,
-    shortcut: 'F7',
+    shortcut: 'F9',
   },
   {
     id: 'medical-certificate',
@@ -72,7 +79,8 @@ export const SidebarTabs = ({ activeTab, onSelectTab, onSearchFocus, width = 210
     'dashboard': 'F4',
     'reports': 'F5',
     'medical-certificate': 'F6',
-    'master-data': 'F7',
+    'recent-history': 'F7',
+    'master-data': 'F9',
     'doctor-profile': 'F8',
     'universal-search': '/',
   });
@@ -88,7 +96,8 @@ export const SidebarTabs = ({ activeTab, onSelectTab, onSearchFocus, width = 210
           'dashboard': 'F4',
           'reports': 'F5',
           'medical-certificate': 'F6',
-          'master-data': 'F7',
+          'recent-history': 'F7',
+          'master-data': 'F9',
           'doctor-profile': 'F8',
           'universal-search': '/',
         };
@@ -101,6 +110,7 @@ export const SidebarTabs = ({ activeTab, onSelectTab, onSearchFocus, width = 210
           if (val.includes('family head')) map['family-head'] = key;
           else if (val.includes('add member') || val.includes('family member')) map['add-member'] = key;
           else if (val.includes('patient record') || val.includes('opd consultation') || val.includes('case consultation')) map['patient-record'] = key;
+          else if (val.includes('recent') || val.includes('history')) map['recent-history'] = key;
           else if (val.includes('dashboard')) map['dashboard'] = key;
           else if (val.includes('report')) map['reports'] = key;
           else if (val.includes('medical certificate') || val.includes('certificate')) map['medical-certificate'] = key;
@@ -150,6 +160,9 @@ export const SidebarTabs = ({ activeTab, onSelectTab, onSearchFocus, width = 210
       } else if (checkMatch(navShortcuts['patient-record'])) {
         e.preventDefault();
         onSelectTab('patient-record');
+      } else if (checkMatch(navShortcuts['recent-history'])) {
+        e.preventDefault();
+        onSelectTab('recent-history');
       } else if (checkMatch(navShortcuts['dashboard'])) {
         e.preventDefault();
         onSelectTab('dashboard');

@@ -171,7 +171,14 @@ const formatRxDate = (dateVal) => {
   }
 };
 
-export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember, isActiveTab = true }) => {
+export const PatientRecord = ({
+  selectedPatientId,
+  onNavigateToAddMember,
+  isActiveTab = true,
+  initialPatientForNewCase = null,
+  initialVisitToEdit = null,
+  onClearNavigationCase = null,
+}) => {
   const { doctor } = useAuth();
   // --- Search & Patient State ---
   const [patientSearch, setPatientSearch] = useState('');
@@ -434,6 +441,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember, isActi
   // --- Draft Persistence: Keep typed data safe across tab switches and refreshes ---
   const DRAFT_KEY = 'cms_patient_record_draft';
   const isInitialDraftLoaded = useRef(false);
+  const hasJustSavedRef = useRef(false);
 
   useEffect(() => {
     if (isInitialDraftLoaded.current) return;
@@ -464,7 +472,28 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember, isActi
 
   useEffect(() => {
     if (!isInitialDraftLoaded.current) return;
-    if (!currentPatient && !visitForm.bp && !visitForm.complaint && (visitForm.treatments || []).length === 0 && (visitForm.prescriptions || []).length === 0) {
+    if (hasJustSavedRef.current) {
+      hasJustSavedRef.current = false;
+      try {
+        localStorage.removeItem(DRAFT_KEY);
+      } catch (e) {}
+      return;
+    }
+    const hasData =
+      currentPatient ||
+      visitForm.bp ||
+      visitForm.sugar ||
+      visitForm.complaint ||
+      (visitForm.treatments || []).length > 0 ||
+      (visitForm.prescriptions || []).length > 0 ||
+      (visitForm.allergyList || []).length > 0 ||
+      (visitForm.complaintList || []).length > 0 ||
+      (visitForm.ipdDetails || []).length > 0;
+
+    if (!hasData) {
+      try {
+        localStorage.removeItem(DRAFT_KEY);
+      } catch (e) {}
       return;
     }
     try {
@@ -606,6 +635,34 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember, isActi
     };
     initPatient();
   }, [selectedPatientId]);
+
+  useEffect(() => {
+    if (initialPatientForNewCase) {
+      handleSelectPatient(initialPatientForNewCase, true);
+      handleStartNewCase(initialPatientForNewCase);
+      if (onClearNavigationCase) onClearNavigationCase();
+    }
+  }, [initialPatientForNewCase]);
+
+  useEffect(() => {
+    if (initialVisitToEdit) {
+      const loadEdit = async () => {
+        try {
+          if (initialVisitToEdit.patientId) {
+            const res = await patientAPI.getById(initialVisitToEdit.patientId);
+            if (res?.success && res.patient) {
+              handleSelectPatient(res.patient, false);
+            }
+          }
+          handleStartEditVisit(initialVisitToEdit);
+          if (onClearNavigationCase) onClearNavigationCase();
+        } catch (e) {
+          console.error('Error loading visit for edit:', e);
+        }
+      };
+      loadEdit();
+    }
+  }, [initialVisitToEdit]);
 
   // --- Persistent Recently Searched OPD Patients Helpers ---
   const RECENT_SEARCHED_KEY = 'cms_recent_opd_searched_patients';
@@ -1456,22 +1513,41 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember, isActi
           setShowPrintModal(true);
         }
 
-        // Reset form for next entry but keep patient active
-        const freshAfterSave = {
-          ...initialVisitForm,
-          visitDate: getTodayDateStr(),
-          allergyList: cleanAllergies,
-          complaintList: [],
-          investigationList: [],
-          ipdDetails: [],
-          treatments: [],
-          prescriptions: [],
-          dietary: '',
-          charge: '0',
-          received: '0',
-        };
-        setVisitForm(freshAfterSave);
-        visitFormRef.current = freshAfterSave;
+        // Reset ALL form fields and clear active patient so next entry is completely clean
+        try {
+          localStorage.removeItem(DRAFT_KEY);
+        } catch (e) {}
+
+        hasJustSavedRef.current = true;
+        setCurrentPatient(null);
+        currentPatientRef.current = null;
+        setPatientSearch('');
+        setPatientDob('');
+        setPatientAge('');
+        setPatientPhone('');
+        setPatientHouseNo('');
+        setPatientSociety('');
+        setPatientArea('');
+        setTempAllergy('');
+        setTempComplaint('');
+        setTempInvestigation('');
+        setTempIpd('');
+        setDietaryTextInput('');
+        setDietaryCodeInput('');
+        setClinicMedForm({ medicine: '', qty: '', morning: '1', noon: '0', evening: '1' });
+        setRxForm({
+          medicine: '',
+          qty: '',
+          morning: '1',
+          noon: '0',
+          evening: '1',
+          night: '0',
+          timing: 'AF',
+          sosInstruction: '',
+        });
+        setShowInlineHistory(false);
+        setVisitForm(initialVisitForm);
+        visitFormRef.current = initialVisitForm;
         setEditingVisitId(null);
         editingVisitIdRef.current = null;
         setAttachedReport(null);

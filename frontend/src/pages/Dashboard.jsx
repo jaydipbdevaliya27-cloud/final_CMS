@@ -12,6 +12,7 @@ import { PatientRecord } from './PatientRecord';
 import { Reports } from './Reports';
 import { MedicalCertificate } from './MedicalCertificate';
 import { DoctorProfile } from './DoctorProfile';
+import { RecentHistory } from './RecentHistory';
 import {
   Stethoscope,
   LogOut,
@@ -58,6 +59,8 @@ export const Dashboard = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedFamilyId, setSelectedFamilyId] = useState('');
   const [selectedPatientId, setSelectedPatientId] = useState('');
+  const [patientForNewCase, setPatientForNewCase] = useState(null);
+  const [visitToEdit, setVisitToEdit] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [searchResults, setSearchResults] = useState([]);
@@ -1046,6 +1049,27 @@ export const Dashboard = () => {
         // Rendered persistently outside the switch to preserve un-saved clinical case data across tab switching
         return null;
 
+      case 'recent-history':
+        return (
+          <div style={styles.tabContentContainer}>
+            <RecentHistory
+              onNavigateToNewCase={(patient) => {
+                setPatientForNewCase(patient);
+                setSelectedPatientId(patient.patientId || patient._id || '');
+                setActiveTab('patient-record');
+              }}
+              onNavigateToEditCase={(visit) => {
+                setVisitToEdit(visit);
+                setSelectedPatientId(visit.patientId || '');
+                setActiveTab('patient-record');
+              }}
+              onNavigateToAddPatient={() => {
+                setActiveTab('family-head');
+              }}
+            />
+          </div>
+        );
+
       case 'master-data':
         return (
           <div style={styles.tabContentContainer}>
@@ -1385,6 +1409,12 @@ export const Dashboard = () => {
               selectedPatientId={selectedPatientId}
               onNavigateToAddMember={() => setActiveTab('add-member')}
               isActiveTab={activeTab === 'patient-record'}
+              initialPatientForNewCase={patientForNewCase}
+              initialVisitToEdit={visitToEdit}
+              onClearNavigationCase={() => {
+                setPatientForNewCase(null);
+                setVisitToEdit(null);
+              }}
             />
           </div>
 
