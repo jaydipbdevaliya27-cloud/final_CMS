@@ -55,3 +55,4 @@ cutSchema.index({ date: -1, createdAt: -1 });
 const Cut = mongoose.model('Cut', cutSchema);
 
 export default Cut;
+

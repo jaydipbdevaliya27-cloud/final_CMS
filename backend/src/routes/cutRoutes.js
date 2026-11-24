@@ -19,3 +19,4 @@ router.put('/:id', updateCut);
 router.delete('/:id', deleteCut);
 
 export default router;
+

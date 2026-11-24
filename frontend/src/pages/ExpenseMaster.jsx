@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { expenseAPI, masterDataAPI } from '../services/api';
 import { useDebounce } from '../hooks/useDebounce';
 import {
@@ -14,8 +14,10 @@ import {
   AlertCircle,
   IndianRupee,
   Layers,
-  ArrowUpRight,
-  TrendingDown,
+  ArrowRight,
+  Printer,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 
 export const ExpenseMaster = () => {
@@ -24,7 +26,7 @@ export const ExpenseMaster = () => {
   const [summary, setSummary] = useState({ todayTotal: 0, monthTotal: 0, overallTotal: 0 });
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearch = useDebounce(searchQuery, 300);
-  const [selectedPeriod, setSelectedPeriod] = useState('all'); // today, yesterday, thismonth, all, custom
+  const [selectedPeriod, setSelectedPeriod] = useState('today'); // 'today' | 'yesterday' | 'thismonth' | 'all' | 'custom'
   const [selectedDate, setSelectedDate] = useState(() => {
     const now = new Date();
     const pad = (n) => String(n).padStart(2, '0');
@@ -41,6 +43,8 @@ export const ExpenseMaster = () => {
     'STATIONERY & PRINTING',
     'CLEANING & MAINTENANCE',
     'TELEPHONE & INTERNET',
+    'DISPOSABLES / SYRINGES',
+    'WATER / UTILITIES',
     'MISCELLANEOUS',
   ]);
 
@@ -55,8 +59,11 @@ export const ExpenseMaster = () => {
   };
   const [form, setForm] = useState(initialForm);
   const [editingId, setEditingId] = useState(null);
+  const [showAddForm, setShowAddForm] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toast, setToast] = useState({ show: false, text: '', type: 'success' });
+
+  const categoryInputRef = useRef(null);
 
   const showToast = (text, type = 'success') => {
     setToast({ show: true, text, type });
@@ -71,7 +78,9 @@ export const ExpenseMaster = () => {
         const catList = res.data.map((c) => c.value?.toUpperCase()).filter(Boolean);
         setCategories((prev) => [...new Set([...prev, ...catList])]);
       }
-    } catch (e) {}
+    } catch (e) {
+      console.warn('Could not load expense categories:', e);
+    }
   };
 
   const fetchExpenses = async () => {
@@ -111,30 +120,31 @@ export const ExpenseMaster = () => {
   }, [debouncedSearch, selectedPeriod, selectedDate]);
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     if (!form.category.trim()) {
-      showToast('Please select or type an expense category.', 'error');
+      showToast('Please enter or select an expense category.', 'error');
+      if (categoryInputRef.current) categoryInputRef.current.focus();
       return;
     }
     const num = Number(form.amount);
     if (!num || num <= 0) {
-      showToast('Please enter an amount greater than 0.', 'error');
+      showToast('Please enter a valid expense amount greater than 0.', 'error');
       return;
     }
 
     try {
       setIsSubmitting(true);
-      const upperCategory = form.category.trim().toUpperCase();
       const payload = {
         ...form,
-        category: upperCategory,
+        category: form.category.trim().toUpperCase(),
+        paidTo: form.paidTo.trim().toUpperCase(),
         amount: num,
       };
 
       if (editingId) {
         const res = await expenseAPI.update(editingId, payload);
         if (res?.success) {
-          showToast('Expense updated successfully');
+          showToast('Expense updated successfully!');
           setEditingId(null);
           setForm(initialForm);
           fetchExpenses();
@@ -144,17 +154,18 @@ export const ExpenseMaster = () => {
       } else {
         const res = await expenseAPI.create(payload);
         if (res?.success) {
-          showToast(`₹${num} expense recorded under ${upperCategory}`);
-          // Add to datalist if new
-          setCategories((prev) => [...new Set([...prev, upperCategory])]);
+          showToast(`Expense of ₹${num.toLocaleString('en-IN')} recorded successfully!`);
+          if (!categories.includes(payload.category)) {
+            setCategories((prev) => [...prev, payload.category]);
+          }
           setForm(initialForm);
           fetchExpenses();
         } else {
-          showToast(res?.message || 'Failed to save expense', 'error');
+          showToast(res?.message || 'Failed to record expense', 'error');
         }
       }
     } catch (err) {
-      showToast(err.response?.data?.message || err.message || 'Failed to save expense', 'error');
+      showToast(err.message || 'Error saving expense', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -165,78 +176,147 @@ export const ExpenseMaster = () => {
     setForm({
       date: exp.date || new Date().toISOString().split('T')[0],
       category: exp.category || '',
-      amount: String(exp.amount || ''),
+      amount: exp.amount || '',
       paymentMode: exp.paymentMode || 'Cash',
       paidTo: exp.paidTo || '',
       description: exp.description || '',
     });
+    setShowAddForm(true);
+    setTimeout(() => {
+      if (categoryInputRef.current) categoryInputRef.current.focus();
+    }, 50);
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this expense entry?')) return;
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setForm(initialForm);
+  };
+
+  const handleDelete = async (id, cat, amt) => {
+    if (!window.confirm(`Delete expense "${cat}" (₹${amt})?`)) return;
     try {
       const res = await expenseAPI.delete(id);
       if (res?.success) {
-        showToast('Expense deleted successfully');
+        showToast('Expense record deleted successfully');
+        if (editingId === id) handleCancelEdit();
         fetchExpenses();
+      } else {
+        showToast(res?.message || 'Failed to delete expense', 'error');
       }
-    } catch (e) {
-      showToast('Failed to delete expense', 'error');
+    } catch (err) {
+      showToast(err.message || 'Error deleting expense', 'error');
     }
   };
 
+  // Format Date and Time
+  const formatDateTime = (exp) => {
+    let dateStr = exp.date || '';
+    if (dateStr && dateStr.includes('-')) {
+      const parts = dateStr.split('-');
+      if (parts.length === 3) {
+        dateStr = `${parts[2]}-${parts[1]}-${parts[0]}`;
+      }
+    }
+    let timeStr = '';
+    if (exp.createdAt) {
+      try {
+        const d = new Date(exp.createdAt);
+        timeStr = d.toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true,
+        });
+      } catch (e) {}
+    } else {
+      timeStr = '12:00 PM';
+    }
+    return { dateStr, timeStr };
+  };
+
+  const currentViewTotal = expenses.reduce((acc, e) => acc + (e.amount || 0), 0);
+
   return (
-    <div style={styles.container}>
-      {/* Toast Feedback */}
+    <div style={styles.windowContainer}>
+      {/* Toast Notification */}
       {toast.show && (
         <div
           style={{
-            ...styles.toast,
-            backgroundColor: toast.type === 'error' ? '#EF4444' : '#10B981',
+            ...styles.toastNotification,
+            backgroundColor: toast.type === 'error' ? '#DC2626' : '#15803D',
           }}
         >
           {toast.type === 'error' ? <AlertCircle size={16} /> : <CheckCircle2 size={16} />}
           <span>{toast.text}</span>
+          <button
+            type="button"
+            onClick={() => setToast({ show: false, text: '', type: 'success' })}
+            style={styles.toastCloseBtn}
+          >
+            <X size={14} />
+          </button>
         </div>
       )}
 
-      {/* Top Header Strip */}
-      <div style={styles.topBar}>
-        <div style={styles.titleSection}>
-          <div style={styles.titleIconBadge}>
-            <Wallet size={19} color="#B45309" />
-          </div>
-          <div>
-            <h1 style={styles.heading}>Expense Master (F6)</h1>
-            <span style={styles.subHeading}>
-              Track clinic operational expenses, bills, staff salaries, and supply purchases
-            </span>
-          </div>
+      {/* 1. TOP WINDOW TITLE BAR (EXACT SAME BLUE BAR FROM USER'S PHOTO) */}
+      <div style={styles.windowTitleBar}>
+        <div style={styles.windowTitleLeft}>
+          <Wallet size={15} color="#FFFFFF" />
+          <span style={styles.windowTitleText}>
+            Expense Master (Press F6 or Esc to close)
+          </span>
+        </div>
+        <div style={styles.windowTitleRight}>
+          <span style={styles.windowShortcutBadge}>F6</span>
+        </div>
+      </div>
+
+      {/* 2. SEARCH & FILTER ACTION BAR (MATCHING USER'S PHOTO INPUT ROW) */}
+      <div style={styles.searchActionBar}>
+        {/* Full-width Search Input */}
+        <div style={styles.searchWrapper}>
+          <Search size={15} color="#64748B" style={styles.searchIcon} />
+          <input
+            type="text"
+            placeholder="SEARCH BY CATEGORY, PAID TO, DESCRIPTION, REF..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={styles.searchInput}
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              style={styles.clearSearchBtn}
+            >
+              <X size={14} />
+            </button>
+          )}
         </div>
 
-        {/* Period Filter Buttons */}
-        <div style={styles.filterPillTrack}>
+        {/* Quick Period Filters */}
+        <div style={styles.periodPillGroup}>
           {[
-            { key: 'today', label: 'Today' },
-            { key: 'yesterday', label: 'Yesterday' },
-            { key: 'thismonth', label: 'This Month' },
-            { key: 'all', label: 'All Records' },
-            { key: 'custom', label: 'Custom Date' },
-          ].map((item) => {
-            const isSelected = selectedPeriod === item.key;
+            { id: 'today', label: 'TODAY' },
+            { id: 'yesterday', label: 'YESTERDAY' },
+            { id: 'thismonth', label: 'THIS MONTH' },
+            { id: 'all', label: 'ALL RECORDS' },
+            { id: 'custom', label: 'CUSTOM' },
+          ].map((p) => {
+            const isSelected = selectedPeriod === p.id;
             return (
               <button
-                key={item.key}
+                key={p.id}
                 type="button"
-                onClick={() => setSelectedPeriod(item.key)}
+                onClick={() => setSelectedPeriod(p.id)}
                 style={{
-                  ...styles.filterPill,
-                  backgroundColor: isSelected ? '#B45309' : 'transparent',
-                  color: isSelected ? '#FFFFFF' : '#475569',
-                  fontWeight: isSelected ? '600' : '500',
+                  ...styles.periodPillBtn,
+                  backgroundColor: isSelected ? '#0B5ED7' : '#FFFFFF',
+                  color: isSelected ? '#FFFFFF' : '#334155',
+                  borderColor: isSelected ? '#0B5ED7' : '#CBD5E1',
+                  fontWeight: isSelected ? 700 : 500,
                 }}
               >
-                {item.label}
+                {p.label}
               </button>
             );
           })}
@@ -245,64 +325,55 @@ export const ExpenseMaster = () => {
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              style={styles.customDateInput}
+              style={styles.datePickerInput}
             />
           )}
         </div>
-      </div>
 
-      {/* KPI Summary Cards */}
-      <div style={styles.kpiRow}>
-        <div style={styles.kpiCard}>
-          <div style={styles.kpiIconWrapToday}>
-            <TrendingDown size={18} color="#B45309" />
-          </div>
-          <div>
-            <span style={styles.kpiLabel}>Today's Expenses</span>
-            <div style={styles.kpiValue}>₹{(summary.todayTotal || 0).toLocaleString('en-IN')}</div>
-          </div>
-        </div>
+        {/* Refresh & Toggle Form Buttons */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <button
+            type="button"
+            onClick={fetchExpenses}
+            title="Refresh records"
+            style={styles.refreshIconBtn}
+          >
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+          </button>
 
-        <div style={styles.kpiCard}>
-          <div style={styles.kpiIconWrapMonth}>
-            <Calendar size={18} color="#0D5C4E" />
-          </div>
-          <div>
-            <span style={styles.kpiLabel}>This Month's Total</span>
-            <div style={{ ...styles.kpiValue, color: '#0D5C4E' }}>
-              ₹{(summary.monthTotal || 0).toLocaleString('en-IN')}
-            </div>
-          </div>
-        </div>
-
-        <div style={styles.kpiCard}>
-          <div style={styles.kpiIconWrapAll}>
-            <Wallet size={18} color="#475569" />
-          </div>
-          <div>
-            <span style={styles.kpiLabel}>Overall All-Time Expenses</span>
-            <div style={{ ...styles.kpiValue, color: '#334155' }}>
-              ₹{(summary.overallTotal || 0).toLocaleString('en-IN')}
-            </div>
-          </div>
+          {/* + ADD EXPENSE (ENTER) BUTTON - EXACT SAME GREEN BUTTON AS PHOTO */}
+          <button
+            type="button"
+            onClick={() => {
+              setShowAddForm((prev) => !prev);
+              if (!showAddForm) {
+                setTimeout(() => {
+                  if (categoryInputRef.current) categoryInputRef.current.focus();
+                }, 50);
+              }
+            }}
+            style={styles.addExpenseBtn}
+          >
+            <Plus size={15} strokeWidth={2.5} />
+            <span>{editingId ? 'EDITING EXPENSE' : '+ ADD EXPENSE (Enter)'}</span>
+          </button>
         </div>
       </div>
 
-      {/* Entry Form + Ledger Table Grid */}
-      <div style={styles.mainGrid}>
-        {/* Left Form: Add / Edit Expense */}
-        <div style={styles.formCard}>
-          <div style={styles.formHeader}>
-            <h3 style={styles.formTitle}>
-              {editingId ? 'Edit Expense Record' : 'Record New Expense'}
-            </h3>
+      {/* 3. ENTRY / EDIT EXPENSE FORM (CLEAN DESKTOP INLINE PANEL) */}
+      {showAddForm && (
+        <form onSubmit={handleSubmit} style={styles.entryFormPanel}>
+          <div style={styles.formHeaderRow}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={styles.formHeaderDot}></span>
+              <span style={styles.formHeaderText}>
+                {editingId ? 'EDIT CLINICAL EXPENSE ENTRY' : 'NEW EXPENSE ENTRY (AUTO-SAVES TO MASTER)'}
+              </span>
+            </div>
             {editingId && (
               <button
                 type="button"
-                onClick={() => {
-                  setEditingId(null);
-                  setForm(initialForm);
-                }}
+                onClick={handleCancelEdit}
                 style={styles.cancelEditBtn}
               >
                 Cancel Edit
@@ -310,207 +381,260 @@ export const ExpenseMaster = () => {
             )}
           </div>
 
-          <form onSubmit={handleSubmit} style={styles.formBody}>
-            {/* Datalist for Auto-complete / Auto-save */}
-            <datalist id="expense-categories">
-              {categories.map((c, idx) => (
-                <option key={idx} value={c} />
-              ))}
-            </datalist>
-
-            <div style={styles.inputGroup}>
-              <label style={styles.inputLabel}>Date: *</label>
+          <div style={styles.formFieldsRow}>
+            {/* Field 1: Date */}
+            <div style={{ ...styles.formFieldCol, width: '130px', flexShrink: 0 }}>
+              <label style={styles.formLabel}>Date: *</label>
               <input
                 type="date"
+                required
                 value={form.date}
                 onChange={(e) => setForm({ ...form, date: e.target.value })}
-                style={styles.input}
-                required
+                style={styles.formInput}
               />
             </div>
 
-            <div style={styles.inputGroup}>
-              <label style={styles.inputLabel}>Expense Category (Datalist): *</label>
+            {/* Field 2: Category (Datalist) */}
+            <div style={{ ...styles.formFieldCol, flex: 2, minWidth: '180px' }}>
+              <label style={styles.formLabel}>
+                Expense Category: <span style={{ color: '#DC2626' }}>*</span>
+              </label>
               <input
+                ref={categoryInputRef}
+                list="expense-categories-list"
                 type="text"
-                list="expense-categories"
-                placeholder="Type or pick category (e.g. Refreshments, Bills)..."
+                required
+                placeholder="TYPE OR SELECT CATEGORY..."
                 value={form.category}
                 onChange={(e) => setForm({ ...form, category: e.target.value })}
-                style={styles.input}
-                required
+                style={{ ...styles.formInput, textTransform: 'uppercase' }}
               />
-              <span style={styles.helperText}>
-                New categories are automatically remembered in Master Data.
-              </span>
+              <datalist id="expense-categories-list">
+                {categories.map((c, i) => (
+                  <option key={i} value={c} />
+                ))}
+              </datalist>
             </div>
 
-            <div style={styles.inputGroup}>
-              <label style={styles.inputLabel}>Amount (₹): *</label>
+            {/* Field 3: Paid To / Beneficiary */}
+            <div style={{ ...styles.formFieldCol, flex: 2, minWidth: '160px' }}>
+              <label style={styles.formLabel}>Paid To / Person / Firm:</label>
+              <input
+                type="text"
+                placeholder="BENEFICIARY OR FIRM..."
+                value={form.paidTo}
+                onChange={(e) => setForm({ ...form, paidTo: e.target.value })}
+                style={{ ...styles.formInput, textTransform: 'uppercase' }}
+              />
+            </div>
+
+            {/* Field 4: Amount (₹) */}
+            <div style={{ ...styles.formFieldCol, width: '120px', flexShrink: 0 }}>
+              <label style={styles.formLabel}>
+                Amount (₹): <span style={{ color: '#DC2626' }}>*</span>
+              </label>
               <input
                 type="number"
-                min="1"
-                placeholder="0"
+                step="0.01"
+                min="0.01"
+                required
+                placeholder="₹ 0.00"
                 value={form.amount}
                 onChange={(e) => setForm({ ...form, amount: e.target.value })}
-                style={{ ...styles.input, fontWeight: '700', color: '#B45309' }}
-                required
+                style={{ ...styles.formInput, fontWeight: 700, color: '#B91C1C' }}
               />
             </div>
 
-            <div style={styles.inputGroup}>
-              <label style={styles.inputLabel}>Payment Mode:</label>
+            {/* Field 5: Payment Mode */}
+            <div style={{ ...styles.formFieldCol, width: '120px', flexShrink: 0 }}>
+              <label style={styles.formLabel}>Payment Mode:</label>
               <select
                 value={form.paymentMode}
                 onChange={(e) => setForm({ ...form, paymentMode: e.target.value })}
-                style={styles.select}
+                style={styles.formSelect}
               >
                 <option value="Cash">Cash</option>
-                <option value="UPI">UPI / GPay / PhonePe</option>
-                <option value="Card">Debit / Credit Card</option>
-                <option value="Net Banking">Net Banking</option>
+                <option value="Online/UPI">Online/UPI</option>
+                <option value="Bank Transfer">Bank Transfer</option>
                 <option value="Cheque">Cheque</option>
+                <option value="Other">Other</option>
               </select>
             </div>
 
-            <div style={styles.inputGroup}>
-              <label style={styles.inputLabel}>Paid To / Vendor Name:</label>
+            {/* Field 6: Description */}
+            <div style={{ ...styles.formFieldCol, flex: 3, minWidth: '200px' }}>
+              <label style={styles.formLabel}>Description / Remarks:</label>
               <input
                 type="text"
-                placeholder="e.g. Medical Store, Electric Board, John..."
-                value={form.paidTo}
-                onChange={(e) => setForm({ ...form, paidTo: e.target.value })}
-                style={styles.input}
-              />
-            </div>
-
-            <div style={styles.inputGroup}>
-              <label style={styles.inputLabel}>Notes / Description:</label>
-              <textarea
-                placeholder="Details of the expense..."
+                placeholder="REMARKS OR INVOICE #..."
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
-                style={styles.textarea}
-                rows={2}
+                style={styles.formInput}
               />
             </div>
 
-            <button type="submit" disabled={isSubmitting} style={styles.submitBtn}>
-              <Plus size={15} />
-              <span>{editingId ? 'Update Expense' : 'Save Expense Entry'}</span>
-            </button>
-          </form>
+            {/* Submit Button */}
+            <div style={{ ...styles.formFieldCol, alignSelf: 'flex-end', flexShrink: 0 }}>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                style={styles.saveSubmitBtn}
+              >
+                {isSubmitting ? 'SAVING...' : editingId ? 'UPDATE' : 'SAVE (F2)'}
+              </button>
+            </div>
+          </div>
+        </form>
+      )}
+
+      {/* 4. EXPENSES DATA TABLE (EXACT SAME COMPACT DESKTOP GRID FROM PHOTO) */}
+      <div style={styles.tableScrollWrapper}>
+        <table style={styles.dataTable}>
+          <thead>
+            <tr style={styles.theadRow}>
+              <th style={{ ...styles.th, width: '45px', textAlign: 'center' }}>#</th>
+              <th style={{ ...styles.th, width: '130px' }}>Date & Time</th>
+              <th style={{ ...styles.th, width: '220px' }}>Expense Category</th>
+              <th style={{ ...styles.th, width: '180px' }}>Paid To / Vendor</th>
+              <th style={styles.th}>Description / Remarks</th>
+              <th style={{ ...styles.th, width: '110px' }}>Mode</th>
+              <th style={{ ...styles.th, width: '110px', textAlign: 'right' }}>Amount (₹)</th>
+              <th style={{ ...styles.th, width: '90px', textAlign: 'center' }}>Act</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading && expenses.length === 0 ? (
+              <tr>
+                <td colSpan={8} style={styles.emptyTd}>
+                  <RefreshCw size={20} className="animate-spin" style={{ margin: '0 auto 6px' }} />
+                  <span>Loading expenses...</span>
+                </td>
+              </tr>
+            ) : expenses.length === 0 ? (
+              <tr>
+                <td colSpan={8} style={styles.emptyTd}>
+                  <Wallet size={24} color="#94A3B8" style={{ margin: '0 auto 6px' }} />
+                  <span>No expense entries found for the selected period.</span>
+                </td>
+              </tr>
+            ) : (
+              expenses.map((exp, idx) => {
+                const { dateStr, timeStr } = formatDateTime(exp);
+                const isEven = idx % 2 === 0;
+                return (
+                  <tr
+                    key={exp._id || idx}
+                    style={{
+                      ...styles.tr,
+                      backgroundColor: isEven ? '#FFFFFF' : '#F8FAFC',
+                    }}
+                  >
+                    {/* Index */}
+                    <td style={{ ...styles.td, textAlign: 'center', color: '#64748B', fontWeight: 600 }}>
+                      {idx + 1}
+                    </td>
+
+                    {/* Date & Time */}
+                    <td style={styles.td}>
+                      <div style={styles.dateText}>{dateStr}</div>
+                      <div style={styles.timeBadge}>{timeStr}</div>
+                    </td>
+
+                    {/* Expense Category */}
+                    <td style={styles.td}>
+                      <span style={styles.categoryBadge}>
+                        {exp.category}
+                      </span>
+                    </td>
+
+                    {/* Paid To */}
+                    <td style={styles.td}>
+                      <span style={{ fontWeight: 600, color: '#1E293B' }}>
+                        {exp.paidTo || '-'}
+                      </span>
+                    </td>
+
+                    {/* Description */}
+                    <td style={{ ...styles.td, color: '#475569' }}>
+                      {exp.description || '-'}
+                    </td>
+
+                    {/* Payment Mode */}
+                    <td style={styles.td}>
+                      <span style={styles.modeBadge}>
+                        {exp.paymentMode || 'Cash'}
+                      </span>
+                    </td>
+
+                    {/* Amount (₹) */}
+                    <td style={{ ...styles.td, textAlign: 'right', fontWeight: 800, color: '#B91C1C', fontSize: '13px' }}>
+                      ₹{(exp.amount || 0).toLocaleString('en-IN')}
+                    </td>
+
+                    {/* Act (Buttons matching the photo) */}
+                    <td style={{ ...styles.td, textAlign: 'center' }}>
+                      <div style={styles.actButtonGroup}>
+                        {/* Edit Button */}
+                        <button
+                          type="button"
+                          onClick={() => handleEdit(exp)}
+                          title="Edit Expense"
+                          style={styles.btnEdit}
+                        >
+                          <Edit size={13} color="#D97706" />
+                        </button>
+
+                        {/* Delete Button */}
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(exp._id, exp.category, exp.amount)}
+                          title="Delete Expense"
+                          style={styles.btnDelete}
+                        >
+                          <Trash2 size={13} color="#DC2626" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* 5. BOTTOM SUMMARY BAR (MATCHING CLINIC FOOTER DESIGN) */}
+      <div style={styles.windowFooterBar}>
+        <div style={styles.footerLeft}>
+          <span style={styles.footerCountText}>
+            Total Records: <strong>{expenses.length}</strong>
+          </span>
+          <span style={styles.footerDivider}>|</span>
+          <span style={styles.footerPeriodText}>
+            Period: <strong>{selectedPeriod.toUpperCase()}</strong>
+          </span>
         </div>
 
-        {/* Right Ledger Table */}
-        <div style={styles.tableCard}>
-          {/* Table Header Filter Strip */}
-          <div style={styles.tableTopStrip}>
-            <div style={styles.tableSearchWrap}>
-              <Search size={15} color="#64748B" style={styles.tableSearchIcon} />
-              <input
-                type="text"
-                placeholder="Search expenses by category, vendor, notes..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                style={styles.tableSearchInput}
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery('')}
-                  style={styles.clearSearchBtn}
-                >
-                  <X size={13} color="#64748B" />
-                </button>
-              )}
-            </div>
-
-            <div style={styles.tableCountBadge}>
-              {loading ? 'Loading...' : `${expenses.length} Records`}
-            </div>
-
-            <button
-              type="button"
-              onClick={fetchExpenses}
-              style={styles.refreshBtn}
-              title="Refresh ledger"
-            >
-              <RefreshCw size={13} className={loading ? 'spin' : ''} />
-              <span>Refresh</span>
-            </button>
+        <div style={styles.footerRight}>
+          <div style={styles.footerMetricItem}>
+            <span style={styles.footerMetricLabel}>TODAY'S EXPENSE:</span>
+            <span style={{ ...styles.footerMetricVal, color: '#DC2626' }}>
+              ₹{(summary.todayTotal || 0).toLocaleString('en-IN')}
+            </span>
           </div>
 
-          <div style={styles.tableScroll}>
-            <table style={styles.table}>
-              <thead>
-                <tr style={styles.theadRow}>
-                  <th style={{ ...styles.th, width: '100px' }}>Date</th>
-                  <th style={{ ...styles.th, width: '160px' }}>Category</th>
-                  <th style={{ ...styles.th, width: '100px', textAlign: 'right' }}>Amount (₹)</th>
-                  <th style={{ ...styles.th, width: '100px' }}>Mode</th>
-                  <th style={{ ...styles.th, width: '140px' }}>Paid To</th>
-                  <th style={styles.th}>Notes / Description</th>
-                  <th style={{ ...styles.th, width: '80px', textAlign: 'center' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr>
-                    <td colSpan={7} style={styles.loadingCell}>
-                      Loading expense entries...
-                    </td>
-                  </tr>
-                ) : expenses.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} style={styles.emptyCell}>
-                      No expenses recorded for this filter
-                    </td>
-                  </tr>
-                ) : (
-                  expenses.map((exp, idx) => (
-                    <tr
-                      key={exp._id || idx}
-                      style={{
-                        ...styles.tr,
-                        backgroundColor: idx % 2 === 0 ? '#FFFFFF' : '#F8FAFC',
-                      }}
-                    >
-                      <td style={styles.tdDate}>{exp.date}</td>
-                      <td style={styles.tdCategory}>
-                        <span style={styles.categoryBadge}>{exp.category}</span>
-                      </td>
-                      <td style={styles.tdAmount}>₹{(exp.amount || 0).toLocaleString('en-IN')}</td>
-                      <td style={styles.tdMode}>
-                        <span style={styles.modeBadge}>{exp.paymentMode || 'Cash'}</span>
-                      </td>
-                      <td style={styles.tdPaidTo}>{exp.paidTo || '-'}</td>
-                      <td style={styles.tdDesc}>{exp.description || '-'}</td>
-                      <td style={styles.tdActions}>
-                        <div style={styles.actionBtns}>
-                          <button
-                            type="button"
-                            onClick={() => handleEdit(exp)}
-                            style={styles.editBtn}
-                            title="Edit this expense"
-                          >
-                            <Edit size={13} color="#D97706" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(exp._id)}
-                            style={styles.deleteBtn}
-                            title="Delete this expense"
-                          >
-                            <Trash2 size={13} color="#DC2626" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+          <div style={styles.footerMetricItem}>
+            <span style={styles.footerMetricLabel}>THIS MONTH:</span>
+            <span style={{ ...styles.footerMetricVal, color: '#B45309' }}>
+              ₹{(summary.monthTotal || 0).toLocaleString('en-IN')}
+            </span>
+          </div>
+
+          <div style={styles.footerMetricItemHighlight}>
+            <span style={styles.footerMetricLabel}>TOTAL VIEW AMOUNT:</span>
+            <span style={{ ...styles.footerMetricVal, color: '#B91C1C', fontWeight: 900 }}>
+              ₹{currentViewTotal.toLocaleString('en-IN')}
+            </span>
           </div>
         </div>
       </div>
@@ -519,416 +643,411 @@ export const ExpenseMaster = () => {
 };
 
 const styles = {
-  container: {
-    display: 'flex',
-    flexDirection: 'column',
-    height: '100%',
+  windowContainer: {
     width: '100%',
-    backgroundColor: '#F8FAFC',
-    overflow: 'hidden',
-    boxSizing: 'border-box',
-    padding: '10px 14px',
-    gap: '10px',
-  },
-  toast: {
-    position: 'fixed',
-    top: 18,
-    right: 20,
-    zIndex: 9999,
-    padding: '10px 18px',
-    borderRadius: '8px',
-    color: '#FFFFFF',
-    fontWeight: '600',
-    fontSize: '13px',
+    height: '100%',
     display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    boxShadow: '0 4px 14px rgba(0,0,0,0.18)',
+    flexDirection: 'column',
+    backgroundColor: '#FFFFFF',
+    overflow: 'hidden',
+    border: '1px solid #CBD5E1',
+    userSelect: 'none',
   },
-  topBar: {
+
+  // 1. Title Bar
+  windowTitleBar: {
+    backgroundColor: '#0B5ED7', // Clinic Royal Blue matching screenshot
+    color: '#FFFFFF',
+    padding: '7px 12px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: '6px 12px',
-    backgroundColor: '#FFFFFF',
-    borderRadius: '8px',
-    border: '1px solid #E2E8F0',
+    fontSize: '13.5px',
+    fontWeight: 700,
+    letterSpacing: '0.02em',
+    flexShrink: 0,
   },
-  titleSection: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-  },
-  titleIconBadge: {
-    width: '32px',
-    height: '32px',
-    borderRadius: '8px',
-    backgroundColor: '#FEF3C7',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heading: {
-    fontSize: '15px',
-    fontWeight: '700',
-    color: '#0F172A',
-    margin: 0,
-  },
-  subHeading: {
-    fontSize: '11px',
-    color: '#64748B',
-  },
-  filterPillTrack: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-    backgroundColor: '#F1F5F9',
-    padding: '3px',
-    borderRadius: '8px',
-  },
-  filterPill: {
-    border: 'none',
-    padding: '5px 12px',
-    borderRadius: '6px',
-    fontSize: '12px',
-    cursor: 'pointer',
-  },
-  customDateInput: {
-    border: '1px solid #CBD5E1',
-    borderRadius: '6px',
-    padding: '4px 8px',
-    fontSize: '12px',
-    backgroundColor: '#FFFFFF',
-    outline: 'none',
-  },
-  kpiRow: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(3, 1fr)',
-    gap: '12px',
-  },
-  kpiCard: {
-    backgroundColor: '#FFFFFF',
-    border: '1px solid #E2E8F0',
-    borderRadius: '8px',
-    padding: '10px 14px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-  },
-  kpiIconWrapToday: {
-    width: '36px',
-    height: '36px',
-    borderRadius: '8px',
-    backgroundColor: '#FEF3C7',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  kpiIconWrapMonth: {
-    width: '36px',
-    height: '36px',
-    borderRadius: '8px',
-    backgroundColor: '#DCFCE7',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  kpiIconWrapAll: {
-    width: '36px',
-    height: '36px',
-    borderRadius: '8px',
-    backgroundColor: '#F1F5F9',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  kpiLabel: {
-    fontSize: '11.5px',
-    color: '#64748B',
-    fontWeight: '600',
-    display: 'block',
-  },
-  kpiValue: {
-    fontSize: '17px',
-    fontWeight: '800',
-    color: '#B45309',
-  },
-  mainGrid: {
-    display: 'grid',
-    gridTemplateColumns: '320px 1fr',
-    gap: '12px',
-    flex: 1,
-    minHeight: 0,
-    overflow: 'hidden',
-  },
-  formCard: {
-    backgroundColor: '#FFFFFF',
-    border: '1px solid #E2E8F0',
-    borderRadius: '8px',
-    display: 'flex',
-    flexDirection: 'column',
-    overflowY: 'auto',
-  },
-  formHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '12px 14px',
-    borderBottom: '1px solid #E2E8F0',
-    backgroundColor: '#FFFBEB',
-  },
-  formTitle: {
-    margin: 0,
-    fontSize: '13px',
-    fontWeight: '700',
-    color: '#92400E',
-  },
-  cancelEditBtn: {
-    fontSize: '11px',
-    color: '#DC2626',
-    background: 'none',
-    border: 'none',
-    fontWeight: '600',
-    cursor: 'pointer',
-  },
-  formBody: {
-    padding: '14px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '10px',
-  },
-  inputGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '4px',
-  },
-  inputLabel: {
-    fontSize: '11.5px',
-    fontWeight: '700',
-    color: '#334155',
-  },
-  input: {
-    height: '34px',
-    padding: '0 10px',
-    border: '1px solid #CBD5E1',
-    borderRadius: '6px',
-    fontSize: '12px',
-    outline: 'none',
-  },
-  select: {
-    height: '34px',
-    padding: '0 8px',
-    border: '1px solid #CBD5E1',
-    borderRadius: '6px',
-    fontSize: '12px',
-    backgroundColor: '#FFFFFF',
-    outline: 'none',
-  },
-  textarea: {
-    padding: '8px 10px',
-    border: '1px solid #CBD5E1',
-    borderRadius: '6px',
-    fontSize: '12px',
-    outline: 'none',
-    resize: 'none',
-  },
-  helperText: {
-    fontSize: '10px',
-    color: '#64748B',
-  },
-  submitBtn: {
-    marginTop: '6px',
-    height: '36px',
-    backgroundColor: '#B45309',
-    color: '#FFFFFF',
-    border: 'none',
-    borderRadius: '6px',
-    fontSize: '12.5px',
-    fontWeight: '700',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '6px',
-    cursor: 'pointer',
-  },
-  tableCard: {
-    backgroundColor: '#FFFFFF',
-    border: '1px solid #CBD5E1',
-    borderRadius: '8px',
-    display: 'flex',
-    flexDirection: 'column',
-    overflow: 'hidden',
-  },
-  tableTopStrip: {
+  windowTitleLeft: {
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
-    padding: '8px 12px',
-    borderBottom: '1px solid #E2E8F0',
   },
-  tableSearchWrap: {
-    flex: 1,
+  windowTitleText: {
+    textTransform: 'uppercase',
+  },
+  windowTitleRight: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+  },
+  windowShortcutBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
+    padding: '2px 7px',
+    borderRadius: '3px',
+    fontSize: '11px',
+    fontWeight: 800,
+  },
+
+  // 2. Search & Action Strip
+  searchActionBar: {
+    backgroundColor: '#F1F5F9',
+    padding: '7px 12px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '10px',
+    borderBottom: '1px solid #CBD5E1',
+    flexShrink: 0,
+    flexWrap: 'wrap',
+  },
+  searchWrapper: {
     position: 'relative',
-    display: 'flex',
-    alignItems: 'center',
+    flex: 1,
+    minWidth: '260px',
   },
-  tableSearchIcon: {
+  searchIcon: {
     position: 'absolute',
     left: '10px',
+    top: '50%',
+    transform: 'translateY(-50%)',
     pointerEvents: 'none',
   },
-  tableSearchInput: {
+  searchInput: {
     width: '100%',
-    height: '32px',
-    padding: '0 28px 0 32px',
-    border: '1px solid #CBD5E1',
-    borderRadius: '6px',
+    padding: '6px 28px 6px 32px',
     fontSize: '12px',
+    fontWeight: 600,
+    color: '#0F172A',
+    backgroundColor: '#FFFFFF',
+    border: '1px solid #94A3B8',
+    borderRadius: '4px',
     outline: 'none',
+    textTransform: 'uppercase',
   },
   clearSearchBtn: {
     position: 'absolute',
     right: '8px',
+    top: '50%',
+    transform: 'translateY(-50%)',
     background: 'none',
     border: 'none',
     cursor: 'pointer',
-    padding: 2,
+    color: '#94A3B8',
   },
-  tableCountBadge: {
-    fontSize: '11px',
-    fontWeight: '600',
-    color: '#475569',
-    backgroundColor: '#F1F5F9',
-    padding: '5px 10px',
-    borderRadius: '4px',
-    whiteSpace: 'nowrap',
-  },
-  refreshBtn: {
+  periodPillGroup: {
     display: 'flex',
     alignItems: 'center',
     gap: '4px',
-    padding: '5px 10px',
+  },
+  periodPillBtn: {
+    fontSize: '11px',
+    padding: '4px 9px',
+    borderRadius: '3px',
+    border: '1px solid',
+    cursor: 'pointer',
+    transition: 'all 0.15s ease',
+  },
+  datePickerInput: {
+    fontSize: '11px',
+    padding: '3px 6px',
+    borderRadius: '3px',
+    border: '1px solid #CBD5E1',
+    outline: 'none',
+  },
+  refreshIconBtn: {
+    padding: '6px 8px',
     backgroundColor: '#FFFFFF',
     border: '1px solid #CBD5E1',
-    borderRadius: '6px',
-    fontSize: '11.5px',
-    fontWeight: '600',
-    color: '#334155',
+    borderRadius: '4px',
     cursor: 'pointer',
-    height: '32px',
+    color: '#475569',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  tableScroll: {
+  addExpenseBtn: {
+    backgroundColor: '#15803D', // Deep Forest Green matching "+ ADD PATIENT (Enter)" in photo
+    color: '#FFFFFF',
+    fontWeight: 700,
+    fontSize: '12px',
+    border: 'none',
+    borderRadius: '4px',
+    padding: '6px 14px',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '5px',
+    boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+  },
+
+  // 3. Entry Form Panel
+  entryFormPanel: {
+    backgroundColor: '#F8FAFC',
+    borderBottom: '2px solid #0B5ED7',
+    padding: '10px 14px',
+    flexShrink: 0,
+  },
+  formHeaderRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: '8px',
+  },
+  formHeaderDot: {
+    width: '7px',
+    height: '7px',
+    borderRadius: '50%',
+    backgroundColor: '#0B5ED7',
+  },
+  formHeaderText: {
+    fontSize: '11.5px',
+    fontWeight: 800,
+    color: '#0B5ED7',
+    letterSpacing: '0.03em',
+  },
+  cancelEditBtn: {
+    fontSize: '11px',
+    padding: '2px 8px',
+    backgroundColor: '#F1F5F9',
+    border: '1px solid #CBD5E1',
+    borderRadius: '3px',
+    cursor: 'pointer',
+    color: '#475569',
+  },
+  formFieldsRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    flexWrap: 'wrap',
+  },
+  formFieldCol: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '3px',
+  },
+  formLabel: {
+    fontSize: '10.5px',
+    fontWeight: 700,
+    color: '#475569',
+    whiteSpace: 'nowrap',
+  },
+  formInput: {
+    height: '29px',
+    padding: '4px 8px',
+    fontSize: '12px',
+    border: '1px solid #94A3B8',
+    borderRadius: '3px',
+    backgroundColor: '#FFFFFF',
+    outline: 'none',
+  },
+  formSelect: {
+    height: '29px',
+    padding: '4px 6px',
+    fontSize: '12px',
+    border: '1px solid #94A3B8',
+    borderRadius: '3px',
+    backgroundColor: '#FFFFFF',
+    outline: 'none',
+  },
+  saveSubmitBtn: {
+    height: '29px',
+    padding: '0 16px',
+    backgroundColor: '#0B5ED7',
+    color: '#FFFFFF',
+    fontWeight: 800,
+    fontSize: '11.5px',
+    border: 'none',
+    borderRadius: '3px',
+    cursor: 'pointer',
+    boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+  },
+
+  // 4. Data Table
+  tableScrollWrapper: {
     flex: 1,
     overflowY: 'auto',
     overflowX: 'auto',
+    backgroundColor: '#FFFFFF',
   },
-  table: {
+  dataTable: {
     width: '100%',
     borderCollapse: 'collapse',
     fontSize: '12px',
   },
   theadRow: {
-    backgroundColor: '#B45309',
-    color: '#FFFFFF',
+    backgroundColor: '#E2E8F0', // Soft silver-blue header matching clinic screenshot
+    borderBottom: '1px solid #94A3B8',
     position: 'sticky',
     top: 0,
     zIndex: 2,
   },
   th: {
-    padding: '8px 10px',
-    fontSize: '11px',
-    fontWeight: '700',
+    padding: '7px 8px',
     textAlign: 'left',
-    borderRight: '1px solid rgba(255, 255, 255, 0.15)',
+    fontSize: '11px',
+    fontWeight: 800,
+    color: '#0F172A',
+    letterSpacing: '0.02em',
+    borderRight: '1px solid #CBD5E1',
     whiteSpace: 'nowrap',
   },
   tr: {
     borderBottom: '1px solid #E2E8F0',
+    transition: 'background-color 0.1s ease',
   },
-  tdDate: {
-    padding: '8px 10px',
-    fontWeight: '600',
+  td: {
+    padding: '6px 8px',
+    verticalAlign: 'middle',
+    borderRight: '1px solid #F1F5F9',
+  },
+  dateText: {
+    fontSize: '12px',
+    fontWeight: 700,
     color: '#0F172A',
-    whiteSpace: 'nowrap',
   },
-  tdCategory: {
-    padding: '8px 10px',
+  timeBadge: {
+    fontSize: '10px',
+    fontWeight: 600,
+    color: '#0284C7',
   },
   categoryBadge: {
+    display: 'inline-block',
+    padding: '2px 7px',
+    borderRadius: '3px',
+    fontSize: '11px',
+    fontWeight: 700,
     backgroundColor: '#FEF3C7',
     color: '#92400E',
-    fontWeight: '700',
-    fontSize: '11px',
-    padding: '2px 8px',
-    borderRadius: '4px',
-    display: 'inline-block',
-  },
-  tdAmount: {
-    padding: '8px 10px',
-    fontWeight: '800',
-    color: '#B45309',
-    textAlign: 'right',
-  },
-  tdMode: {
-    padding: '8px 10px',
+    border: '1px solid #FDE68A',
   },
   modeBadge: {
-    backgroundColor: '#F1F5F9',
-    color: '#334155',
-    fontWeight: '600',
-    fontSize: '10.5px',
+    display: 'inline-block',
     padding: '2px 6px',
-    borderRadius: '4px',
+    borderRadius: '3px',
+    fontSize: '10.5px',
+    fontWeight: 600,
+    backgroundColor: '#F1F5F9',
+    color: '#475569',
+    border: '1px solid #E2E8F0',
   },
-  tdPaidTo: {
-    padding: '8px 10px',
-    color: '#334155',
-  },
-  tdDesc: {
-    padding: '8px 10px',
-    color: '#64748B',
-    fontSize: '11.5px',
-  },
-  tdActions: {
-    padding: '8px 6px',
-    textAlign: 'center',
-  },
-  actionBtns: {
-    display: 'flex',
+  actButtonGroup: {
+    display: 'inline-flex',
     alignItems: 'center',
-    justifyContent: 'center',
     gap: '4px',
-  },
-  editBtn: {
-    width: '26px',
-    height: '26px',
+    backgroundColor: '#F1F5F9',
+    padding: '2px 4px',
     borderRadius: '4px',
-    border: '1px solid #FDE68A',
-    backgroundColor: '#FFFBEB',
+    border: '1px solid #CBD5E1',
+  },
+  btnEdit: {
+    padding: '3px 5px',
+    backgroundColor: '#FFFFFF',
+    border: '1px solid #FCD34D',
+    borderRadius: '3px',
+    cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    cursor: 'pointer',
   },
-  deleteBtn: {
-    width: '26px',
-    height: '26px',
-    borderRadius: '4px',
-    border: '1px solid #FECACA',
-    backgroundColor: '#FEF2F2',
+  btnDelete: {
+    padding: '3px 5px',
+    backgroundColor: '#FFFFFF',
+    border: '1px solid #FCA5A5',
+    borderRadius: '3px',
+    cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  emptyTd: {
+    padding: '40px 16px',
+    textAlign: 'center',
+    color: '#64748B',
+    fontSize: '12px',
+  },
+
+  // 5. Window Footer Bar
+  windowFooterBar: {
+    backgroundColor: '#F8FAFC',
+    borderTop: '1px solid #CBD5E1',
+    padding: '7px 14px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    fontSize: '11.5px',
+    flexShrink: 0,
+    flexWrap: 'wrap',
+    gap: '8px',
+  },
+  footerLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    color: '#475569',
+  },
+  footerCountText: {
+    fontSize: '12px',
+  },
+  footerDivider: {
+    color: '#CBD5E1',
+  },
+  footerPeriodText: {
+    fontSize: '11px',
+  },
+  footerRight: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '16px',
+  },
+  footerMetricItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '5px',
+  },
+  footerMetricItemHighlight: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    backgroundColor: '#FEE2E2',
+    padding: '3px 10px',
+    borderRadius: '4px',
+    border: '1px solid #FCA5A5',
+  },
+  footerMetricLabel: {
+    fontSize: '10.5px',
+    fontWeight: 700,
+    color: '#64748B',
+  },
+  footerMetricVal: {
+    fontSize: '12.5px',
+    fontWeight: 800,
+  },
+
+  // Toast
+  toastNotification: {
+    position: 'fixed',
+    top: '16px',
+    right: '16px',
+    zIndex: 9999,
+    color: '#FFFFFF',
+    padding: '8px 14px',
+    borderRadius: '5px',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    fontSize: '12px',
+    fontWeight: 600,
+  },
+  toastCloseBtn: {
+    background: 'none',
+    border: 'none',
+    color: '#FFFFFF',
     cursor: 'pointer',
-  },
-  loadingCell: {
-    padding: '28px',
-    textAlign: 'center',
-    color: '#64748B',
-  },
-  emptyCell: {
-    padding: '32px',
-    textAlign: 'center',
-    color: '#64748B',
+    padding: 0,
+    marginLeft: '6px',
+    display: 'flex',
   },
 };
+
+export default ExpenseMaster;
