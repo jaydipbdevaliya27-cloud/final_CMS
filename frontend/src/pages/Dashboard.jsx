@@ -13,6 +13,8 @@ import { Reports } from './Reports';
 import { MedicalCertificate } from './MedicalCertificate';
 import { DoctorProfile } from './DoctorProfile';
 import { RecentHistory } from './RecentHistory';
+import { ExpenseMaster } from './ExpenseMaster';
+import { CutMaster } from './CutMaster';
 import {
   Stethoscope,
   LogOut,
@@ -1070,6 +1072,20 @@ export const Dashboard = () => {
           </div>
         );
 
+      case 'cut-master':
+        return (
+          <div style={styles.tabContentContainer}>
+            <CutMaster />
+          </div>
+        );
+
+      case 'expense-master':
+        return (
+          <div style={styles.tabContentContainer}>
+            <ExpenseMaster />
+          </div>
+        );
+
       case 'master-data':
         return (
           <div style={styles.tabContentContainer}>
@@ -1176,6 +1192,22 @@ export const Dashboard = () => {
                     setSelectedPatientId(chosen.patientId || chosen._id);
                     setActiveTab('patient-record');
                   }
+                } else if (searchQuery.trim()) {
+                  // If patient not found and doctor presses Enter, auto-open Patient Record with entered name
+                  e.preventDefault();
+                  const newName = searchQuery.trim().toUpperCase();
+                  setShowSearchDropdown(false);
+                  setSearchQuery('');
+                  setSelectedPatientId('');
+                  setPatientForNewCase({
+                    name: newName,
+                    patientId: 'NEW',
+                    familyId: 'NEW',
+                    isNewPatient: true,
+                    totalDue: 0,
+                    deposit: 0,
+                  });
+                  setActiveTab('patient-record');
                 }
               } else if (e.key === 'Escape') {
                 setShowSearchDropdown(false);

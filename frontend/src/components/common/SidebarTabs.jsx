@@ -10,6 +10,8 @@ import {
   TrendingUp,
   UserCheck,
   History,
+  Percent,
+  Wallet,
 } from 'lucide-react';
 
 export const SIDEBAR_TABS = [
@@ -38,34 +40,46 @@ export const SIDEBAR_TABS = [
     shortcut: 'F3',
   },
   {
+    id: 'cut-master',
+    label: 'Cut Master',
+    icon: Percent,
+    shortcut: 'F5',
+  },
+  {
+    id: 'expense-master',
+    label: 'Expense Master',
+    icon: Wallet,
+    shortcut: 'F6',
+  },
+  {
     id: 'recent-history',
     label: 'Recent History',
     icon: History,
     shortcut: 'F7',
   },
   {
+    id: 'reports',
+    label: 'Reports & Due',
+    icon: TrendingUp,
+    shortcut: 'F10',
+  },
+  {
     id: 'master-data',
     label: 'Master Data',
     icon: Layers,
-    shortcut: 'F9',
+    shortcut: 'F8',
   },
   {
     id: 'medical-certificate',
     label: 'Medical Certificate',
     icon: Award,
-    shortcut: 'F6',
-  },
-  {
-    id: 'reports',
-    label: 'Reports',
-    icon: TrendingUp,
-    shortcut: 'F5',
+    shortcut: 'F9',
   },
   {
     id: 'doctor-profile',
     label: 'Doctor Profile',
     icon: UserCheck,
-    shortcut: 'F8',
+    shortcut: 'F11',
   },
 ];
 
@@ -77,11 +91,13 @@ export const SidebarTabs = ({ activeTab, onSelectTab, onSearchFocus, width = 210
     'add-member': 'F2',
     'patient-record': 'F3',
     'dashboard': 'F4',
-    'reports': 'F5',
-    'medical-certificate': 'F6',
+    'cut-master': 'F5',
+    'expense-master': 'F6',
     'recent-history': 'F7',
-    'master-data': 'F9',
-    'doctor-profile': 'F8',
+    'master-data': 'F8',
+    'medical-certificate': 'F9',
+    'reports': 'F10',
+    'doctor-profile': 'F11',
     'universal-search': '/',
   });
 
@@ -94,11 +110,13 @@ export const SidebarTabs = ({ activeTab, onSelectTab, onSearchFocus, width = 210
           'add-member': 'F2',
           'patient-record': 'F3',
           'dashboard': 'F4',
-          'reports': 'F5',
-          'medical-certificate': 'F6',
+          'cut-master': 'F5',
+          'expense-master': 'F6',
           'recent-history': 'F7',
-          'master-data': 'F9',
-          'doctor-profile': 'F8',
+          'master-data': 'F8',
+          'medical-certificate': 'F9',
+          'reports': 'F10',
+          'doctor-profile': 'F11',
           'universal-search': '/',
         };
 
@@ -110,6 +128,8 @@ export const SidebarTabs = ({ activeTab, onSelectTab, onSearchFocus, width = 210
           if (val.includes('family head')) map['family-head'] = key;
           else if (val.includes('add member') || val.includes('family member')) map['add-member'] = key;
           else if (val.includes('patient record') || val.includes('opd consultation') || val.includes('case consultation')) map['patient-record'] = key;
+          else if (val.includes('cut master') || val.includes('commission')) map['cut-master'] = key;
+          else if (val.includes('expense master') || val.includes('expense')) map['expense-master'] = key;
           else if (val.includes('recent') || val.includes('history')) map['recent-history'] = key;
           else if (val.includes('dashboard')) map['dashboard'] = key;
           else if (val.includes('report')) map['reports'] = key;
@@ -160,6 +180,12 @@ export const SidebarTabs = ({ activeTab, onSelectTab, onSearchFocus, width = 210
       } else if (checkMatch(navShortcuts['patient-record'])) {
         e.preventDefault();
         onSelectTab('patient-record');
+      } else if (checkMatch(navShortcuts['cut-master'])) {
+        e.preventDefault();
+        onSelectTab('cut-master');
+      } else if (checkMatch(navShortcuts['expense-master'])) {
+        e.preventDefault();
+        onSelectTab('expense-master');
       } else if (checkMatch(navShortcuts['recent-history'])) {
         e.preventDefault();
         onSelectTab('recent-history');

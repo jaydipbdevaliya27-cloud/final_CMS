@@ -75,13 +75,16 @@ export const Reports = ({ onNavigateToPatient }) => {
               return {
                 ...r,
                 totalDue: res.totalDue !== undefined ? res.totalDue : Math.max(0, (r.totalDue || 0) - num),
+                deposit: res.deposit !== undefined ? res.deposit : (num > (r.totalDue || 0) ? num - (r.totalDue || 0) : 0),
                 familyDue: res.familyDue !== undefined ? res.familyDue : Math.max(0, (r.familyDue || 0) - num),
+                familyDeposit: res.familyDeposit !== undefined ? res.familyDeposit : 0,
               };
             }
             if (r.familyId === patientToCollect.familyId) {
               return {
                 ...r,
                 familyDue: res.familyDue !== undefined ? res.familyDue : Math.max(0, (r.familyDue || 0) - num),
+                familyDeposit: res.familyDeposit !== undefined ? res.familyDeposit : 0,
               };
             }
             return r;
@@ -1303,11 +1306,27 @@ export const Reports = ({ onNavigateToPatient }) => {
                       <td style={{ ...styles.td, color: 'var(--text-muted)' }}>{row.phone || '-'}</td>
                       <td style={{ ...styles.td, color: 'var(--text-muted)' }}>{row.area || '-'}</td>
                       <td style={{ ...styles.td, whiteSpace: 'nowrap' }}>{row.lastVisitDate}</td>
-                      <td style={{ ...styles.td, textAlign: 'right', fontWeight: '700', color: 'var(--danger)' }}>
-                        ₹{(row.totalDue || 0).toLocaleString('en-IN')}
+                      <td style={{ ...styles.td, textAlign: 'right', fontWeight: '700' }}>
+                        {(row.deposit || 0) > 0 ? (
+                          <span style={{ color: '#16A34A', fontWeight: '800' }}>
+                            🟢 Deposit: ₹{(row.deposit || 0).toLocaleString('en-IN')}
+                          </span>
+                        ) : (
+                          <span style={{ color: (row.totalDue || 0) > 0 ? 'var(--danger)' : '#64748B' }}>
+                            ₹{(row.totalDue || 0).toLocaleString('en-IN')}
+                          </span>
+                        )}
                       </td>
-                      <td style={{ ...styles.td, textAlign: 'right', fontWeight: '600', color: '#b91c1c' }}>
-                        ₹{(row.familyDue || 0).toLocaleString('en-IN')}
+                      <td style={{ ...styles.td, textAlign: 'right', fontWeight: '600' }}>
+                        {(row.familyDeposit || 0) > 0 ? (
+                          <span style={{ color: '#16A34A', fontWeight: '800' }}>
+                            🟢 Deposit: ₹{(row.familyDeposit || 0).toLocaleString('en-IN')}
+                          </span>
+                        ) : (
+                          <span style={{ color: (row.familyDue || 0) > 0 ? '#b91c1c' : '#64748B' }}>
+                            ₹{(row.familyDue || 0).toLocaleString('en-IN')}
+                          </span>
+                        )}
                       </td>
                       <td style={{ ...styles.td, textAlign: 'center' }}>
                         <button

@@ -864,8 +864,10 @@ export const PatientRecord = ({
   };
 
   useEffect(() => {
-    if (currentPatient?.patientId) {
+    if (currentPatient?.patientId && currentPatient.patientId !== 'NEW') {
       loadPatientVisits(currentPatient.patientId);
+    } else if (currentPatient?.patientId === 'NEW') {
+      setPatientVisits([]);
     }
   }, [currentPatient?.patientId]);
 
@@ -911,10 +913,17 @@ export const PatientRecord = ({
     }
   };
 
-  // --- Calculated Due ---
+  // --- Calculated Due vs Deposit for current case and patient overall ---
   const chargeNum = Math.max(0, Number(visitForm.charge) || 0);
   const receivedNum = Math.max(0, Number(visitForm.received) || 0);
   const computedDue = Math.max(0, chargeNum - receivedNum);
+
+  // Previous patient balance: positive = due, negative = deposit
+  const prevBalance = (Number(currentPatient?.totalDue) || 0) - (Number(currentPatient?.deposit) || 0);
+  // Net balance after current visit:
+  const newNetBalance = prevBalance + chargeNum - receivedNum;
+  const finalPatientDue = newNetBalance > 0 ? newNetBalance : 0;
+  const finalPatientDeposit = newNetBalance < 0 ? Math.abs(newNetBalance) : 0;
 
   // --- New Card Quick Handlers for Exact Photo Layout ---
   const handleAddAllergy = (valToAdd = null) => {
@@ -1486,18 +1495,24 @@ export const PatientRecord = ({
         setCurrentPatient((prev) => ({
           ...prev,
           totalDue: res.totalDue !== undefined ? res.totalDue : prev.totalDue,
+          deposit: res.deposit !== undefined ? res.deposit : (prev?.deposit || 0),
           allergies: cleanAllergies,
           family: prev?.family
             ? {
                 ...prev.family,
                 familyDue:
                   res.familyDue !== undefined ? res.familyDue : prev.family.familyDue,
+                familyDeposit:
+                  res.familyDeposit !== undefined ? res.familyDeposit : (prev.family.familyDeposit || 0),
               }
             : null,
         }));
 
-        // Reload patient visits
-        loadPatientVisits(patient.patientId);
+        // Reload patient visits and refresh in-memory search cache
+        if (patient.patientId && patient.patientId !== 'NEW') {
+          loadPatientVisits(patient.patientId);
+        }
+        preloadPatients().catch(() => {});
 
         if (andPrint) {
           const visitForPrint = res.visit || {
@@ -1768,6 +1783,20 @@ export const PatientRecord = ({
                           e.preventDefault();
                           const chosen = list[patientHighlightIndex] || list[0];
                           if (chosen) handleSelectPatient(chosen);
+                        } else if (patientSearch && patientSearch.trim()) {
+                          // Patient not found in search results: auto-create new patient with entered name and start case
+                          e.preventDefault();
+                          const newName = patientSearch.trim().toUpperCase();
+                          setShowSearchDropdown(false);
+                          const newPat = {
+                            name: newName,
+                            patientId: 'NEW',
+                            familyId: 'NEW',
+                            isNewPatient: true,
+                            totalDue: 0,
+                            deposit: 0,
+                          };
+                          handleSelectPatient(newPat, true);
                         }
                       } else if (e.key === 'Escape') {
                         setShowSearchDropdown(false);
@@ -1818,10 +1847,16 @@ export const PatientRecord = ({
                       <button
                         type="button"
                         onClick={handleOpenFamilyDueModal}
-                        style={styles.photoDueLink}
-                        title="Click to view family due breakdown"
+                        style={{
+                          ...styles.photoDueLink,
+                          color: (currentPatient.deposit || 0) > 0 ? '#10B981' : ((currentPatient.totalDue || 0) > 0 ? '#DC2626' : '#64748B'),
+                          fontWeight: (currentPatient.deposit || 0) > 0 || (currentPatient.totalDue || 0) > 0 ? 700 : 500,
+                        }}
+                        title="Click to view family due and deposit breakdown"
                       >
-                        Total Due: ₹{currentPatient.totalDue || 0}
+                        {(currentPatient.deposit || 0) > 0
+                          ? `🟢 DEPOSIT: ₹${currentPatient.deposit}`
+                          : `Total Due: ₹${currentPatient.totalDue || 0}`}
                       </button>
                     )}
                   </div>
@@ -2732,9 +2767,25 @@ export const PatientRecord = ({
                 </div>
 
                 <div style={styles.photoFieldGroup}>
-                  <label style={styles.photoLabel}>Patient Total Due (₹):</label>
-                  <div style={styles.photoDueDisplay}>
-                    ₹{(currentPatient?.totalDue || 0) + computedDue}
+                  <label
+                    style={{
+                      ...styles.photoLabel,
+                      color: finalPatientDeposit > 0 ? '#15803D' : (finalPatientDue > 0 ? '#B91C1C' : '#475569'),
+                      fontWeight: 700,
+                    }}
+                  >
+                    {finalPatientDeposit > 0 ? 'Patient Deposit (₹):' : 'Patient Total Due (₹):'}
+                  </label>
+                  <div
+                    style={{
+                      ...styles.photoDueDisplay,
+                      backgroundColor: finalPatientDeposit > 0 ? '#DCFCE7' : (finalPatientDue > 0 ? '#FEE2E2' : '#F1F5F9'),
+                      color: finalPatientDeposit > 0 ? '#15803D' : (finalPatientDue > 0 ? '#B91C1C' : '#475569'),
+                      borderColor: finalPatientDeposit > 0 ? '#86EFAC' : (finalPatientDue > 0 ? '#FCA5A5' : '#CBD5E1'),
+                      fontWeight: 800,
+                    }}
+                  >
+                    {finalPatientDeposit > 0 ? `🟢 DEPOSIT: ₹${finalPatientDeposit}` : `₹${finalPatientDue}`}
                   </div>
                 </div>
               </div>

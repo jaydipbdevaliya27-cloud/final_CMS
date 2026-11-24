@@ -2,6 +2,8 @@ import Visit from '../models/Visit.js';
 import Patient from '../models/Patient.js';
 import Family from '../models/Family.js';
 import Certificate from '../models/Certificate.js';
+import Cut from '../models/Cut.js';
+import Expense from '../models/Expense.js';
 
 // 1. AREA-WISE REPORT
 // @route   GET /api/reports/area-wise
@@ -633,6 +635,26 @@ export const getDashboardSummary = async (req, res) => {
       todayDue += Number(v.due) || 0;
     });
 
+    // Fetch Cut Commission Income & Clinic Expenses for period & today
+    const [todayCuts, periodCuts, todayExpenses, periodExpenses] = await Promise.all([
+      Cut.find({ date: todayStr }).lean(),
+      Cut.find({ date: { $gte: startDate, $lte: endDate } }).lean(),
+      Expense.find({ date: todayStr }).lean(),
+      Expense.find({ date: { $gte: startDate, $lte: endDate } }).lean(),
+    ]);
+
+    const todayCutIncome = todayCuts.reduce((acc, c) => acc + (c.amount || 0), 0);
+    const periodCutIncome = periodCuts.reduce((acc, c) => acc + (c.amount || 0), 0);
+    const todayExpense = todayExpenses.reduce((acc, e) => acc + (e.amount || 0), 0);
+    const periodExpense = periodExpenses.reduce((acc, e) => acc + (e.amount || 0), 0);
+
+    // As requested: cut income is added to today & period income
+    todayReceived += todayCutIncome;
+    periodReceived += periodCutIncome;
+
+    const todayNetIncome = todayReceived - todayExpense;
+    const periodNetIncome = periodReceived - periodExpense;
+
     // Populate patient info for visits in selected period
     const periodPatientIds = [...new Set(periodVisitsList.map((v) => v.patientId))];
     const patients = await Patient.find({ patientId: { $in: periodPatientIds } }).lean();
@@ -727,8 +749,14 @@ export const getDashboardSummary = async (req, res) => {
         todayCharge,
         todayReceived,
         todayDue,
+        todayCutIncome,
+        periodCutIncome,
+        todayExpense,
+        periodExpense,
+        todayNetIncome,
+        periodNetIncome,
         overallCharge: allVisitsAgg[0]?.totalCharge || 0,
-        overallReceived: allVisitsAgg[0]?.totalReceived || 0,
+        overallReceived: (allVisitsAgg[0]?.totalReceived || 0) + todayCutIncome,
         overallDue: allVisitsAgg[0]?.totalDue || 0,
       },
       recentVisits: populatedPeriodVisits,

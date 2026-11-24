@@ -15,6 +15,8 @@ import reportRoutes from './routes/reportRoutes.js';
 import certificateRoutes from './routes/certificateRoutes.js';
 import labReportRoutes from './routes/labReportRoutes.js';
 import universalSearchRoutes from './routes/universalSearchRoutes.js';
+import expenseRoutes from './routes/expenseRoutes.js';
+import cutRoutes from './routes/cutRoutes.js';
 import { cleanupCompositeMasterData } from './controllers/masterDataController.js';
 import { ensureDoctorInitialized } from './controllers/authController.js';
 
@@ -68,6 +70,8 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/certificates', certificateRoutes);
 app.use('/api/lab-reports', labReportRoutes);
 app.use('/api/universal-search', universalSearchRoutes);
+app.use('/api/expenses', expenseRoutes);
+app.use('/api/cuts', cutRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

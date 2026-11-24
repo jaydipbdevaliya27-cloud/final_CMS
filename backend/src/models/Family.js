@@ -45,6 +45,10 @@ const familySchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    familyDeposit: {
+      type: Number,
+      default: 0,
+    },
   },
   {
     timestamps: true,

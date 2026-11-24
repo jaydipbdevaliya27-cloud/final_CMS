@@ -5,26 +5,29 @@ import LabReport from '../models/LabReport.js';
 import Doctor from '../models/Doctor.js';
 import { autoSaveMasterItem } from './masterDataController.js';
 import { getNextReportId, generateLabSummary } from './labReportController.js';
+import { getNextFamilyIdValue } from './familyController.js';
 
-// Helper to recalculate dues for patient & family
-const recalculateDues = async (patientId, familyId) => {
+// Helper to recalculate dues and deposits for patient & family
+export const recalculateDues = async (patientId, familyId) => {
   try {
-    // 1. Patient Total Due
+    // 1. Patient Total Due & Deposit
     const patientVisits = await Visit.find({ patientId });
     const rawPatientDue = patientVisits.reduce((acc, v) => acc + (v.charge || 0) - (v.received || 0), 0);
-    const patientDue = Math.max(0, rawPatientDue);
-    await Patient.findOneAndUpdate({ patientId }, { totalDue: patientDue });
+    const patientDue = rawPatientDue > 0 ? rawPatientDue : 0;
+    const patientDeposit = rawPatientDue < 0 ? Math.abs(rawPatientDue) : 0;
+    await Patient.findOneAndUpdate({ patientId }, { totalDue: patientDue, deposit: patientDeposit });
 
-    // 2. Family Total Due
+    // 2. Family Total Due & Deposit
     const familyVisits = await Visit.find({ familyId });
     const rawFamDue = familyVisits.reduce((acc, v) => acc + (v.charge || 0) - (v.received || 0), 0);
-    const famDue = Math.max(0, rawFamDue);
-    await Family.findOneAndUpdate({ familyId }, { familyDue: famDue });
+    const famDue = rawFamDue > 0 ? rawFamDue : 0;
+    const famDeposit = rawFamDue < 0 ? Math.abs(rawFamDue) : 0;
+    await Family.findOneAndUpdate({ familyId }, { familyDue: famDue, familyDeposit: famDeposit });
 
-    return { patientDue, famDue };
+    return { patientDue, patientDeposit, famDue, famDeposit };
   } catch (err) {
     console.error('Error recalculating dues:', err.message);
-    return { patientDue: 0, famDue: 0 };
+    return { patientDue: 0, patientDeposit: 0, famDue: 0, famDeposit: 0 };
   }
 };
 
@@ -54,7 +57,45 @@ export const recordVisit = async (req, res) => {
       labReport,
     } = req.body;
 
-    if (!patientId || !familyId) {
+    let finalPatientId = patientId;
+    let finalFamilyId = familyId;
+
+    // Auto-create Family and Patient if new unregistered patient
+    if ((!finalPatientId || finalPatientId === 'NEW' || !finalFamilyId) && patientName && patientName.trim()) {
+      try {
+        const nextFamId = await getNextFamilyIdValue();
+        const patId = `P-${nextFamId}-1`;
+        await Family.create({
+          familyId: nextFamId,
+          headName: patientName.trim(),
+          phone: req.body.phone || '',
+          society: req.body.society || '',
+          area: req.body.area || '',
+          age: req.body.age ? String(req.body.age).trim() : '',
+          gender: req.body.gender || 'Male',
+        });
+        const createdPat = await Patient.create({
+          patientId: patId,
+          familyId: nextFamId,
+          name: patientName.trim(),
+          isHead: true,
+          relation: 'Self',
+          phone: req.body.phone || '',
+          society: req.body.society || '',
+          area: req.body.area || '',
+          age: req.body.age ? String(req.body.age).trim() : '',
+          dob: req.body.dob || '',
+          gender: req.body.gender || 'Male',
+          allergies: Array.isArray(allergies) ? allergies : (allergies ? [allergies] : []),
+        });
+        finalPatientId = patId;
+        finalFamilyId = nextFamId;
+      } catch (autoErr) {
+        console.error('Error auto-creating patient in recordVisit:', autoErr.message);
+      }
+    }
+
+    if (!finalPatientId || !finalFamilyId) {
       return res.status(400).json({
         success: false,
         message: 'Patient ID and Family ID are required',
@@ -94,8 +135,8 @@ export const recordVisit = async (req, res) => {
         savedLabReport = await LabReport.create({
           ...labReport,
           reportId,
-          patientId: patientId.trim(),
-          familyId: familyId.trim(),
+          patientId: finalPatientId.trim(),
+          familyId: finalFamilyId.trim(),
           patientName: patientName || 'Patient',
           summary,
         });
@@ -105,8 +146,8 @@ export const recordVisit = async (req, res) => {
     }
 
     const visit = await Visit.create({
-      patientId: patientId.trim(),
-      familyId: familyId.trim(),
+      patientId: finalPatientId.trim(),
+      familyId: finalFamilyId.trim(),
       patientName: patientName || 'Patient',
       visitDate: visitDate || new Date().toISOString().split('T')[0],
       bp: bp ? bp.trim() : '120/80',
@@ -132,8 +173,8 @@ export const recordVisit = async (req, res) => {
       await savedLabReport.save();
     }
 
-    // Recalculate dues
-    const { patientDue, famDue } = await recalculateDues(patientId, familyId);
+    // Recalculate dues & deposits
+    const { patientDue, patientDeposit, famDue, famDeposit } = await recalculateDues(finalPatientId, finalFamilyId);
 
     // Auto-save individual terms to Master Data for autocomplete:
     // Split comma-separated items and only save new individual terms if not already existing
@@ -556,14 +597,16 @@ export const collectDue = async (req, res) => {
       due: -numAmount,
     });
 
-    const { patientDue, famDue } = await recalculateDues(patient.patientId, patient.familyId);
+    const { patientDue, patientDeposit, famDue, famDeposit } = await recalculateDues(patient.patientId, patient.familyId);
 
     return res.status(201).json({
       success: true,
       message: `₹${numAmount.toLocaleString('en-IN')} collected successfully`,
       visit,
       totalDue: patientDue,
+      deposit: patientDeposit,
       familyDue: famDue,
+      familyDeposit: famDeposit,
     });
   } catch (error) {
     console.error('Error collecting due:', error);
@@ -637,10 +680,10 @@ export const getRecentVisits = async (req, res) => {
       .limit(Math.min(300, Number(limit) || 150))
       .lean();
 
-    // Attach patient details (phone, mobile, area, society, current due)
+    // Attach patient details (phone, mobile, area, society, current due, deposit)
     const patientIds = [...new Set(visits.map((v) => v.patientId).filter(Boolean))];
     const patients = await Patient.find({ patientId: { $in: patientIds } })
-      .select('patientId name phone mobile area society totalDue familyId gender age')
+      .select('patientId name phone mobile area society totalDue deposit familyId gender age')
       .lean();
     const patMap = {};
     patients.forEach((p) => {
@@ -656,6 +699,7 @@ export const getRecentVisits = async (req, res) => {
         gender: pat?.gender || '',
         age: pat?.age || '',
         currentPatientDue: pat?.totalDue !== undefined ? pat.totalDue : (v.due || 0),
+        currentPatientDeposit: pat?.deposit || 0,
       };
     });
 

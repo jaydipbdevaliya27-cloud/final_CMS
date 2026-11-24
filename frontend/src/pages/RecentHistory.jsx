@@ -421,6 +421,31 @@ export const RecentHistory = ({
             placeholder="SEARCH BY NAME, MOBILE, FAMILY ID, ADDRESS..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && searchQuery.trim()) {
+                const matched = visits.find(
+                  (v) =>
+                    v.patientName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    v.patientId?.toLowerCase().includes(searchQuery.toLowerCase())
+                );
+                if (matched) {
+                  handleActionNewCase(matched);
+                } else {
+                  // Patient not found in recent history: auto-open Patient Record with searched name
+                  const newName = searchQuery.trim().toUpperCase();
+                  if (onNavigateToNewCase) {
+                    onNavigateToNewCase({
+                      name: newName,
+                      patientId: 'NEW',
+                      familyId: 'NEW',
+                      isNewPatient: true,
+                      totalDue: 0,
+                      deposit: 0,
+                    });
+                  }
+                }
+              }
+            }}
             style={styles.searchInput}
           />
           {searchQuery && (
@@ -546,11 +571,15 @@ export const RecentHistory = ({
                   // Lab Alerts
                   const alerts = getLabAlerts(visit);
 
-                  // Current due
+                  // Current due and deposit
                   const displayDue =
                     visit.currentPatientDue !== undefined
                       ? visit.currentPatientDue
                       : Math.max(0, (visit.charge || 0) - (visit.received || 0));
+                  const displayDeposit =
+                    visit.currentPatientDeposit !== undefined
+                      ? visit.currentPatientDeposit
+                      : ((visit.received || 0) > (visit.charge || 0) ? (visit.received || 0) - (visit.charge || 0) : 0);
 
                   const isEven = idx % 2 === 0;
 
@@ -667,17 +696,37 @@ export const RecentHistory = ({
                         <span style={styles.chargedText}>₹{visit.charge || 0}</span>
                       </td>
 
-                      {/* 9. Due (₹) */}
+                      {/* 9. Due (₹) / Deposit */}
                       <td style={styles.tdDue}>
-                        <span
-                          style={{
-                            ...styles.dueText,
-                            color: displayDue > 0 ? '#DC2626' : '#475569',
-                            fontWeight: displayDue > 0 ? '700' : '500',
-                          }}
-                        >
-                          ₹{displayDue}
-                        </span>
+                        {displayDeposit > 0 ? (
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '3px',
+                              backgroundColor: '#DCFCE7',
+                              color: '#15803D',
+                              border: '1px solid #86EFAC',
+                              padding: '2px 6px',
+                              borderRadius: '4px',
+                              fontSize: '11px',
+                              fontWeight: '800',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            🟢 DEPOSIT: ₹{displayDeposit}
+                          </span>
+                        ) : (
+                          <span
+                            style={{
+                              ...styles.dueText,
+                              color: displayDue > 0 ? '#DC2626' : '#475569',
+                              fontWeight: displayDue > 0 ? '700' : '500',
+                            }}
+                          >
+                            ₹{displayDue}
+                          </span>
+                        )}
                       </td>
 
                       {/* 10. Act (4 Action Buttons side by side) */}
@@ -927,7 +976,15 @@ export const RecentHistory = ({
               <div style={styles.printBillingStrip}>
                 <div>Charged: <strong>₹{visitToPrint.charge || 0}</strong></div>
                 <div>Received: <strong>₹{visitToPrint.received || 0}</strong></div>
-                <div>Due: <strong>₹{visitToPrint.due || 0}</strong></div>
+                <div>
+                  {(visitToPrint.received || 0) > (visitToPrint.charge || 0) ? (
+                    <span style={{ color: '#15803D', fontWeight: 'bold' }}>
+                      🟢 Deposit: ₹{(visitToPrint.received || 0) - (visitToPrint.charge || 0)}
+                    </span>
+                  ) : (
+                    <span>Due: <strong>₹{Math.max(0, visitToPrint.due || 0)}</strong></span>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -1691,3 +1748,4 @@ const styles = {
     cursor: 'pointer',
   },
 };
+
