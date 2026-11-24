@@ -1082,7 +1082,7 @@ export const Dashboard = () => {
       case 'expense-master':
         return (
           <div style={styles.tabContentContainer}>
-            <ExpenseMaster />
+            <ExpenseMaster onNavigateToDashboard={() => setActiveTab('patient-record')} />
           </div>
         );
 

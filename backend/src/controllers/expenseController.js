@@ -28,16 +28,41 @@ const resolveDateRange = (period, customDate) => {
 // @access  Private
 export const getExpenses = async (req, res) => {
   try {
-    const { period = 'all', date, category, search, limit = 200 } = req.query;
+    const {
+      period = 'all',
+      date,
+      companyName,
+      category,
+      status,
+      from,
+      to,
+      search,
+      limit = 500,
+    } = req.query;
     const query = {};
 
-    const range = resolveDateRange(period, date);
-    if (range) {
-      query.date = { $gte: range.startDate, $lte: range.endDate };
+    // Date filtering: supports custom date range `from` and `to`
+    if (from || to) {
+      query.date = {};
+      if (from) query.date.$gte = from;
+      if (to) query.date.$lte = to;
+    } else {
+      const range = resolveDateRange(period, date);
+      if (range) {
+        query.date = { $gte: range.startDate, $lte: range.endDate };
+      }
     }
 
-    if (category && category.trim()) {
+    if (companyName && companyName.trim()) {
+      query.companyName = new RegExp(companyName.trim(), 'i');
+    }
+
+    if (category && category.trim() && !category.toUpperCase().includes('ALL')) {
       query.category = new RegExp(category.trim(), 'i');
+    }
+
+    if (status && status.trim() && (status === 'Paid' || status === 'Unpaid')) {
+      query.status = status;
     }
 
     if (search && search.trim()) {
@@ -45,6 +70,7 @@ export const getExpenses = async (req, res) => {
       const escaped = s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const regex = new RegExp(escaped, 'i');
       query.$or = [
+        { companyName: regex },
         { category: regex },
         { paidTo: regex },
         { description: regex },
@@ -54,15 +80,33 @@ export const getExpenses = async (req, res) => {
 
     const expenses = await Expense.find(query)
       .sort({ date: -1, createdAt: -1 })
-      .limit(Number(limit) || 200)
+      .limit(Number(limit) || 500)
       .lean();
 
-    const totalAmount = expenses.reduce((acc, e) => acc + (e.amount || 0), 0);
+    // Compute KPI card statistics
+    const totalEntries = expenses.length;
+    let paidAmount = 0;
+    let unpaidAmount = 0;
+    let totalExpense = 0;
+
+    expenses.forEach((e) => {
+      const amt = Number(e.amount) || 0;
+      totalExpense += amt;
+      if (e.status === 'Paid') {
+        paidAmount += amt;
+      } else {
+        unpaidAmount += amt;
+      }
+    });
 
     return res.status(200).json({
       success: true,
       count: expenses.length,
-      totalAmount,
+      totalEntries,
+      paidAmount,
+      unpaidAmount,
+      totalExpense,
+      totalAmount: totalExpense,
       expenses,
     });
   } catch (error) {
@@ -80,7 +124,16 @@ export const getExpenses = async (req, res) => {
 // @access  Private
 export const createExpense = async (req, res) => {
   try {
-    const { date, category, amount, paymentMode = 'Cash', paidTo = '', description = '' } = req.body;
+    const {
+      date,
+      companyName = '',
+      category,
+      amount,
+      status = 'Unpaid',
+      paymentMode = 'Cash',
+      paidTo = '',
+      description = '',
+    } = req.body;
 
     if (!category || !category.trim()) {
       return res.status(400).json({
@@ -98,19 +151,28 @@ export const createExpense = async (req, res) => {
     }
 
     const cleanCategory = category.trim().toUpperCase();
+    const cleanCompany = (companyName || paidTo || '').trim().toUpperCase();
+    const cleanStatus = status === 'Paid' ? 'Paid' : 'Unpaid';
     const todayStr = new Date().toISOString().split('T')[0];
 
     const expense = await Expense.create({
       date: date || todayStr,
+      companyName: cleanCompany,
       category: cleanCategory,
       amount: numAmount,
+      status: cleanStatus,
       paymentMode: (paymentMode || 'Cash').toUpperCase(),
-      paidTo: paidTo.trim(),
+      paidTo: cleanCompany || paidTo.trim(),
       description: description.trim(),
     });
 
-    // Auto-save category in Master Data
-    await autoSaveMasterItem('expense_category', cleanCategory);
+    // Auto-save category & company in Master Data
+    if (cleanCategory) {
+      await autoSaveMasterItem('expense_category', cleanCategory);
+    }
+    if (cleanCompany) {
+      await autoSaveMasterItem('company', cleanCompany);
+    }
 
     return res.status(201).json({
       success: true,
@@ -132,7 +194,17 @@ export const createExpense = async (req, res) => {
 // @access  Private
 export const updateExpense = async (req, res) => {
   try {
-    const { date, category, amount, paymentMode, paidTo, description } = req.body;
+    const {
+      date,
+      companyName,
+      category,
+      amount,
+      status,
+      paymentMode,
+      paidTo,
+      description,
+    } = req.body;
+
     const expense = await Expense.findById(req.params.id);
 
     if (!expense) {
@@ -143,6 +215,12 @@ export const updateExpense = async (req, res) => {
     }
 
     if (date !== undefined) expense.date = date;
+    if (companyName !== undefined) {
+      expense.companyName = companyName.trim().toUpperCase();
+      if (expense.companyName) {
+        await autoSaveMasterItem('company', expense.companyName);
+      }
+    }
     if (category !== undefined && category.trim()) {
       expense.category = category.trim().toUpperCase();
       await autoSaveMasterItem('expense_category', expense.category);
@@ -150,6 +228,9 @@ export const updateExpense = async (req, res) => {
     if (amount !== undefined) {
       const num = Math.max(0, Number(amount) || 0);
       if (num > 0) expense.amount = num;
+    }
+    if (status !== undefined) {
+      expense.status = status === 'Paid' ? 'Paid' : 'Unpaid';
     }
     if (paymentMode !== undefined) expense.paymentMode = (paymentMode || 'Cash').toUpperCase();
     if (paidTo !== undefined) expense.paidTo = paidTo.trim();
@@ -218,6 +299,14 @@ export const getExpenseSummary = async (req, res) => {
     const monthTotal = monthList.reduce((acc, e) => acc + (e.amount || 0), 0);
     const overallTotal = allExpenses.reduce((acc, e) => acc + (e.amount || 0), 0);
 
+    const paidTotal = allExpenses
+      .filter((e) => e.status === 'Paid')
+      .reduce((acc, e) => acc + (e.amount || 0), 0);
+
+    const unpaidTotal = allExpenses
+      .filter((e) => e.status !== 'Paid')
+      .reduce((acc, e) => acc + (e.amount || 0), 0);
+
     // Group by category
     const categoryBreakdown = {};
     monthList.forEach((e) => {
@@ -231,6 +320,8 @@ export const getExpenseSummary = async (req, res) => {
         todayTotal,
         monthTotal,
         overallTotal,
+        paidTotal,
+        unpaidTotal,
         todayCount: todayList.length,
         monthCount: monthList.length,
         categoryBreakdown,
@@ -244,4 +335,3 @@ export const getExpenseSummary = async (req, res) => {
     });
   }
 };
-

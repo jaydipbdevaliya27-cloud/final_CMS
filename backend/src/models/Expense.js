@@ -7,6 +7,12 @@ const expenseSchema = new mongoose.Schema(
       default: () => new Date().toISOString().split('T')[0],
       index: true,
     },
+    companyName: {
+      type: String,
+      trim: true,
+      default: '',
+      index: true,
+    },
     category: {
       type: String,
       required: [true, 'Expense category is required'],
@@ -17,6 +23,12 @@ const expenseSchema = new mongoose.Schema(
       type: Number,
       required: [true, 'Expense amount is required'],
       min: [0, 'Amount must be positive'],
+    },
+    status: {
+      type: String,
+      enum: ['Unpaid', 'Paid'],
+      default: 'Unpaid',
+      index: true,
     },
     paymentMode: {
       type: String,
@@ -44,4 +56,3 @@ expenseSchema.index({ date: -1, createdAt: -1 });
 const Expense = mongoose.model('Expense', expenseSchema);
 
 export default Expense;
-
