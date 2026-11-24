@@ -2,38 +2,38 @@ import React, { useState, useEffect, useRef } from 'react';
 import { cutAPI, masterDataAPI } from '../services/api';
 import { useDebounce } from '../hooks/useDebounce';
 import {
-  Percent,
-  Calendar,
   Search,
   Plus,
   RefreshCw,
   Trash2,
   Edit,
   X,
+  Printer,
   CheckCircle2,
   AlertCircle,
-  IndianRupee,
-  Layers,
-  ArrowRight,
-  Printer,
-  Building2,
+  FileText,
   TrendingUp,
 } from 'lucide-react';
 
-export const CutMaster = () => {
+export const CutMaster = ({ onNavigateToDashboard }) => {
   const [cuts, setCuts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [summary, setSummary] = useState({ todayTotal: 0, monthTotal: 0, overallTotal: 0 });
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearch = useDebounce(searchQuery, 300);
-  const [selectedPeriod, setSelectedPeriod] = useState('today'); // 'today' | 'yesterday' | 'thismonth' | 'all' | 'custom'
-  const [selectedDate, setSelectedDate] = useState(() => {
-    const now = new Date();
-    const pad = (n) => String(n).padStart(2, '0');
-    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+
+  // Form State - STRICTLY NO EXTRA FIELDS: ONLY Date, Center Name (Datalist), Patient Name, Category (Datalist), Amount (₹)
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editingCut, setEditingCut] = useState(null);
+  const [formData, setFormData] = useState({
+    date: new Date().toISOString().split('T')[0],
+    centerName: '',
+    patientName: '',
+    category: '',
+    amount: '',
   });
 
-  // Center & Category Datalist state
+  // Autocomplete Datalists
   const [categories, setCategories] = useState([
     'LAB INVESTIGATION CUT',
     'X-RAY / RADIOLOGY COMMISSION',
@@ -42,7 +42,6 @@ export const CutMaster = () => {
     'PATHOLOGY COMMISSION',
     'HOSPITAL ADMISSION REFERRAL',
     'SPECIALIST CONSULTATION CUT',
-    'SURGICAL REFERRAL',
     'PHARMACY COMMISSION',
     'MISCELLANEOUS REFERRAL',
   ]);
@@ -58,23 +57,8 @@ export const CutMaster = () => {
     'CITY HOSPITAL',
   ]);
 
-  // Form State
-  const initialForm = {
-    date: new Date().toISOString().split('T')[0],
-    centerName: '',
-    patientName: '',
-    category: '',
-    amount: '',
-    paymentMode: 'Cash',
-    reference: '',
-    notes: '',
-  };
-  const [form, setForm] = useState(initialForm);
-  const [editingId, setEditingId] = useState(null);
-  const [showAddForm, setShowAddForm] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toast, setToast] = useState({ show: false, text: '', type: 'success' });
-
   const centerInputRef = useRef(null);
 
   const showToast = (text, type = 'success') => {
@@ -82,7 +66,7 @@ export const CutMaster = () => {
     setTimeout(() => setToast({ show: false, text: '', type: 'success' }), 3500);
   };
 
-  // Load existing cut categories and centers from Master Data
+  // Load Categories & Centers from Master Data
   const loadMasterDatalists = async () => {
     try {
       const [catRes, centerRes] = await Promise.all([
@@ -106,12 +90,10 @@ export const CutMaster = () => {
     try {
       setLoading(true);
       const params = {
-        period: selectedPeriod,
         search: debouncedSearch.trim(),
+        period: 'all',
+        limit: 200,
       };
-      if (selectedPeriod === 'custom' && selectedDate) {
-        params.date = selectedDate;
-      }
       const [listRes, sumRes] = await Promise.all([
         cutAPI.getAll(params),
         cutAPI.getSummary(),
@@ -124,7 +106,7 @@ export const CutMaster = () => {
       }
     } catch (err) {
       console.error('Error fetching cuts:', err);
-      showToast('Failed to load cut records: ' + (err.message || 'Server error'), 'error');
+      showToast('Error loading cut records: ' + (err.message || 'Server error'), 'error');
     } finally {
       setLoading(false);
     }
@@ -136,41 +118,71 @@ export const CutMaster = () => {
 
   useEffect(() => {
     fetchCuts();
-  }, [debouncedSearch, selectedPeriod, selectedDate]);
+  }, [debouncedSearch]);
 
-  const handleSubmit = async (e) => {
+  const handleOpenAdd = () => {
+    setEditingCut(null);
+    setFormData({
+      date: new Date().toISOString().split('T')[0],
+      centerName: '',
+      patientName: '',
+      category: '',
+      amount: '',
+    });
+    setShowAddModal(true);
+    setTimeout(() => {
+      if (centerInputRef.current) centerInputRef.current.focus();
+    }, 50);
+  };
+
+  const handleOpenEdit = (c) => {
+    setEditingCut(c);
+    setFormData({
+      date: c.date || new Date().toISOString().split('T')[0],
+      centerName: c.centerName || '',
+      patientName: c.patientName || '',
+      category: c.category || '',
+      amount: c.amount || '',
+    });
+    setShowAddModal(true);
+    setTimeout(() => {
+      if (centerInputRef.current) centerInputRef.current.focus();
+    }, 50);
+  };
+
+  const handleSave = async (e) => {
     if (e) e.preventDefault();
-    if (!form.centerName.trim()) {
-      showToast('Please specify a diagnostic center / lab / source name.', 'error');
+    if (!formData.centerName.trim()) {
+      showToast('Please enter diagnostic center name.', 'error');
       if (centerInputRef.current) centerInputRef.current.focus();
       return;
     }
-    if (!form.category.trim()) {
-      showToast('Please select or type a cut commission category.', 'error');
+    if (!formData.category.trim()) {
+      showToast('Please enter commission category.', 'error');
       return;
     }
-    const num = Number(form.amount);
+    const num = Number(formData.amount);
     if (!num || num <= 0) {
-      showToast('Please enter a valid positive cut amount.', 'error');
+      showToast('Please enter a valid amount greater than 0.', 'error');
       return;
     }
 
     try {
       setIsSubmitting(true);
       const payload = {
-        ...form,
-        centerName: form.centerName.trim().toUpperCase(),
-        patientName: form.patientName.trim().toUpperCase(),
-        category: form.category.trim().toUpperCase(),
+        date: formData.date,
+        centerName: formData.centerName.trim().toUpperCase(),
+        patientName: formData.patientName.trim().toUpperCase(),
+        category: formData.category.trim().toUpperCase(),
         amount: num,
       };
 
-      if (editingId) {
-        const res = await cutAPI.update(editingId, payload);
+      if (editingCut) {
+        const res = await cutAPI.update(editingCut._id, payload);
         if (res?.success) {
-          showToast('Cut commission record updated successfully!');
-          setEditingId(null);
-          setForm(initialForm);
+          showToast('Cut record updated successfully!');
+          setShowAddModal(false);
+          setEditingCut(null);
           fetchCuts();
         } else {
           showToast(res?.message || 'Failed to update cut record', 'error');
@@ -178,14 +190,14 @@ export const CutMaster = () => {
       } else {
         const res = await cutAPI.create(payload);
         if (res?.success) {
-          showToast('Cut commission recorded! Added directly to Today\'s Income.');
+          showToast(`Cut commission of ₹${num.toLocaleString('en-IN')} saved & added to Today's Income!`);
           if (!categories.includes(payload.category)) {
             setCategories((prev) => [...prev, payload.category]);
           }
           if (!centers.includes(payload.centerName)) {
             setCenters((prev) => [...prev, payload.centerName]);
           }
-          setForm(initialForm);
+          setShowAddModal(false);
           fetchCuts();
         } else {
           showToast(res?.message || 'Failed to save cut record', 'error');
@@ -198,39 +210,15 @@ export const CutMaster = () => {
     }
   };
 
-  const handleEdit = (c) => {
-    setEditingId(c._id);
-    setForm({
-      date: c.date || new Date().toISOString().split('T')[0],
-      centerName: c.centerName || '',
-      patientName: c.patientName || '',
-      category: c.category || '',
-      amount: c.amount || '',
-      paymentMode: c.paymentMode || 'Cash',
-      reference: c.reference || '',
-      notes: c.notes || '',
-    });
-    setShowAddForm(true);
-    setTimeout(() => {
-      if (centerInputRef.current) centerInputRef.current.focus();
-    }, 50);
-  };
-
-  const handleCancelEdit = () => {
-    setEditingId(null);
-    setForm(initialForm);
-  };
-
   const handleDelete = async (id, center, amt) => {
-    if (!window.confirm(`Delete commission from "${center}" (₹${amt})?`)) return;
+    if (!window.confirm(`Delete cut commission from "${center}" (₹${amt})?`)) return;
     try {
       const res = await cutAPI.delete(id);
       if (res?.success) {
         showToast('Cut record deleted successfully');
-        if (editingId === id) handleCancelEdit();
         fetchCuts();
       } else {
-        showToast(res?.message || 'Failed to delete record', 'error');
+        showToast(res?.message || 'Failed to delete cut record', 'error');
       }
     } catch (err) {
       showToast(err.message || 'Error deleting record', 'error');
@@ -261,327 +249,116 @@ export const CutMaster = () => {
     return { dateStr, timeStr };
   };
 
-  const currentViewTotal = cuts.reduce((acc, c) => acc + (c.amount || 0), 0);
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        if (showAddModal) {
+          setShowAddModal(false);
+        } else if (onNavigateToDashboard) {
+          onNavigateToDashboard();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showAddModal, onNavigateToDashboard]);
+
+  const totalAmount = cuts.reduce((acc, c) => acc + (c.amount || 0), 0);
 
   return (
-    <div style={styles.windowContainer}>
+    <div style={styles.container}>
       {/* Toast Notification */}
       {toast.show && (
         <div
           style={{
-            ...styles.toastNotification,
+            ...styles.toast,
             backgroundColor: toast.type === 'error' ? '#DC2626' : '#15803D',
           }}
         >
-          {toast.type === 'error' ? <AlertCircle size={16} /> : <CheckCircle2 size={16} />}
+          {toast.type === 'error' ? <AlertCircle size={15} /> : <CheckCircle2 size={15} />}
           <span>{toast.text}</span>
           <button
             type="button"
             onClick={() => setToast({ show: false, text: '', type: 'success' })}
-            style={styles.toastCloseBtn}
+            style={styles.toastClose}
           >
-            <X size={14} />
+            <X size={13} />
           </button>
         </div>
       )}
 
-      {/* 1. TOP WINDOW TITLE BAR (EXACT DESKTOP BLUE/CRIMSON BAR) */}
-      <div style={styles.windowTitleBar}>
-        <div style={styles.windowTitleLeft}>
-          <Percent size={15} color="#FFFFFF" />
-          <span style={styles.windowTitleText}>
-            Cut Master (Referral Commission Tracker - Press F5 or Esc to close)
-          </span>
+      {/* 1. TOP HEADER (EXACT SAME BLUE BAR FROM GIVEN PHOTO) */}
+      <div style={styles.topBlueBar}>
+        <div style={styles.topBarTitle}>
+          Cut Master (Press F5 or Esc to close)
         </div>
-        <div style={styles.windowTitleRight}>
-          <span style={styles.incomeNoticePill}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={styles.incomeNoticeBadge}>
             <TrendingUp size={12} color="#86EFAC" />
             <span>Today's Cut Added to Income: +₹{(summary.todayTotal || 0).toLocaleString('en-IN')}</span>
-          </span>
-          <span style={styles.windowShortcutBadge}>F5</span>
-        </div>
-      </div>
-
-      {/* 2. SEARCH & FILTER ACTION BAR (MATCHING USER'S PHOTO INPUT ROW) */}
-      <div style={styles.searchActionBar}>
-        {/* Full-width Search Input */}
-        <div style={styles.searchWrapper}>
-          <Search size={15} color="#64748B" style={styles.searchIcon} />
-          <input
-            type="text"
-            placeholder="SEARCH BY DIAGNOSTIC CENTER, PATIENT, CATEGORY, REF NO..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={styles.searchInput}
-          />
-          {searchQuery && (
-            <button
-              type="button"
-              onClick={() => setSearchQuery('')}
-              style={styles.clearSearchBtn}
-            >
-              <X size={14} />
-            </button>
-          )}
-        </div>
-
-        {/* Quick Period Filters */}
-        <div style={styles.periodPillGroup}>
-          {[
-            { id: 'today', label: 'TODAY' },
-            { id: 'yesterday', label: 'YESTERDAY' },
-            { id: 'thismonth', label: 'THIS MONTH' },
-            { id: 'all', label: 'ALL RECORDS' },
-            { id: 'custom', label: 'CUSTOM' },
-          ].map((p) => {
-            const isSelected = selectedPeriod === p.id;
-            return (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => setSelectedPeriod(p.id)}
-                style={{
-                  ...styles.periodPillBtn,
-                  backgroundColor: isSelected ? '#BE123C' : '#FFFFFF',
-                  color: isSelected ? '#FFFFFF' : '#334155',
-                  borderColor: isSelected ? '#BE123C' : '#CBD5E1',
-                  fontWeight: isSelected ? 700 : 500,
-                }}
-              >
-                {p.label}
-              </button>
-            );
-          })}
-          {selectedPeriod === 'custom' && (
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              style={styles.datePickerInput}
-            />
-          )}
-        </div>
-
-        {/* Refresh & + ADD CUT (ENTER) Button */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          </div>
           <button
             type="button"
-            onClick={fetchCuts}
-            title="Refresh records"
-            style={styles.refreshIconBtn}
+            onClick={onNavigateToDashboard || (() => {})}
+            style={styles.topBarCloseBtn}
+            title="Close (Esc)"
           >
-            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-          </button>
-
-          {/* + ADD CUT (ENTER) BUTTON - EXACT SAME GREEN BUTTON AS PHOTO */}
-          <button
-            type="button"
-            onClick={() => {
-              setShowAddForm((prev) => !prev);
-              if (!showAddForm) {
-                setTimeout(() => {
-                  if (centerInputRef.current) centerInputRef.current.focus();
-                }, 50);
-              }
-            }}
-            style={styles.addCutBtn}
-          >
-            <Plus size={15} strokeWidth={2.5} />
-            <span>{editingId ? 'EDITING CUT' : '+ ADD CUT (Enter)'}</span>
+            <X size={17} color="#FFFFFF" />
           </button>
         </div>
       </div>
 
-      {/* 3. ENTRY / EDIT CUT COMMISSION FORM (CLEAN DESKTOP INLINE PANEL) */}
-      {showAddForm && (
-        <form onSubmit={handleSubmit} style={styles.entryFormPanel}>
-          <div style={styles.formHeaderRow}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={styles.formHeaderDot}></span>
-              <span style={styles.formHeaderText}>
-                {editingId ? 'EDIT REFERRAL COMMISSION ENTRY' : 'NEW REFERRAL CUT COMMISSION (AUTO-ADDS TO TODAY\'S INCOME)'}
-              </span>
-            </div>
-            {editingId && (
-              <button
-                type="button"
-                onClick={handleCancelEdit}
-                style={styles.cancelEditBtn}
-              >
-                Cancel Edit
-              </button>
-            )}
-          </div>
+      {/* 2. SEARCH & ACTION STRIP (EXACT SAME SEARCH BAR + GREEN BUTTON FROM GIVEN PHOTO) */}
+      <div style={styles.searchStrip}>
+        <input
+          type="text"
+          placeholder="SEARCH BY DIAGNOSTIC CENTER, PATIENT, CATEGORY, DATE..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              handleOpenAdd();
+            }
+          }}
+          style={styles.searchInput}
+          autoFocus
+        />
 
-          <div style={styles.formFieldsRow}>
-            {/* Field 1: Date */}
-            <div style={{ ...styles.formFieldCol, width: '130px', flexShrink: 0 }}>
-              <label style={styles.formLabel}>Date: *</label>
-              <input
-                type="date"
-                required
-                value={form.date}
-                onChange={(e) => setForm({ ...form, date: e.target.value })}
-                style={styles.formInput}
-              />
-            </div>
+        {/* GREEN "+ ADD CUT (Enter)" BUTTON - EXACT SAME DESIGN AS "+ ADD PATIENT (Enter)" */}
+        <button
+          type="button"
+          onClick={handleOpenAdd}
+          style={styles.addGreenBtn}
+        >
+          + ADD CUT (Enter)
+        </button>
+      </div>
 
-            {/* Field 2: Diagnostic Center (Datalist) */}
-            <div style={{ ...styles.formFieldCol, flex: 2, minWidth: '180px' }}>
-              <label style={styles.formLabel}>
-                Diagnostic Center / Source: <span style={{ color: '#DC2626' }}>*</span>
-              </label>
-              <input
-                ref={centerInputRef}
-                list="cut-centers-list"
-                type="text"
-                required
-                placeholder="E.G. CARE DIAGNOSTICS, SURAT IMAGING..."
-                value={form.centerName}
-                onChange={(e) => setForm({ ...form, centerName: e.target.value })}
-                style={{ ...styles.formInput, textTransform: 'uppercase' }}
-              />
-              <datalist id="cut-centers-list">
-                {centers.map((c, i) => (
-                  <option key={i} value={c} />
-                ))}
-              </datalist>
-            </div>
-
-            {/* Field 3: Patient Name (Optional) */}
-            <div style={{ ...styles.formFieldCol, flex: 2, minWidth: '160px' }}>
-              <label style={styles.formLabel}>Referred Patient Name:</label>
-              <input
-                type="text"
-                placeholder="PATIENT NAME (OPTIONAL)..."
-                value={form.patientName}
-                onChange={(e) => setForm({ ...form, patientName: e.target.value })}
-                style={{ ...styles.formInput, textTransform: 'uppercase' }}
-              />
-            </div>
-
-            {/* Field 4: Category (Datalist) */}
-            <div style={{ ...styles.formFieldCol, flex: 2, minWidth: '170px' }}>
-              <label style={styles.formLabel}>
-                Cut Category: <span style={{ color: '#DC2626' }}>*</span>
-              </label>
-              <input
-                list="cut-categories-list"
-                type="text"
-                required
-                placeholder="E.G. LAB CUT, X-RAY, MRI..."
-                value={form.category}
-                onChange={(e) => setForm({ ...form, category: e.target.value })}
-                style={{ ...styles.formInput, textTransform: 'uppercase' }}
-              />
-              <datalist id="cut-categories-list">
-                {categories.map((cat, i) => (
-                  <option key={i} value={cat} />
-                ))}
-              </datalist>
-            </div>
-
-            {/* Field 5: Amount (₹) */}
-            <div style={{ ...styles.formFieldCol, width: '120px', flexShrink: 0 }}>
-              <label style={styles.formLabel}>
-                Cut Amount (₹): <span style={{ color: '#DC2626' }}>*</span>
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0.01"
-                required
-                placeholder="₹ 0.00"
-                value={form.amount}
-                onChange={(e) => setForm({ ...form, amount: e.target.value })}
-                style={{ ...styles.formInput, fontWeight: 800, color: '#15803D' }}
-              />
-            </div>
-
-            {/* Field 6: Payment Mode */}
-            <div style={{ ...styles.formFieldCol, width: '120px', flexShrink: 0 }}>
-              <label style={styles.formLabel}>Payment Mode:</label>
-              <select
-                value={form.paymentMode}
-                onChange={(e) => setForm({ ...form, paymentMode: e.target.value })}
-                style={styles.formSelect}
-              >
-                <option value="Cash">Cash</option>
-                <option value="Online/UPI">Online/UPI</option>
-                <option value="Bank Transfer">Bank Transfer</option>
-                <option value="Cheque">Cheque</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
-
-            {/* Field 7: Ref / Bill No. */}
-            <div style={{ ...styles.formFieldCol, width: '130px', flexShrink: 0 }}>
-              <label style={styles.formLabel}>Ref / Bill No.:</label>
-              <input
-                type="text"
-                placeholder="RECEIPT / BILL #"
-                value={form.reference}
-                onChange={(e) => setForm({ ...form, reference: e.target.value })}
-                style={styles.formInput}
-              />
-            </div>
-
-            {/* Field 8: Notes */}
-            <div style={{ ...styles.formFieldCol, flex: 2, minWidth: '160px' }}>
-              <label style={styles.formLabel}>Notes / Remarks:</label>
-              <input
-                type="text"
-                placeholder="TEST DETAILS, REMARKS..."
-                value={form.notes}
-                onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                style={styles.formInput}
-              />
-            </div>
-
-            {/* Submit Button */}
-            <div style={{ ...styles.formFieldCol, alignSelf: 'flex-end', flexShrink: 0 }}>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                style={styles.saveSubmitBtn}
-              >
-                {isSubmitting ? 'SAVING...' : editingId ? 'UPDATE' : 'SAVE (F2)'}
-              </button>
-            </div>
-          </div>
-        </form>
-      )}
-
-      {/* 4. CUTS DATA TABLE (EXACT SAME COMPACT DESKTOP GRID FROM PHOTO) */}
-      <div style={styles.tableScrollWrapper}>
-        <table style={styles.dataTable}>
+      {/* 3. CUTS DATA TABLE (EXACT SAME COMPACT DESKTOP GRID FROM PHOTO) */}
+      <div style={styles.tableContainer}>
+        <table style={styles.table}>
           <thead>
             <tr style={styles.theadRow}>
-              <th style={{ ...styles.th, width: '45px', textAlign: 'center' }}>#</th>
-              <th style={{ ...styles.th, width: '130px' }}>Date & Time</th>
-              <th style={{ ...styles.th, width: '220px' }}>Diagnostic Center / Lab Source</th>
-              <th style={{ ...styles.th, width: '180px' }}>Patient Name</th>
-              <th style={{ ...styles.th, width: '180px' }}>Commission Category</th>
-              <th style={{ ...styles.th, width: '120px' }}>Ref / Bill No.</th>
-              <th style={styles.th}>Notes / Description</th>
-              <th style={{ ...styles.th, width: '90px' }}>Mode</th>
-              <th style={{ ...styles.th, width: '120px', textAlign: 'right' }}>Cut Amount (₹)</th>
-              <th style={{ ...styles.th, width: '90px', textAlign: 'center' }}>Act</th>
+              <th style={{ ...styles.th, width: '140px' }}>Date & Time</th>
+              <th style={{ ...styles.th, width: '240px' }}>Diagnostic Center / Lab</th>
+              <th style={{ ...styles.th, width: '220px' }}>Patient Name</th>
+              <th style={styles.th}>Commission Category</th>
+              <th style={{ ...styles.th, width: '140px', textAlign: 'right' }}>Cut Amount (₹)</th>
+              <th style={{ ...styles.th, width: '140px', textAlign: 'center' }}>Act</th>
             </tr>
           </thead>
           <tbody>
             {loading && cuts.length === 0 ? (
               <tr>
-                <td colSpan={10} style={styles.emptyTd}>
-                  <RefreshCw size={20} className="animate-spin" style={{ margin: '0 auto 6px' }} />
+                <td colSpan={6} style={styles.emptyTd}>
+                  <RefreshCw size={18} className="animate-spin" style={{ margin: '0 auto 6px' }} />
                   <span>Loading cut commission records...</span>
                 </td>
               </tr>
             ) : cuts.length === 0 ? (
               <tr>
-                <td colSpan={10} style={styles.emptyTd}>
-                  <Percent size={24} color="#94A3B8" style={{ margin: '0 auto 6px' }} />
-                  <span>No cut records found for the selected period.</span>
+                <td colSpan={6} style={styles.emptyTd}>
+                  <span>No cut commission records found. Press Enter or click "+ ADD CUT" to add one.</span>
                 </td>
               </tr>
             ) : (
@@ -596,86 +373,81 @@ export const CutMaster = () => {
                       backgroundColor: isEven ? '#FFFFFF' : '#F8FAFC',
                     }}
                   >
-                    {/* Index */}
-                    <td style={{ ...styles.td, textAlign: 'center', color: '#64748B', fontWeight: 600 }}>
-                      {idx + 1}
-                    </td>
-
-                    {/* Date & Time */}
-                    <td style={styles.td}>
+                    {/* 1. Date & Time */}
+                    <td style={styles.tdDateTime}>
                       <div style={styles.dateText}>{dateStr}</div>
                       <div style={styles.timeBadge}>{timeStr}</div>
                     </td>
 
-                    {/* Diagnostic Center */}
-                    <td style={styles.td}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                        <Building2 size={13} color="#64748B" />
-                        <span style={{ fontWeight: 700, color: '#0F172A' }}>
-                          {c.centerName}
-                        </span>
-                      </div>
+                    {/* 2. Diagnostic Center */}
+                    <td style={styles.tdCenter}>
+                      <span style={styles.centerText}>
+                        {c.centerName}
+                      </span>
                     </td>
 
-                    {/* Patient Name */}
-                    <td style={styles.td}>
-                      <span style={{ fontWeight: 600, color: '#1E40AF' }}>
+                    {/* 3. Patient Name */}
+                    <td style={styles.tdPatient}>
+                      <span style={styles.patientText}>
                         {c.patientName || '-'}
                       </span>
                     </td>
 
-                    {/* Category */}
-                    <td style={styles.td}>
-                      <span style={styles.categoryBadge}>
+                    {/* 4. Category */}
+                    <td style={styles.tdCategory}>
+                      <span style={styles.categoryNameText}>
                         {c.category}
                       </span>
                     </td>
 
-                    {/* Reference */}
-                    <td style={styles.td}>
-                      <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#475569' }}>
-                        {c.reference || '-'}
+                    {/* 5. Amount (₹) */}
+                    <td style={styles.tdAmount}>
+                      <span style={styles.amountText}>
+                        + ₹{(c.amount || 0).toLocaleString('en-IN')}
                       </span>
                     </td>
 
-                    {/* Notes */}
-                    <td style={{ ...styles.td, color: '#475569' }}>
-                      {c.notes || '-'}
-                    </td>
-
-                    {/* Payment Mode */}
-                    <td style={styles.td}>
-                      <span style={styles.modeBadge}>
-                        {c.paymentMode || 'Cash'}
-                      </span>
-                    </td>
-
-                    {/* Cut Amount (₹) */}
-                    <td style={{ ...styles.td, textAlign: 'right', fontWeight: 900, color: '#15803D', fontSize: '13px' }}>
-                      + ₹{(c.amount || 0).toLocaleString('en-IN')}
-                    </td>
-
-                    {/* Act (Buttons matching the photo) */}
-                    <td style={{ ...styles.td, textAlign: 'center' }}>
-                      <div style={styles.actButtonGroup}>
-                        {/* Edit Button */}
+                    {/* 6. Act (The exact 4 Icon Buttons from the photo) */}
+                    <td style={styles.tdAct}>
+                      <div style={styles.actBox}>
+                        {/* Button 1: View / Duplicate */}
                         <button
                           type="button"
-                          onClick={() => handleEdit(c)}
-                          title="Edit Cut Record"
-                          style={styles.btnEdit}
+                          onClick={() => handleOpenEdit(c)}
+                          title="View / Edit Cut Record"
+                          style={styles.actBtnBlue}
                         >
-                          <Edit size={13} color="#D97706" />
+                          <FileText size={14} color="#0284C7" />
                         </button>
 
-                        {/* Delete Button */}
+                        {/* Button 2: Edit */}
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEdit(c)}
+                          title="Edit Cut Record"
+                          style={styles.actBtnOrange}
+                        >
+                          <Edit size={14} color="#D97706" />
+                        </button>
+
+                        {/* Button 3: Print */}
+                        <button
+                          type="button"
+                          onClick={() => window.print()}
+                          title="Print Memo"
+                          style={styles.actBtnGray}
+                        >
+                          <Printer size={14} color="#475569" />
+                        </button>
+
+                        {/* Button 4: Delete */}
                         <button
                           type="button"
                           onClick={() => handleDelete(c._id, c.centerName, c.amount)}
-                          title="Delete Record"
-                          style={styles.btnDelete}
+                          title="Delete Cut Record"
+                          style={styles.actBtnRed}
                         >
-                          <Trash2 size={13} color="#DC2626" />
+                          <Trash2 size={14} color="#DC2626" />
                         </button>
                       </div>
                     </td>
@@ -687,60 +459,171 @@ export const CutMaster = () => {
         </table>
       </div>
 
-      {/* 5. BOTTOM SUMMARY BAR (MATCHING CLINIC FOOTER DESIGN) */}
-      <div style={styles.windowFooterBar}>
-        <div style={styles.footerLeft}>
-          <span style={styles.footerCountText}>
-            Total Records: <strong>{cuts.length}</strong>
-          </span>
-          <span style={styles.footerDivider}>|</span>
-          <span style={styles.footerPeriodText}>
-            Period: <strong>{selectedPeriod.toUpperCase()}</strong>
-          </span>
+      {/* 4. BOTTOM FOOTER BAR */}
+      <div style={styles.footerBar}>
+        <div>
+          Total Records: <strong>{cuts.length}</strong>
         </div>
-
-        <div style={styles.footerRight}>
-          <div style={styles.footerMetricItemHighlight}>
-            <span style={styles.footerMetricLabel}>TODAY'S CUT ADDED TO INCOME:</span>
-            <span style={{ ...styles.footerMetricVal, color: '#15803D', fontWeight: 900 }}>
-              + ₹{(summary.todayTotal || 0).toLocaleString('en-IN')}
-            </span>
-          </div>
-
-          <div style={styles.footerMetricItem}>
-            <span style={styles.footerMetricLabel}>THIS MONTH:</span>
-            <span style={{ ...styles.footerMetricVal, color: '#1E40AF' }}>
-              ₹{(summary.monthTotal || 0).toLocaleString('en-IN')}
-            </span>
-          </div>
-
-          <div style={styles.footerMetricItem}>
-            <span style={styles.footerMetricLabel}>TOTAL VIEW COMMISSION:</span>
-            <span style={{ ...styles.footerMetricVal, color: '#0F172A', fontWeight: 800 }}>
-              + ₹{currentViewTotal.toLocaleString('en-IN')}
-            </span>
-          </div>
+        <div style={styles.footerTotalWrap}>
+          <span>TOTAL CUT COMMISSION:</span>
+          <span style={styles.footerTotalVal}>
+            + ₹{totalAmount.toLocaleString('en-IN')}
+          </span>
         </div>
       </div>
+
+      {/* 5. ADD / EDIT CUT MODAL (STRICTLY NO EXTRA FIELDS: ONLY DATE, CENTER DATALIST, PATIENT NAME, CATEGORY DATALIST, AMOUNT) */}
+      {showAddModal && (
+        <div style={styles.modalOverlay} onClick={() => setShowAddModal(false)}>
+          <div style={styles.modalBox} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.modalHeader}>
+              <span style={styles.modalTitle}>
+                {editingCut ? 'EDIT CUT COMMISSION' : 'ADD NEW CUT COMMISSION'}
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowAddModal(false)}
+                style={styles.modalCloseBtn}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSave} style={styles.modalForm}>
+              {/* Field 1: Date */}
+              <div style={styles.modalFieldGroup}>
+                <label style={styles.modalLabel}>Date: *</label>
+                <input
+                  type="date"
+                  required
+                  value={formData.date}
+                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                  style={styles.modalInput}
+                />
+              </div>
+
+              {/* Field 2: Diagnostic Center (Datalist) */}
+              <div style={styles.modalFieldGroup}>
+                <label style={styles.modalLabel}>
+                  Diagnostic Center / Lab: <span style={{ color: '#DC2626' }}>*</span>
+                </label>
+                <input
+                  ref={centerInputRef}
+                  list="cut-centers-modal-list"
+                  type="text"
+                  required
+                  placeholder="E.G. CARE DIAGNOSTICS, SURAT IMAGING..."
+                  value={formData.centerName}
+                  onChange={(e) => setFormData({ ...formData, centerName: e.target.value })}
+                  style={{ ...styles.modalInput, textTransform: 'uppercase' }}
+                  autoFocus
+                />
+                <datalist id="cut-centers-modal-list">
+                  {centers.map((c, i) => (
+                    <option key={i} value={c} />
+                  ))}
+                </datalist>
+                <span style={styles.modalHint}>
+                  (New centers are automatically remembered in Master Data)
+                </span>
+              </div>
+
+              {/* Field 3: Patient Name */}
+              <div style={styles.modalFieldGroup}>
+                <label style={styles.modalLabel}>
+                  Patient Name:
+                </label>
+                <input
+                  type="text"
+                  placeholder="PATIENT NAME (OPTIONAL)..."
+                  value={formData.patientName}
+                  onChange={(e) => setFormData({ ...formData, patientName: e.target.value })}
+                  style={{ ...styles.modalInput, textTransform: 'uppercase' }}
+                />
+              </div>
+
+              {/* Field 4: Category (Datalist) */}
+              <div style={styles.modalFieldGroup}>
+                <label style={styles.modalLabel}>
+                  Commission Category: <span style={{ color: '#DC2626' }}>*</span>
+                </label>
+                <input
+                  list="cut-categories-modal-list"
+                  type="text"
+                  required
+                  placeholder="E.G. LAB CUT, X-RAY, SONOGRAPHY..."
+                  value={formData.category}
+                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  style={{ ...styles.modalInput, textTransform: 'uppercase' }}
+                />
+                <datalist id="cut-categories-modal-list">
+                  {categories.map((cat, i) => (
+                    <option key={i} value={cat} />
+                  ))}
+                </datalist>
+              </div>
+
+              {/* Field 5: Amount (₹) */}
+              <div style={styles.modalFieldGroup}>
+                <label style={styles.modalLabel}>
+                  Cut Amount (₹): <span style={{ color: '#DC2626' }}>*</span>
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  required
+                  placeholder="0.00"
+                  value={formData.amount}
+                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                  style={{ ...styles.modalInput, fontWeight: 800, fontSize: '14px', color: '#15803D' }}
+                />
+                <span style={{ fontSize: '10px', color: '#15803D', fontWeight: 600 }}>
+                  ✓ Automatically added to Today's Clinic Income
+                </span>
+              </div>
+
+              {/* Action Buttons */}
+              <div style={styles.modalBtnRow}>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  style={styles.modalSaveBtn}
+                >
+                  {isSubmitting ? 'SAVING...' : editingCut ? 'UPDATE' : 'SAVE (Enter)'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  style={styles.modalCancelBtn}
+                >
+                  CANCEL (Esc)
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 const styles = {
-  windowContainer: {
+  container: {
     width: '100%',
     height: '100%',
     display: 'flex',
     flexDirection: 'column',
     backgroundColor: '#FFFFFF',
-    overflow: 'hidden',
-    border: '1px solid #CBD5E1',
+    border: '1px solid #0056B3',
     userSelect: 'none',
+    overflow: 'hidden',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
   },
 
-  // 1. Title Bar
-  windowTitleBar: {
-    backgroundColor: '#BE123C', // Clinic Maroon / Deep Rose matching Cut Master tab in photo
+  // 1. Top Blue Bar (Exact same blue bar from the given photo)
+  topBlueBar: {
+    backgroundColor: '#0B5ED7',
     color: '#FFFFFF',
     padding: '7px 12px',
     display: 'flex',
@@ -748,242 +631,95 @@ const styles = {
     justifyContent: 'space-between',
     fontSize: '13.5px',
     fontWeight: 700,
-    letterSpacing: '0.02em',
     flexShrink: 0,
   },
-  windowTitleLeft: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
+  topBarTitle: {
+    letterSpacing: '0.01em',
   },
-  windowTitleText: {
-    textTransform: 'uppercase',
-  },
-  windowTitleRight: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-  },
-  incomeNoticePill: {
+  incomeNoticeBadge: {
     display: 'inline-flex',
     alignItems: 'center',
     gap: '5px',
-    backgroundColor: 'rgba(0, 0, 0, 0.25)',
-    border: '1px solid rgba(255, 255, 255, 0.3)',
-    color: '#86EFAC',
-    fontSize: '11px',
-    fontWeight: 700,
+    backgroundColor: 'rgba(0,0,0,0.22)',
     padding: '2px 8px',
     borderRadius: '3px',
-  },
-  windowShortcutBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.22)',
-    padding: '2px 7px',
-    borderRadius: '3px',
     fontSize: '11px',
-    fontWeight: 800,
+    fontWeight: 700,
+    color: '#86EFAC',
   },
-
-  // 2. Search & Action Strip
-  searchActionBar: {
-    backgroundColor: '#F1F5F9',
-    padding: '7px 12px',
+  topBarCloseBtn: {
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    padding: 0,
     display: 'flex',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: '10px',
+  },
+
+  // 2. Search & Action Strip (Exact same full-width input + Green Button from the given photo)
+  searchStrip: {
+    backgroundColor: '#F1F5F9',
+    padding: '8px 12px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
     borderBottom: '1px solid #CBD5E1',
     flexShrink: 0,
-    flexWrap: 'wrap',
-  },
-  searchWrapper: {
-    position: 'relative',
-    flex: 1,
-    minWidth: '260px',
-  },
-  searchIcon: {
-    position: 'absolute',
-    left: '10px',
-    top: '50%',
-    transform: 'translateY(-50%)',
-    pointerEvents: 'none',
   },
   searchInput: {
-    width: '100%',
-    padding: '6px 28px 6px 32px',
-    fontSize: '12px',
+    flex: 1,
+    height: '34px',
+    padding: '6px 12px',
+    fontSize: '12.5px',
     fontWeight: 600,
     color: '#0F172A',
     backgroundColor: '#FFFFFF',
     border: '1px solid #94A3B8',
-    borderRadius: '4px',
+    borderRadius: '3px',
     outline: 'none',
     textTransform: 'uppercase',
   },
-  clearSearchBtn: {
-    position: 'absolute',
-    right: '8px',
-    top: '50%',
-    transform: 'translateY(-50%)',
-    background: 'none',
+  addGreenBtn: {
+    height: '34px',
+    backgroundColor: '#15803D', // Forest Green matching "+ ADD PATIENT (Enter)" in photo
+    color: '#FFFFFF',
+    fontWeight: 700,
+    fontSize: '12px',
     border: 'none',
-    cursor: 'pointer',
-    color: '#94A3B8',
-  },
-  periodPillGroup: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '4px',
-  },
-  periodPillBtn: {
-    fontSize: '11px',
-    padding: '4px 9px',
     borderRadius: '3px',
-    border: '1px solid',
+    padding: '0 18px',
     cursor: 'pointer',
-    transition: 'all 0.15s ease',
-  },
-  datePickerInput: {
-    fontSize: '11px',
-    padding: '3px 6px',
-    borderRadius: '3px',
-    border: '1px solid #CBD5E1',
-    outline: 'none',
-  },
-  refreshIconBtn: {
-    padding: '6px 8px',
-    backgroundColor: '#FFFFFF',
-    border: '1px solid #CBD5E1',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    color: '#475569',
-    display: 'flex',
+    whiteSpace: 'nowrap',
+    display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  addCutBtn: {
-    backgroundColor: '#15803D', // Deep Forest Green matching "+ ADD PATIENT (Enter)" in photo
-    color: '#FFFFFF',
-    fontWeight: 700,
-    fontSize: '12px',
-    border: 'none',
-    borderRadius: '4px',
-    padding: '6px 14px',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '5px',
-    boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
-  },
 
-  // 3. Entry Form Panel
-  entryFormPanel: {
-    backgroundColor: '#F8FAFC',
-    borderBottom: '2px solid #BE123C',
-    padding: '10px 14px',
-    flexShrink: 0,
-  },
-  formHeaderRow: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: '8px',
-  },
-  formHeaderDot: {
-    width: '7px',
-    height: '7px',
-    borderRadius: '50%',
-    backgroundColor: '#BE123C',
-  },
-  formHeaderText: {
-    fontSize: '11.5px',
-    fontWeight: 800,
-    color: '#BE123C',
-    letterSpacing: '0.03em',
-  },
-  cancelEditBtn: {
-    fontSize: '11px',
-    padding: '2px 8px',
-    backgroundColor: '#F1F5F9',
-    border: '1px solid #CBD5E1',
-    borderRadius: '3px',
-    cursor: 'pointer',
-    color: '#475569',
-  },
-  formFieldsRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    flexWrap: 'wrap',
-  },
-  formFieldCol: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '3px',
-  },
-  formLabel: {
-    fontSize: '10.5px',
-    fontWeight: 700,
-    color: '#475569',
-    whiteSpace: 'nowrap',
-  },
-  formInput: {
-    height: '29px',
-    padding: '4px 8px',
-    fontSize: '12px',
-    border: '1px solid #94A3B8',
-    borderRadius: '3px',
-    backgroundColor: '#FFFFFF',
-    outline: 'none',
-  },
-  formSelect: {
-    height: '29px',
-    padding: '4px 6px',
-    fontSize: '12px',
-    border: '1px solid #94A3B8',
-    borderRadius: '3px',
-    backgroundColor: '#FFFFFF',
-    outline: 'none',
-  },
-  saveSubmitBtn: {
-    height: '29px',
-    padding: '0 16px',
-    backgroundColor: '#15803D',
-    color: '#FFFFFF',
-    fontWeight: 800,
-    fontSize: '11.5px',
-    border: 'none',
-    borderRadius: '3px',
-    cursor: 'pointer',
-    boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
-  },
-
-  // 4. Data Table
-  tableScrollWrapper: {
+  // 3. Table Container (Exact same look and column header style as the given photo)
+  tableContainer: {
     flex: 1,
     overflowY: 'auto',
     overflowX: 'auto',
     backgroundColor: '#FFFFFF',
   },
-  dataTable: {
+  table: {
     width: '100%',
     borderCollapse: 'collapse',
     fontSize: '12px',
   },
   theadRow: {
-    backgroundColor: '#E2E8F0', // Soft silver-blue header matching clinic screenshot
+    backgroundColor: '#E2E8F0', // Soft silver-blue header matching photo
     borderBottom: '1px solid #94A3B8',
     position: 'sticky',
     top: 0,
     zIndex: 2,
   },
   th: {
-    padding: '7px 8px',
+    padding: '7px 10px',
     textAlign: 'left',
-    fontSize: '11px',
+    fontSize: '11.5px',
     fontWeight: 800,
     color: '#0F172A',
-    letterSpacing: '0.02em',
     borderRight: '1px solid #CBD5E1',
     whiteSpace: 'nowrap',
   },
@@ -991,10 +727,11 @@ const styles = {
     borderBottom: '1px solid #E2E8F0',
     transition: 'background-color 0.1s ease',
   },
-  td: {
-    padding: '6px 8px',
+  tdDateTime: {
+    padding: '7px 10px',
     verticalAlign: 'middle',
     borderRight: '1px solid #F1F5F9',
+    whiteSpace: 'nowrap',
   },
   dateText: {
     fontSize: '12px',
@@ -1002,53 +739,100 @@ const styles = {
     color: '#0F172A',
   },
   timeBadge: {
-    fontSize: '10px',
+    fontSize: '10.5px',
     fontWeight: 600,
     color: '#0284C7',
   },
-  categoryBadge: {
-    display: 'inline-block',
-    padding: '2px 7px',
-    borderRadius: '3px',
-    fontSize: '11px',
-    fontWeight: 700,
-    backgroundColor: '#FFE4E6',
-    color: '#9F1239',
-    border: '1px solid #FECDD3',
+  tdCenter: {
+    padding: '7px 10px',
+    verticalAlign: 'middle',
+    borderRight: '1px solid #F1F5F9',
   },
-  modeBadge: {
-    display: 'inline-block',
-    padding: '2px 6px',
-    borderRadius: '3px',
-    fontSize: '10.5px',
+  centerText: {
+    fontWeight: 800,
+    color: '#0F172A',
+    textTransform: 'uppercase',
+  },
+  tdPatient: {
+    padding: '7px 10px',
+    verticalAlign: 'middle',
+    borderRight: '1px solid #F1F5F9',
+  },
+  patientText: {
     fontWeight: 600,
-    backgroundColor: '#F1F5F9',
-    color: '#475569',
-    border: '1px solid #E2E8F0',
+    color: '#1E40AF',
+    textTransform: 'uppercase',
   },
-  actButtonGroup: {
+  tdCategory: {
+    padding: '7px 10px',
+    verticalAlign: 'middle',
+    borderRight: '1px solid #F1F5F9',
+  },
+  categoryNameText: {
+    fontWeight: 700,
+    color: '#0F172A',
+    textTransform: 'uppercase',
+  },
+  tdAmount: {
+    padding: '7px 10px',
+    verticalAlign: 'middle',
+    borderRight: '1px solid #F1F5F9',
+    textAlign: 'right',
+  },
+  amountText: {
+    fontSize: '13px',
+    fontWeight: 900,
+    color: '#15803D',
+  },
+  tdAct: {
+    padding: '6px 8px',
+    verticalAlign: 'middle',
+    textAlign: 'center',
+    width: '140px',
+  },
+  actBox: {
     display: 'inline-flex',
     alignItems: 'center',
-    gap: '4px',
+    gap: '3px',
     backgroundColor: '#F1F5F9',
-    padding: '2px 4px',
+    padding: '3px 5px',
     borderRadius: '4px',
     border: '1px solid #CBD5E1',
   },
-  btnEdit: {
-    padding: '3px 5px',
+  actBtnBlue: {
+    padding: '4px',
     backgroundColor: '#FFFFFF',
-    border: '1px solid #FCD34D',
+    border: '1px solid #BAE6FD',
     borderRadius: '3px',
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  btnDelete: {
-    padding: '3px 5px',
+  actBtnOrange: {
+    padding: '4px',
     backgroundColor: '#FFFFFF',
-    border: '1px solid #FCA5A5',
+    border: '1px solid #FDE68A',
+    borderRadius: '3px',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actBtnGray: {
+    padding: '4px',
+    backgroundColor: '#FFFFFF',
+    border: '1px solid #CBD5E1',
+    borderRadius: '3px',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actBtnRed: {
+    padding: '4px',
+    backgroundColor: '#FFFFFF',
+    border: '1px solid #FECDD3',
     borderRadius: '3px',
     cursor: 'pointer',
     display: 'flex',
@@ -1059,83 +843,152 @@ const styles = {
     padding: '40px 16px',
     textAlign: 'center',
     color: '#64748B',
-    fontSize: '12px',
+    fontSize: '12.5px',
   },
 
-  // 5. Window Footer Bar
-  windowFooterBar: {
+  // 4. Footer Bar
+  footerBar: {
     backgroundColor: '#F8FAFC',
     borderTop: '1px solid #CBD5E1',
     padding: '7px 14px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    fontSize: '11.5px',
-    flexShrink: 0,
-    flexWrap: 'wrap',
-    gap: '8px',
-  },
-  footerLeft: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    color: '#475569',
-  },
-  footerCountText: {
     fontSize: '12px',
+    fontWeight: 600,
+    color: '#334155',
+    flexShrink: 0,
   },
-  footerDivider: {
-    color: '#CBD5E1',
-  },
-  footerPeriodText: {
-    fontSize: '11px',
-  },
-  footerRight: {
+  footerTotalWrap: {
     display: 'flex',
     alignItems: 'center',
-    gap: '16px',
+    gap: '8px',
   },
-  footerMetricItem: {
+  footerTotalVal: {
+    fontSize: '13px',
+    fontWeight: 900,
+    color: '#15803D',
+  },
+
+  // 5. Modal
+  modalOverlay: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    zIndex: 9999,
     display: 'flex',
     alignItems: 'center',
-    gap: '5px',
+    justifyContent: 'center',
   },
-  footerMetricItemHighlight: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-    backgroundColor: '#DCFCE7',
-    padding: '3px 10px',
+  modalBox: {
+    width: '440px',
+    backgroundColor: '#FFFFFF',
     borderRadius: '4px',
-    border: '1px solid #86EFAC',
+    border: '1px solid #0056B3',
+    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.25)',
+    overflow: 'hidden',
   },
-  footerMetricLabel: {
-    fontSize: '10.5px',
+  modalHeader: {
+    backgroundColor: '#0B5ED7',
+    color: '#FFFFFF',
+    padding: '8px 12px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  modalTitle: {
+    fontSize: '13px',
     fontWeight: 700,
+    letterSpacing: '0.02em',
+  },
+  modalCloseBtn: {
+    background: 'none',
+    border: 'none',
+    color: '#FFFFFF',
+    cursor: 'pointer',
+    padding: 0,
+  },
+  modalForm: {
+    padding: '14px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+  },
+  modalFieldGroup: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+  },
+  modalLabel: {
+    fontSize: '11.5px',
+    fontWeight: 700,
+    color: '#334155',
+  },
+  modalInput: {
+    height: '32px',
+    padding: '4px 8px',
+    fontSize: '12.5px',
+    border: '1px solid #94A3B8',
+    borderRadius: '3px',
+    outline: 'none',
+    backgroundColor: '#FFFFFF',
+  },
+  modalHint: {
+    fontSize: '10px',
     color: '#64748B',
   },
-  footerMetricVal: {
-    fontSize: '12.5px',
-    fontWeight: 800,
+  modalBtnRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: '8px',
+    marginTop: '6px',
+    borderTop: '1px solid #E2E8F0',
+    paddingTop: '10px',
+  },
+  modalSaveBtn: {
+    height: '32px',
+    padding: '0 16px',
+    backgroundColor: '#15803D',
+    color: '#FFFFFF',
+    fontWeight: 700,
+    fontSize: '12px',
+    border: 'none',
+    borderRadius: '3px',
+    cursor: 'pointer',
+  },
+  modalCancelBtn: {
+    height: '32px',
+    padding: '0 12px',
+    backgroundColor: '#F1F5F9',
+    color: '#475569',
+    fontWeight: 600,
+    fontSize: '12px',
+    border: '1px solid #CBD5E1',
+    borderRadius: '3px',
+    cursor: 'pointer',
   },
 
   // Toast
-  toastNotification: {
+  toast: {
     position: 'fixed',
     top: '16px',
     right: '16px',
-    zIndex: 9999,
+    zIndex: 10000,
     color: '#FFFFFF',
     padding: '8px 14px',
-    borderRadius: '5px',
-    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+    borderRadius: '4px',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
     fontSize: '12px',
     fontWeight: 600,
   },
-  toastCloseBtn: {
+  toastClose: {
     background: 'none',
     border: 'none',
     color: '#FFFFFF',
