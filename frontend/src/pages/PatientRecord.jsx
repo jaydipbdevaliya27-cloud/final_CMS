@@ -40,6 +40,10 @@ import {
   ExternalLink,
   Languages,
   UtensilsCrossed,
+  Syringe,
+  FlaskConical,
+  ShieldAlert,
+  Clock,
 } from 'lucide-react';
 
 // Format human-readable dosage instructions in selected language
@@ -259,6 +263,32 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
   const [familyData, setFamilyData] = useState(null);
   const [familyVisits, setFamilyVisits] = useState([]);
   const [familyDueTab, setFamilyDueTab] = useState('members'); // 'members' or 'visits'
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+
+  // Quick inputs state for new layout cards
+  const [tempAllergy, setTempAllergy] = useState('');
+  const [tempComplaint, setTempComplaint] = useState('');
+  const [tempInvestigation, setTempInvestigation] = useState('');
+  const [tempLabName, setTempLabName] = useState('CARE');
+  const [tempIpd, setTempIpd] = useState('');
+  const [clinicMedForm, setClinicMedForm] = useState({
+    medicine: '',
+    qty: '1',
+    morning: '1',
+    noon: '0',
+    evening: '1',
+  });
+  const [rxForm, setRxForm] = useState({
+    medicine: '',
+    qty: '10',
+    morning: '1',
+    noon: '0',
+    evening: '1',
+    night: '0',
+    timing: 'AF',
+  });
+  const [dietaryCodeInput, setDietaryCodeInput] = useState('');
+  const [dietaryTextInput, setDietaryTextInput] = useState('');
 
   // --- New Visit Entry Form State (Matching Image) ---
   const getTodayDateStr = () => {
@@ -276,20 +306,14 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
     other: '',
     reference: '',
     investigation: '',
+    investigationList: [],
     complaint: '',
-    treatments: [{ id: Date.now() + '-t1', item: '', qty: '1' }],
-    prescriptions: [
-      {
-        id: Date.now() + '-p1',
-        medicine: '',
-        qty: '',
-        morning: '1',
-        noon: '0',
-        evening: '1',
-        night: '0',
-        timing: 'AF',
-      },
-    ],
+    complaintList: [],
+    allergyList: [],
+    ipdDetails: [],
+    treatments: [],
+    prescriptions: [],
+    dietary: '',
     charge: '0',
     received: '0',
   };
@@ -303,6 +327,7 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
     preloadMasterData('complaint');
     preloadMasterData('investigation');
     preloadMasterData('allergy');
+    preloadMasterData('ipd');
     preloadMasterData('area');
     preloadMasterData('society');
     preloadMasterData('dietary');
@@ -702,6 +727,188 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
   const receivedNum = Math.max(0, Number(visitForm.received) || 0);
   const computedDue = Math.max(0, chargeNum - receivedNum);
 
+  // --- New Card Quick Handlers for Exact Photo Layout ---
+  const handleAddAllergy = (valToAdd = null) => {
+    const raw = (valToAdd !== null ? valToAdd : tempAllergy).trim();
+    if (!raw) return;
+    setVisitForm((prev) => {
+      const current = prev || visitFormRef.current || visitForm;
+      const list = current.allergyList || [];
+      if (!list.includes(raw.toUpperCase())) {
+        const updated = { ...current, allergyList: [...list, raw.toUpperCase()] };
+        visitFormRef.current = updated;
+        return updated;
+      }
+      return current;
+    });
+    setTempAllergy('');
+  };
+
+  const handleRemoveAllergy = (itemToRemove) => {
+    setVisitForm((prev) => {
+      const current = prev || visitFormRef.current || visitForm;
+      const list = (current.allergyList || []).filter((i) => i !== itemToRemove);
+      const updated = { ...current, allergyList: list };
+      visitFormRef.current = updated;
+      return updated;
+    });
+  };
+
+  const handleAddComplaint = (valToAdd = null) => {
+    const raw = (valToAdd !== null ? valToAdd : tempComplaint).trim();
+    if (!raw) return;
+    const tokens = raw.split(',').map((t) => t.trim().toUpperCase()).filter(Boolean);
+    setVisitForm((prev) => {
+      const current = prev || visitFormRef.current || visitForm;
+      const list = current.complaintList || [];
+      const merged = [...list];
+      tokens.forEach((tok) => {
+        if (!merged.includes(tok)) merged.push(tok);
+      });
+      const updated = {
+        ...current,
+        complaintList: merged,
+        complaint: merged.join(', '),
+      };
+      visitFormRef.current = updated;
+      return updated;
+    });
+    setTempComplaint('');
+  };
+
+  const handleRemoveComplaint = (itemToRemove) => {
+    setVisitForm((prev) => {
+      const current = prev || visitFormRef.current || visitForm;
+      const list = (current.complaintList || []).filter((i) => i !== itemToRemove);
+      const updated = {
+        ...current,
+        complaintList: list,
+        complaint: list.join(', '),
+      };
+      visitFormRef.current = updated;
+      return updated;
+    });
+  };
+
+  const handleAddInvestigation = () => {
+    const repType = tempInvestigation.trim().toUpperCase();
+    if (!repType) return;
+    const labName = (tempLabName.trim() || 'CARE').toUpperCase();
+    setVisitForm((prev) => {
+      const current = prev || visitFormRef.current || visitForm;
+      const list = current.investigationList || [];
+      const updatedList = [...list, { id: Date.now() + '-' + Math.random(), reportType: repType, labName }];
+      const updated = {
+        ...current,
+        investigationList: updatedList,
+        investigation: updatedList.map((i) => i.reportType).join(', '),
+      };
+      visitFormRef.current = updated;
+      return updated;
+    });
+    setTempInvestigation('');
+  };
+
+  const handleRemoveInvestigation = (idToRemove) => {
+    setVisitForm((prev) => {
+      const current = prev || visitFormRef.current || visitForm;
+      const list = (current.investigationList || []).filter((i) => i.id !== idToRemove);
+      const updated = {
+        ...current,
+        investigationList: list,
+        investigation: list.map((i) => i.reportType).join(', '),
+      };
+      visitFormRef.current = updated;
+      return updated;
+    });
+  };
+
+  const handleAddIpdDetail = (valToAdd = null) => {
+    const raw = (valToAdd !== null ? valToAdd : tempIpd).trim();
+    if (!raw) return;
+    setVisitForm((prev) => {
+      const current = prev || visitFormRef.current || visitForm;
+      const list = current.ipdDetails || [];
+      const updatedList = [...list, raw];
+      const updated = { ...current, ipdDetails: updatedList };
+      visitFormRef.current = updated;
+      return updated;
+    });
+    setTempIpd('');
+  };
+
+  const handleRemoveIpdDetail = (idxToRemove) => {
+    setVisitForm((prev) => {
+      const current = prev || visitFormRef.current || visitForm;
+      const list = (current.ipdDetails || []).filter((_, idx) => idx !== idxToRemove);
+      const updated = { ...current, ipdDetails: list };
+      visitFormRef.current = updated;
+      return updated;
+    });
+  };
+
+  const handleAddClinicMedicine = () => {
+    const med = (clinicMedForm.medicine || '').trim();
+    if (!med) return;
+    const resolvedMed = resolveMasterShortcut('medicine', med);
+    const newTr = {
+      id: Date.now() + '-' + Math.random(),
+      item: resolvedMed,
+      qty: String(clinicMedForm.qty || '1').trim() || '1',
+      morning: String(clinicMedForm.morning || '1').trim(),
+      noon: String(clinicMedForm.noon || '0').trim(),
+      evening: String(clinicMedForm.evening || '1').trim(),
+    };
+    setVisitForm((prev) => {
+      const current = prev || visitFormRef.current || visitForm;
+      const treatments = [...(current.treatments || []), newTr];
+      const updated = { ...current, treatments };
+      visitFormRef.current = updated;
+      return updated;
+    });
+    setClinicMedForm({ medicine: '', qty: '1', morning: '1', noon: '0', evening: '1' });
+  };
+
+  const handleAddPrescriptionItem = () => {
+    const med = (rxForm.medicine || '').trim();
+    if (!med) return;
+    const resolvedMed = resolveMasterShortcut('medicine', med);
+    const newRx = {
+      id: Date.now() + '-' + Math.random(),
+      medicine: resolvedMed,
+      qty: String(rxForm.qty || '').trim(),
+      morning: String(rxForm.morning || '1').trim(),
+      noon: String(rxForm.noon || '0').trim(),
+      evening: String(rxForm.evening || '1').trim(),
+      night: String(rxForm.night || '0').trim(),
+      timing: rxForm.timing || 'AF',
+    };
+    setVisitForm((prev) => {
+      const current = prev || visitFormRef.current || visitForm;
+      const prescriptions = [...(current.prescriptions || []), newRx];
+      const updated = { ...current, prescriptions };
+      visitFormRef.current = updated;
+      return updated;
+    });
+    setRxForm({ medicine: '', qty: '10', morning: '1', noon: '0', evening: '1', night: '0', timing: 'AF' });
+  };
+
+  const handleApplyDietary = () => {
+    let advice = (dietaryTextInput || '').trim();
+    if (dietaryCodeInput.trim()) {
+      const resolved = resolveMasterShortcut('dietary', dietaryCodeInput.trim());
+      if (resolved && resolved !== dietaryCodeInput.trim()) {
+        advice = advice ? `${advice}, ${resolved}` : resolved;
+      }
+    }
+    if (!advice) return;
+    const currentDiet = visitFormRef.current?.dietary || visitForm.dietary || '';
+    const updated = currentDiet ? `${currentDiet}, ${advice}` : advice;
+    updateFormField('dietary', updated);
+    setDietaryTextInput('');
+    setDietaryCodeInput('');
+  };
+
   // --- Treatment Row Handlers (with Auto-Add on typing) ---
   const handleAddTreatment = () => {
     setVisitForm((prev) => {
@@ -849,23 +1056,27 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
     editingVisitIdRef.current = null;
     setAttachedReport(null);
     attachedReportRef.current = null;
+
+    const patientAllergies = Array.isArray(patientToUse.allergies)
+      ? patientToUse.allergies.map((a) => String(a).toUpperCase())
+      : patientToUse.allergies
+        ? [String(patientToUse.allergies).toUpperCase()]
+        : [];
+
     const freshForm = {
       ...initialVisitForm,
       visitDate: getTodayDateStr(),
       bp: '',
-      treatments: [{ id: Date.now() + '-t1', item: '', qty: '1' }],
-      prescriptions: [
-        {
-          id: Date.now() + '-p1',
-          medicine: '',
-          qty: '',
-          morning: '1',
-          noon: '0',
-          evening: '1',
-          night: '0',
-          timing: 'AF',
-        },
-      ],
+      sugar: '',
+      other: '',
+      reference: '',
+      allergyList: patientAllergies,
+      complaintList: [],
+      investigationList: [],
+      ipdDetails: [],
+      treatments: [],
+      prescriptions: [],
+      dietary: '',
       charge: '0',
       received: '0',
       due: '0',
@@ -874,18 +1085,33 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
     setVisitForm(freshForm);
     setShowNewCaseForm(true);
     showNewCaseFormRef.current = true;
-    setTimeout(() => {
-      if (bpInputRef.current) {
-        bpInputRef.current.focus();
-        bpInputRef.current.select?.();
-      }
-    }, 100);
   };
 
   // --- Start Edit on an Existing Past Visit ---
   const handleStartEditVisit = (visit) => {
     setEditingVisitId(visit._id);
     editingVisitIdRef.current = visit._id;
+    const compList = visit.complaint
+      ? visit.complaint.split(',').map((c) => c.trim().toUpperCase()).filter(Boolean)
+      : [];
+    const invList = visit.investigation
+      ? visit.investigation.split(',').map((i, idx) => ({
+          id: `${Date.now()}-${idx}`,
+          reportType: i.trim().toUpperCase(),
+          labName: 'CARE',
+        }))
+      : [];
+    const ipdList = Array.isArray(visit.ipdDetails)
+      ? visit.ipdDetails
+      : visit.ipdDetails
+        ? [visit.ipdDetails]
+        : [];
+    const algList = Array.isArray(visit.allergies) && visit.allergies.length > 0
+      ? visit.allergies
+      : Array.isArray(currentPatient?.allergies)
+        ? currentPatient.allergies
+        : [];
+
     const formVals = {
       visitDate: visit.visitDate || getTodayDateStr(),
       bp: visit.bp || '',
@@ -893,39 +1119,36 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
       other: visit.other || '',
       reference: visit.reference || '',
       investigation: visit.investigation || '',
+      investigationList: invList,
       complaint: visit.complaint || '',
+      complaintList: compList,
+      allergyList: algList,
+      ipdDetails: ipdList,
       treatments:
         visit.treatments && visit.treatments.length > 0
           ? visit.treatments.map((t, idx) => ({
-            id: t._id || `${Date.now()}-${idx}`,
-            item: t.item,
-            qty: t.qty !== undefined && t.qty !== null ? String(t.qty) : '1',
-          }))
-          : [{ id: Date.now() + '-t1', item: '', qty: '1' }],
+              id: t._id || `${Date.now()}-${idx}`,
+              item: t.item,
+              qty: t.qty !== undefined && t.qty !== null ? String(t.qty) : '1',
+              morning: t.morning || '1',
+              noon: t.noon || '0',
+              evening: t.evening || '1',
+            }))
+          : [],
       prescriptions:
         visit.prescriptions && visit.prescriptions.length > 0
           ? visit.prescriptions.map((p, idx) => ({
-            id: p._id || `${Date.now()}-${idx}`,
-            medicine: p.medicine,
-            qty: p.qty !== undefined && p.qty !== null ? String(p.qty) : '',
-            morning: p.morning || '1',
-            noon: p.noon || '0',
-            evening: p.evening || '1',
-            night: p.night || '0',
-            timing: p.timing || 'AF',
-          }))
-          : [
-            {
-              id: Date.now() + '-p1',
-              medicine: '',
-              qty: '',
-              morning: '1',
-              noon: '0',
-              evening: '1',
-              night: '0',
-              timing: 'AF',
-            },
-          ],
+              id: p._id || `${Date.now()}-${idx}`,
+              medicine: p.medicine,
+              qty: p.qty !== undefined && p.qty !== null ? String(p.qty) : '',
+              morning: p.morning || '1',
+              noon: p.noon || '0',
+              evening: p.evening || '1',
+              night: p.night || '0',
+              timing: p.timing || 'AF',
+            }))
+          : [],
+      dietary: visit.dietary || '',
       charge: String(visit.charge || 0),
       received: String(visit.received || 0),
     };
@@ -935,12 +1158,8 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
     attachedReportRef.current = visit.labReport || null;
     setShowNewCaseForm(true);
     showNewCaseFormRef.current = true;
-    setTimeout(() => {
-      if (bpInputRef.current) {
-        bpInputRef.current.focus();
-        bpInputRef.current.select?.();
-      }
-    }, 80);
+    setShowHistoryModal(false);
+    showToast('Loaded visit from ' + (visit.visitDate || 'past record') + ' into form for editing.');
   };
 
   // --- Save / Update Visit & Optional Print ---
@@ -949,15 +1168,16 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
 
     const patient = currentPatientRef.current || currentPatient;
     if (!patient) {
-      showToast('Please select a patient first', 'error');
+      showToast('Please search and select a patient first.', 'error');
       return;
     }
 
     // Always read from the synchronous ref to guarantee the freshest user-entered values
     const form = visitFormRef.current || visitForm;
-    const editingId = editingVisitIdRef.current !== undefined && editingVisitIdRef.current !== null
-      ? editingVisitIdRef.current
-      : editingVisitId;
+    const editingId =
+      editingVisitIdRef.current !== undefined && editingVisitIdRef.current !== null
+        ? editingVisitIdRef.current
+        : editingVisitId;
     const labReport = attachedReportRef.current || attachedReport;
 
     const formCharge = Math.max(0, Number(form.charge) || 0);
@@ -971,6 +1191,9 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
         return {
           item: resolvedItem,
           qty: String(t?.qty || '').trim() || '1',
+          morning: String(t?.morning || '1').trim(),
+          noon: String(t?.noon || '0').trim(),
+          evening: String(t?.evening || '1').trim(),
         };
       })
       .filter((t) => t && t.item && String(t.item).trim());
@@ -991,20 +1214,32 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
       })
       .filter((p) => p && p.medicine && String(p.medicine).trim());
 
+    const cleanAllergies = form.allergyList || [];
+    const cleanComplaints = (form.complaintList && form.complaintList.length > 0)
+      ? form.complaintList.join(', ')
+      : (form.complaint || '').trim();
+    const cleanInvestigations = (form.investigationList && form.investigationList.length > 0)
+      ? form.investigationList.map((i) => i.reportType).join(', ')
+      : (form.investigation || '').trim();
+    const cleanIpd = form.ipdDetails || [];
+
     const hasAnyData =
       (form.bp && form.bp.trim()) ||
       (form.sugar && form.sugar.trim()) ||
       (form.other && form.other.trim()) ||
       (form.reference && form.reference.trim()) ||
-      (form.investigation && form.investigation.trim()) ||
-      (form.complaint && form.complaint.trim()) ||
+      cleanInvestigations ||
+      cleanComplaints ||
+      cleanAllergies.length > 0 ||
+      cleanIpd.length > 0 ||
       validTreatments.length > 0 ||
       validPrescriptions.length > 0 ||
+      (form.dietary && form.dietary.trim()) ||
       formCharge > 0 ||
       labReport;
 
     if (!hasAnyData) {
-      showToast('Please enter at least one clinical detail, complaint, or prescription before saving.', 'error');
+      showToast('Please enter at least one clinical detail, complaint, injection/IPD, or medicine before saving.', 'error');
       return;
     }
 
@@ -1020,10 +1255,13 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
         sugar: form.sugar || '',
         other: form.other || '',
         reference: form.reference || '',
-        investigation: (form.investigation || '').replace(/,\s*$/, '').trim(),
-        complaint: (form.complaint || '').replace(/,\s*$/, '').trim(),
+        investigation: cleanInvestigations,
+        complaint: cleanComplaints,
+        allergies: cleanAllergies,
+        ipdDetails: cleanIpd,
         treatments: validTreatments,
         prescriptions: validPrescriptions,
+        dietary: form.dietary || '',
         charge: formCharge,
         received: formReceived,
         labReport: labReport || null,
@@ -1048,44 +1286,59 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
         setCurrentPatient((prev) => ({
           ...prev,
           totalDue: res.totalDue !== undefined ? res.totalDue : prev.totalDue,
+          allergies: cleanAllergies,
           family: prev?.family
             ? {
-              ...prev.family,
-              familyDue:
-                res.familyDue !== undefined ? res.familyDue : prev.family.familyDue,
-            }
+                ...prev.family,
+                familyDue:
+                  res.familyDue !== undefined ? res.familyDue : prev.family.familyDue,
+              }
             : null,
         }));
 
+        // Reload patient visits
         loadPatientVisits(patient.patientId);
 
-        // Reset and close case form
-        const resetForm = {
+        if (andPrint) {
+          const visitForPrint = res.visit || {
+            ...payload,
+            _id: editingId || 'printed-case',
+          };
+          setPrintVisit({
+            ...visitForPrint,
+            patient,
+          });
+          setPrintDietary(form.dietary || '');
+          setPrintLanguage('en');
+          setShowPrintModal(true);
+        }
+
+        // Reset form for next entry but keep patient active
+        const freshAfterSave = {
           ...initialVisitForm,
           visitDate: getTodayDateStr(),
+          allergyList: cleanAllergies,
+          complaintList: [],
+          investigationList: [],
+          ipdDetails: [],
+          treatments: [],
+          prescriptions: [],
+          dietary: '',
+          charge: '0',
+          received: '0',
         };
-        setVisitForm(resetForm);
-        visitFormRef.current = resetForm;
+        setVisitForm(freshAfterSave);
+        visitFormRef.current = freshAfterSave;
         setEditingVisitId(null);
         editingVisitIdRef.current = null;
         setAttachedReport(null);
         attachedReportRef.current = null;
-        setShowNewCaseForm(false);
-        showNewCaseFormRef.current = false;
-
-        if (andPrint && res.visit) {
-          setPrintVisit({
-            ...res.visit,
-            patient: patient,
-          });
-          setPrintDietary(res.visit.dietary || form.dietary || '');
-          setPrintLanguage('en');
-          setShowPrintModal(true);
-        }
+      } else {
+        showToast(res.message || 'Failed to save visit', 'error');
       }
     } catch (err) {
       console.error('Error saving visit:', err);
-      showToast(err.response?.data?.message || 'Failed to save visit record', 'error');
+      showToast('Error saving visit: ' + (err.message || 'Server error'), 'error');
     } finally {
       setIsSavingVisit(false);
       isSavingVisitRef.current = false;
@@ -1195,1347 +1448,1059 @@ export const PatientRecord = ({ selectedPatientId, onNavigateToAddMember }) => {
         </div>
       )}
 
-      {/* COMPACT TOP ROW: SEARCH BAR + VIEW MODE CONTROLS */}
-      <div style={styles.topControlRow}>
-        <div style={styles.searchSection} ref={searchWrapRef}>
-          <div style={styles.searchInputWrapper}>
-            <Search size={15} color="var(--text-muted)" style={styles.searchIcon} />
-            <input
-              ref={patientSearchInputRef}
-              type="text"
-              value={patientSearch}
-              onChange={(e) => handlePatientSearchChange(e.target.value)}
-              onFocus={() => {
-                if (searchResults.length > 0) setShowSearchDropdown(true);
-              }}
-              onKeyDown={(e) => {
-                const list = Array.isArray(searchResults) ? searchResults : [];
-                if (e.key === 'ArrowDown') {
-                  if (list.length > 0) {
-                    e.preventDefault();
-                    if (!showSearchDropdown) setShowSearchDropdown(true);
-                    setPatientHighlightIndex((prev) => (prev < list.length - 1 ? prev + 1 : 0));
-                  }
-                } else if (e.key === 'ArrowUp') {
-                  if (list.length > 0) {
-                    e.preventDefault();
-                    if (!showSearchDropdown) setShowSearchDropdown(true);
-                    setPatientHighlightIndex((prev) => (prev > 0 ? prev - 1 : list.length - 1));
-                  }
-                } else if (e.key === 'Enter') {
-                  if (list.length > 0) {
-                    e.preventDefault();
-                    const chosen = list[patientHighlightIndex] || list[0];
-                    if (chosen) {
-                      handleSelectPatient(chosen);
-                    }
-                  }
-                } else if (e.key === 'Escape') {
-                  setShowSearchDropdown(false);
-                }
-              }}
-              placeholder="Search Patient by Name to Start Case Entry (e.g. Ramesh, Priya, Hitesh)..."
-              style={{
-                ...styles.searchInput,
-                borderColor: !currentPatient ? 'var(--primary)' : 'var(--border)',
-                boxShadow: !currentPatient ? '0 0 0 2px var(--primary-soft)' : 'var(--shadow-sm)',
-              }}
-            />
-            {patientSearch && (
-              <button
-                type="button"
-                onClick={() => {
-                  setPatientSearch('');
-                  setSearchResults([]);
-                  setShowSearchDropdown(false);
-                }}
-                style={styles.clearSearchBtn}
-              >
-                <X size={14} color="var(--text-muted)" />
-              </button>
-            )}
-          </div>
-
-          {/* Floating Patient Suggestions Dropdown */}
-          {showSearchDropdown && searchResults.length > 0 && (
-            <div style={styles.dropdownMenu}>
-              <div style={styles.dropdownHeader}>
-                <span>Found {searchResults.length} matching patients (Use ↑/↓ & Enter)</span>
+      {/* 2-COLUMN MAIN CLINICAL WORKSPACE (EXACT COPY OF PHOTO LAYOUT) */}
+      <div style={styles.photoLayoutMain}>
+        {/* LEFT COLUMN (~48% width) */}
+        <div style={styles.photoLeftCol}>
+          {/* CARD 1: Patient Details (Blue Theme) */}
+          <div style={{ ...styles.photoCard, borderColor: '#93C5FD' }}>
+            <div style={styles.photoHeaderBlue}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <User size={14} color="#1E40AF" />
+                <span style={styles.photoHeaderTitle}>Patient Details</span>
               </div>
-              {searchResults.map((p, idx) => {
-                const pDue = p.totalDue || 0;
-                const isSelected = currentPatient?.patientId === p.patientId;
-                const isHighlighted = idx === patientHighlightIndex;
-
-                return (
-                  <div
-                    key={p._id || p.patientId}
-                    onClick={() => handleSelectPatient(p)}
-                    onMouseEnter={() => setPatientHighlightIndex(idx)}
-                    style={{
-                      ...styles.dropdownItem,
-                      backgroundColor: isHighlighted
-                        ? 'var(--primary-soft)'
-                        : isSelected
-                          ? 'var(--primary-soft)'
-                          : '#FFFFFF',
-                      borderLeft: isHighlighted
-                        ? '4px solid var(--primary)'
-                        : '4px solid transparent',
-                      cursor: 'pointer',
-                    }}
+              {currentPatient && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <button
+                    type="button"
+                    onClick={handleOpenEditModal}
+                    style={styles.photoMiniActionBtn}
+                    title="Edit Patient Demographics"
                   >
-                    <div style={styles.dropdownItemLeft}>
-                      <div style={styles.dropdownItemNameRow}>
-                        <span style={{
-                          ...styles.dropdownItemName,
-                          fontWeight: isHighlighted ? '800' : '700',
-                          color: isHighlighted ? 'var(--primary-dark)' : 'var(--text)',
-                        }}>
-                          {p.name}
-                        </span>
-                        <span style={styles.dropdownItemBadge}>{p.patientId}</span>
-                        {p.isHead && <span style={styles.headTag}>HEAD</span>}
-                        {isHighlighted
-                          // && (
-                          //   <span style={{
-                          //     fontSize: '0.68rem',
-                          //     backgroundColor: 'var(--primary)',
-                          //     color: '#FFFFFF',
-                          //     padding: '1px 6px',
-                          //     borderRadius: '4px',
-                          //     fontWeight: 700,
-                          //     marginLeft: '4px',
-                          //   }}>
-                          //     ↵ Enter
-                          //   </span>
-                          // )
-                        }
-                      </div>
-                      <div style={styles.dropdownItemSub}>
-                        <span>
-                          Family: {p.family?.headName || 'Self'} (FAM-{p.familyId})
-                        </span>
-                        <span>&bull;</span>
-                        <span>
-                          {p.relation} &bull; Age {p.age || '-'} &bull; {p.bloodGroup || 'Blood N/A'}
-                        </span>
-                        {p.area && (
-                          <>
-                            <span>&bull;</span>
-                            <span>{p.area}</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-
-                    <div style={styles.dropdownItemRight}>
-                      {pDue > 0 ? (
-                        <span style={styles.dueBadgeDropdown}>Due: ₹{pDue}</span>
-                      ) : (
-                        <span style={styles.clearBadgeDropdown}>Clear</span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* View Layout Mode Buttons (Stacked vs Side-by-Side) */}
-        <div style={styles.viewModeButtonGroup}>
-          <button
-            type="button"
-            onClick={() => setLayoutMode('stacked')}
-            style={{
-              ...styles.viewModeBtn,
-              backgroundColor: layoutMode === 'stacked' ? 'var(--primary-soft)' : '#FFFFFF',
-              color: layoutMode === 'stacked' ? 'var(--primary-dark)' : 'var(--text-muted)',
-              borderColor: layoutMode === 'stacked' ? 'var(--primary)' : 'var(--border)',
-            }}
-            title="Stacked View (Top Form / Bottom History)"
-          >
-            <Rows size={14} />
-            <span>Stacked</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setLayoutMode('side-by-side')}
-            style={{
-              ...styles.viewModeBtn,
-              backgroundColor: layoutMode === 'side-by-side' ? 'var(--primary-soft)' : '#FFFFFF',
-              color: layoutMode === 'side-by-side' ? 'var(--primary-dark)' : 'var(--text-muted)',
-              borderColor: layoutMode === 'side-by-side' ? 'var(--primary)' : 'var(--border)',
-            }}
-            title="Side-by-Side View (Left Form / Right History)"
-          >
-            <Columns size={14} />
-            <span>Split View</span>
-          </button>
-        </div>
-      </div>
-
-      {/* ULTRA-COMPACT PATIENT INFO BANNER CARD */}
-      {currentPatient ? (
-        <div style={styles.patientBannerCard}>
-          <div style={styles.bannerTopRow}>
-            {/* Left: Patient Name, Patient ID Badge & Total Due Pill */}
-            <div style={styles.bannerNameCol}>
-              <h2 style={styles.patientNameHeading}>{currentPatient.name}</h2>
-              <span style={styles.patientIdBadgeDisplay}>
-                PID: {currentPatient.patientId}
-              </span>
-              <button
-                type="button"
-                onClick={() => setShowTotalDueModal(true)}
-                style={{
-                  ...styles.totalDuePillBtn,
-                  backgroundColor:
-                    (currentPatient.totalDue || 0) > 0 ? '#B3524A' : '#146B5C',
-                }}
-                title="Click to view Patient Personal Due Breakdown"
-              >
-                <Receipt size={12} />
-                <span>TOTAL DUE: ₹{currentPatient.totalDue || 0}</span>
-                <ExternalLink size={10} style={{ opacity: 0.85 }} />
-              </button>
-            </div>
-
-            {/* Right: Change Patient, Delete & Edit Patient Buttons */}
-            <div style={styles.bannerActionsCol}>
-              <button
-                type="button"
-                onClick={() => {
-                  setCurrentPatient(null);
-                  setShowNewCaseForm(false);
-                  showNewCaseFormRef.current = false;
-                  setTimeout(() => {
-                    patientSearchInputRef.current?.focus();
-                  }, 80);
-                }}
-                style={styles.searchAnotherPatientBtn}
-                title="Search and switch to another patient"
-              >
-                <Search size={12} color="var(--primary)" />
-                <span>Change Patient</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setShowDeleteModal(true)}
-                style={styles.deletePatientBtn}
-                title="Delete this patient record"
-              >
-                <Trash2 size={13} color="#B3524A" />
-                <span>Delete</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleOpenEditModal}
-                style={styles.editPatientBtn}
-                title="Edit patient demographic details"
-              >
-                <Edit3 size={13} color="#146B5C" />
-                <span>Edit</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Bottom Subtitle Row */}
-          <div style={styles.bannerBottomRow}>
-            <span style={styles.bannerFamilyText}>
-              Family:{' '}
-              <span style={styles.patientIdBadgeDisplay}>
-                FAM ID: {currentPatient.familyId}
-              </span>
-              <strong>
-                {currentPatient.family?.headName || currentPatient.name}
-              </strong>
-              {currentPatient.area ? ` (${currentPatient.area.toUpperCase()})` : ''}
-            </span>
-
-            <button
-              type="button"
-              onClick={handleOpenFamilyDueModal}
-              style={{
-                ...styles.famDuePillBtn,
-                backgroundColor:
-                  (currentPatient.family?.familyDue || 0) > 0 ? '#FEF2F2' : '#F0FDF4',
-                borderColor:
-                  (currentPatient.family?.familyDue || 0) > 0 ? '#FECACA' : '#BBF7D0',
-                color:
-                  (currentPatient.family?.familyDue || 0) > 0 ? '#DC2626' : '#16A34A',
-              }}
-              title="Click to view Family Due Breakdown across all members"
-            >
-              <Users size={11} />
-              <span>FAM DUE: ₹{currentPatient.family?.familyDue || 0}</span>
-              <ExternalLink size={10} style={{ opacity: 0.85 }} />
-            </button>
-
-            <span style={styles.dotSeparator}>&bull;</span>
-            <span style={styles.subDetailText}>
-              {currentPatient.relation || 'Member'}
-            </span>
-
-            <span style={styles.dotSeparator}>&bull;</span>
-            <span style={styles.subDetailText}>
-              Age {currentPatient.age || 'N/A'}{currentPatient.gender && currentPatient.gender !== 'Not Specified' ? ` (${currentPatient.gender})` : ''}
-            </span>
-
-            <span style={styles.dotSeparator}>&bull;</span>
-            <span style={styles.subDetailText}>
-              {currentPatient.bloodGroup || 'Blood: --'}
-            </span>
-
-            {currentPatient.phone && (
-              <>
-                <span style={styles.dotSeparator}>&bull;</span>
-                <span style={styles.subDetailText}>
-                  📞 {currentPatient.phone}
-                </span>
-              </>
-            )}
-
-            {Array.isArray(currentPatient.allergies) &&
-              currentPatient.allergies.length > 0 && (
-                <>
-                  <span style={styles.dotSeparator}>&bull;</span>
-                  <span style={styles.allergiesPill}>
-                    ⚠️ Allergies: {currentPatient.allergies.join(', ')}
-                  </span>
-                </>
-              )}
-          </div>
-        </div>
-      ) : (
-        <div style={styles.searchLandingHero}>
-          <div style={styles.searchLandingIconCircle}>
-            <Stethoscope size={32} color="var(--primary)" />
-          </div>
-          <h2 style={styles.searchLandingTitle}>OPD Patient Consultation</h2>
-          <p style={styles.searchLandingSubtitle}>
-            Search patient by name above, or click any recent patient below to immediately start case entry.
-          </p>
-
-          {/* Quick Search Focus Bar Hint */}
-          <div
-            style={styles.quickSearchHintBox}
-            onClick={() => patientSearchInputRef.current?.focus()}
-            title="Click to search patient by name"
-          >
-            <Search size={16} color="var(--primary)" />
-            <span style={styles.quickSearchHintText}>
-              Type patient name in search box above (e.g. Ramesh, Priya, Hitesh) and press Enter
-            </span>
-            <span style={styles.searchKeyPill}>↵ Enter</span>
-          </div>
-
-          {/* Recent OPD Patients Quick List */}
-          {recentPatientsList.length > 0 && (
-            <div style={styles.recentPatientsSection}>
-              <div style={styles.recentSectionHeader}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={styles.recentSectionTitle}>Recent OPD Patients</span>
-                  <span style={styles.recentCountBadge}>{recentPatientsList.length} Patients</span>
+                    <Edit3 size={11} />
+                    <span>Edit Patient</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCurrentPatient(null);
+                      setPatientSearch('');
+                      setSearchResults([]);
+                    }}
+                    style={styles.photoMiniActionBtn}
+                    title="Switch / Search another patient"
+                  >
+                    <Search size={11} />
+                    <span>Change</span>
+                  </button>
                 </div>
-                <span style={styles.recentSectionSub}>Click any patient to open and start case entry</span>
-              </div>
-              <div style={styles.recentPatientsGrid}>
-                {recentPatientsList.map((p) => {
-                  const isSearched = p.isRecentlySearched || p.searchedAt;
-                  return (
-                    <div
-                      key={p._id || p.patientId}
-                      style={{
-                        ...styles.recentPatientCard,
-                        borderColor: isSearched ? '#A7F3D0' : 'var(--border)',
-                        backgroundColor: isSearched ? '#F8FDF9' : '#FFFFFF',
-                      }}
-                      onClick={() => handleSelectPatient(p, true)}
-                      title={`Click to open Case Entry for ${p.name}`}
-                    >
-                      <div style={styles.recentPatientCardTop}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, overflow: 'hidden' }}>
-                          <span style={styles.recentPatientName}>{p.name}</span>
-                          {isSearched
-                            // && (
-                            //   <span style={styles.searchedPill}>Searched</span>
-                            // )
-                          }
-                        </div>
-                        <span style={styles.recentPatientPid}>{p.patientId}</span>
-                      </div>
-                      <div style={styles.recentPatientCardMeta}>
-                        <span>{p.relation || (p.isHead ? 'Self' : 'Member')}</span>
-                        <span>&bull;</span>
-                        <span>Age {p.age || '-'}</span>
-                        {p.bloodGroup && (
-                          <>
-                            <span>&bull;</span>
-                            <span>{p.bloodGroup}</span>
-                          </>
-                        )}
-                        {(p.area || p.family?.area) && (
-                          <>
-                            <span>&bull;</span>
-                            <span>{p.area || p.family?.area}</span>
-                          </>
-                        )}
-                      </div>
-                      <div style={styles.recentPatientStartBtn}>
-                        <Plus size={13} />
-                        <span>Start Case Entry</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              )}
             </div>
-          )}
 
-          {/* Register New Patient Action */}
-          <div style={styles.newPatientRegisterFooter}>
-            <span style={styles.newPatientPromptText}>New patient visiting clinic for the first time?</span>
-            <button
-              type="button"
-              onClick={onNavigateToAddMember}
-              style={styles.registerNewMemberHeroBtn}
-              title="Register a new patient member (F2)"
-            >
-              <UserPlus size={14} />
-              <span>+ Register New Patient (F2)</span>
-            </button>
-          </div>
-        </div>
-      )}
+            <div style={styles.photoCardBody}>
+              {/* Row 1: Entry Date & Patient Full Name */}
+              <div style={styles.photoRow2Col}>
+                <div style={{ ...styles.photoFieldGroup, width: '135px', flexShrink: 0 }}>
+                  <label style={styles.photoLabel}>Entry Date:</label>
+                  <input
+                    type="date"
+                    value={visitForm.visitDate}
+                    onChange={(e) => updateFormField('visitDate', e.target.value)}
+                    style={styles.photoInput}
+                  />
+                </div>
 
-      {/* CLINICAL VISIT SECTION: SUPPORTING STACKED OR SIDE-BY-SIDE WITH DRAGGERS */}
-      {currentPatient && (
-        <div
-          ref={splitContainerRef}
-          style={{
-            ...styles.visitLayoutWrapper,
-            flexDirection: layoutMode === 'side-by-side' ? 'row' : 'column',
-          }}
-        >
-          {/* LEFT / TOP PANE: THE CASE ENTRY FORM (SHOWN WHEN showNewCaseForm IS TRUE) */}
-          {showNewCaseForm && (
-            <div
-              ref={caseFormPaneRef}
-              style={{
-                ...styles.visitFormPane,
-                width: layoutMode === 'side-by-side' ? '56%' : '100%',
-                flexShrink: 0,
-              }}
-            >
-              <div style={styles.highlightedVisitCard}>
-                {/* Header Row: Title, Date, Add Report Button (Right Corner), and Close */}
-                <div style={styles.caseEntryHeaderRow}>
-                  <div style={styles.caseHeaderLeft}>
-                    <span style={styles.caseEntryHeaderTitle}>
-                      {editingVisitId ? 'Edit Clinical Case Entry' : 'Clinical Case Entry (New Visit)'}
-                    </span>
-                    {editingVisitId && (
-                      <span style={styles.editingTag}>Editing Past Case</span>
-                    )}
-
-                    {/* Date Input right in the row of new case title */}
-                    <div style={styles.titleDateWrap}>
-                      <span style={styles.titleDateLabel}>Date:</span>
-                      <input
-                        type="date"
-                        value={visitForm.visitDate}
-                        onChange={(e) => updateFormField('visitDate', e.target.value)}
-                        style={styles.titleDateInput}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Right corner of same row: Report Add / Attached Badge & Close Button */}
-                  <div style={styles.caseHeaderRight}>
-                    {attachedReport ? (
-                      <div style={styles.attachedReportGroup}>
-                        <button
-                          type="button"
-                          onClick={() => setShowAddReportModal(true)}
-                          style={styles.reportAttachedBtn}
-                          title="Click to View or Edit Attached Lab Report"
-                        >
-                          <FileText size={13} color="#15803D" />
-                          <span>Report Attached ({attachedReport.reportId || 'Ready'})</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setAttachedReport(null);
-                            attachedReportRef.current = null;
-                          }}
-                          style={styles.detachReportBtn}
-                          title="Detach this report from case"
-                        >
-                          <X size={12} color="#DC2626" />
-                        </button>
-                      </div>
-                    ) : (
+                <div style={{ ...styles.photoFieldGroup, flex: 1, position: 'relative' }} ref={searchWrapRef}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <label style={styles.photoLabel}>
+                      Patient Full Name: <span style={{ color: '#DC2626' }}>*</span>
+                    </label>
+                    {currentPatient && (
                       <button
                         type="button"
-                        onClick={() => setShowAddReportModal(true)}
-                        style={styles.reportAddBtn}
-                        title="Add Diagnostic Lab Report"
+                        onClick={() => setShowHistoryModal(true)}
+                        style={styles.photoHistoryLinkBtn}
+                        title="Click to view full past visits & prescriptions history"
                       >
-                        <FileText size={14} color="#146B5C" />
-                        <span> Add Report</span>
+                        *(History {patientVisits.length > 0 ? `(${patientVisits.length})` : ''})*
                       </button>
                     )}
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowNewCaseForm(false);
-                        showNewCaseFormRef.current = false;
-                        setEditingVisitId(null);
-                        editingVisitIdRef.current = null;
-                        setAttachedReport(null);
-                        attachedReportRef.current = null;
-                      }}
-                      style={styles.closeCaseBtn}
-                      title="Close case entry form"
-                    >
-                      <X size={15} />
-                    </button>
                   </div>
+                  <input
+                    ref={patientSearchInputRef}
+                    type="text"
+                    value={currentPatient ? currentPatient.name : patientSearch}
+                    placeholder="TYPE OR SEARCH PATIENT NAME (0ms RAM SEARCH)..."
+                    onChange={(e) => {
+                      if (currentPatient) {
+                        setCurrentPatient(null);
+                      }
+                      handlePatientSearchChange(e.target.value);
+                    }}
+                    onFocus={() => {
+                      if (searchResults.length > 0) setShowSearchDropdown(true);
+                    }}
+                    onKeyDown={(e) => {
+                      const list = Array.isArray(searchResults) ? searchResults : [];
+                      if (e.key === 'ArrowDown') {
+                        if (list.length > 0) {
+                          e.preventDefault();
+                          if (!showSearchDropdown) setShowSearchDropdown(true);
+                          setPatientHighlightIndex((prev) => (prev < list.length - 1 ? prev + 1 : 0));
+                        }
+                      } else if (e.key === 'ArrowUp') {
+                        if (list.length > 0) {
+                          e.preventDefault();
+                          if (!showSearchDropdown) setShowSearchDropdown(true);
+                          setPatientHighlightIndex((prev) => (prev > 0 ? prev - 1 : list.length - 1));
+                        }
+                      } else if (e.key === 'Enter') {
+                        if (list.length > 0) {
+                          e.preventDefault();
+                          const chosen = list[patientHighlightIndex] || list[0];
+                          if (chosen) handleSelectPatient(chosen);
+                        }
+                      } else if (e.key === 'Escape') {
+                        setShowSearchDropdown(false);
+                      }
+                    }}
+                    style={{
+                      ...styles.photoInput,
+                      fontWeight: currentPatient ? 800 : 500,
+                      color: currentPatient ? '#1E40AF' : '#0F172A',
+                      backgroundColor: currentPatient ? '#F0F9FF' : '#FFFFFF',
+                    }}
+                  />
+
+                  {/* Dropdown suggestions */}
+                  {showSearchDropdown && searchResults.length > 0 && (
+                    <div style={styles.photoPatientDropdown}>
+                      {searchResults.map((p, idx) => (
+                        <div
+                          key={p._id || p.patientId}
+                          onClick={() => handleSelectPatient(p)}
+                          onMouseEnter={() => setPatientHighlightIndex(idx)}
+                          style={{
+                            ...styles.photoDropdownItem,
+                            backgroundColor: idx === patientHighlightIndex ? '#E0F2FE' : '#FFFFFF',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ fontWeight: 700, color: '#1E293B' }}>{p.name}</span>
+                            <span style={styles.photoMiniBadge}>{p.patientId}</span>
+                            {p.isHead && <span style={styles.photoHeadBadge}>HEAD</span>}
+                          </div>
+                          <div style={{ fontSize: 10, color: '#64748B' }}>
+                            {p.phone || ''} &bull; Age {p.age || '-'} &bull; {p.area || p.family?.area || ''}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Row 2: Family Head / ID: (Auto address & due) */}
+              <div style={styles.photoRow1Col}>
+                <div style={styles.photoFieldGroup}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <label style={styles.photoLabel}>Family Head / ID: (Auto address & due)</label>
+                    {currentPatient && (
+                      <button
+                        type="button"
+                        onClick={handleOpenFamilyDueModal}
+                        style={styles.photoDueLink}
+                        title="Click to view family due breakdown"
+                      >
+                        Total Due: ₹{currentPatient.totalDue || 0}
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    type="text"
+                    readOnly
+                    value={
+                      currentPatient
+                        ? `${currentPatient.family?.headName || (currentPatient.isHead ? currentPatient.name : 'Family Head')} (FAM ID: ${currentPatient.familyId || currentPatient.family?.familyId || '-'})`
+                        : ''
+                    }
+                    placeholder="AUTO-POPULATED UPON PATIENT SELECTION"
+                    style={{ ...styles.photoInput, backgroundColor: '#F8FAFC', color: '#334155' }}
+                  />
+                </div>
+              </div>
+
+              {/* Row 3: Age, DOB (Select), Mobile No */}
+              <div style={styles.photoRow3Col}>
+                <div style={styles.photoFieldGroup}>
+                  <label style={styles.photoLabel}>Age: <span style={{ color: '#DC2626' }}>*</span></label>
+                  <input
+                    type="text"
+                    readOnly
+                    value={currentPatient?.age || ''}
+                    placeholder="e.g. 23"
+                    style={{ ...styles.photoInput, backgroundColor: '#F8FAFC' }}
+                  />
                 </div>
 
-                {/* Vitals Grid: BP, Sugar, Other, Reference, Investigation, Complaint */}
-                <div style={styles.vitalsRowGrid}>
-                  <div style={{ ...styles.fieldCol, width: '68px', flexShrink: 0 }}>
-                    <label style={styles.miniLabel}>BP</label>
-                    <input
-                      ref={bpInputRef}
-                      id="case-bp-input"
-                      type="text"
-                      placeholder="e.g. 120/80"
-                      value={visitForm.bp}
-                      onChange={(e) => updateFormField('bp', e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          document.getElementById('case-sugar-input')?.focus();
-                        }
-                      }}
-                      style={styles.vitalsInput}
-                    />
-                  </div>
-
-                  <div style={{ ...styles.fieldCol, width: '68px', flexShrink: 0 }}>
-                    <label style={styles.miniLabel}>SUGAR</label>
-                    <input
-                      id="case-sugar-input"
-                      type="text"
-                      placeholder="mg/dL"
-                      value={visitForm.sugar}
-                      onChange={(e) => updateFormField('sugar', e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          document.getElementById('case-other-input')?.focus();
-                        }
-                      }}
-                      style={styles.vitalsInput}
-                    />
-                  </div>
-
-                  <div style={{ ...styles.fieldCol, width: '76px', flexShrink: 0 }}>
-                    <label style={styles.miniLabel}>OTHER</label>
-                    <input
-                      id="case-other-input"
-                      type="text"
-                      placeholder="Pulse/Temp"
-                      value={visitForm.other}
-                      onChange={(e) => updateFormField('other', e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          document.getElementById('case-ref-input')?.focus();
-                        }
-                      }}
-                      style={styles.vitalsInput}
-                    />
-                  </div>
-
-                  <div style={{ ...styles.fieldCol, width: '86px', flexShrink: 0 }}>
-                    <label style={styles.miniLabel}>REFERENCE</label>
-                    <input
-                      id="case-ref-input"
-                      type="text"
-                      placeholder="Dr. Ref"
-                      value={visitForm.reference}
-                      onChange={(e) => updateFormField('reference', e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          document.getElementById('case-inv-input')?.focus();
-                        }
-                      }}
-                      style={styles.vitalsInput}
-                    />
-                  </div>
-
-                  <div style={{ ...styles.fieldCol, flex: '1 1 130px', minWidth: '120px' }}>
-                    <label style={styles.miniLabel}>INVESTIGATION</label>
-                    <MasterDataInput
-                      id="case-inv-input"
-                      type="investigation"
-                      allowMultiple={true}
-                      value={visitForm.investigation}
-                      onChange={(val) => updateFormField('investigation', val)}
-                      onEnterNext={() => document.getElementById('case-comp-input')?.focus()}
-                      placeholder="CBC, X-Ray, etc."
-                      inputStyle={styles.vitalsInput}
-                    />
-                  </div>
-
-                  <div style={{ ...styles.fieldCol, flex: '1.4 1 150px', minWidth: '130px' }}>
-                    <label style={styles.miniLabel}>COMPLAINT</label>
-                    <MasterDataInput
-                      id="case-comp-input"
-                      type="complaint"
-                      allowMultiple={true}
-                      value={visitForm.complaint}
-                      onChange={(val) => updateFormField('complaint', val)}
-                      onEnterNext={() => {
-                        const firstTr = visitForm.treatments?.[0];
-                        if (firstTr) {
-                          document.getElementById(`tr-item-${firstTr.id}`)?.focus();
-                        }
-                      }}
-                      placeholder="Fever, Cough, etc."
-                      inputStyle={styles.vitalsInput}
-                    />
-                  </div>
+                <div style={styles.photoFieldGroup}>
+                  <label style={styles.photoLabel}>DOB (Select):</label>
+                  <input
+                    type="text"
+                    readOnly
+                    value={currentPatient?.dob || '-'}
+                    placeholder="dd-mm-yyyy"
+                    style={{ ...styles.photoInput, backgroundColor: '#F8FAFC' }}
+                  />
                 </div>
 
-                {/* TREATMENT AND PRESCRIPTION BOTH SECTION IN THE SAME ROW */}
-                <div
-                  style={{
-                    ...styles.treatmentPrescriptionGrid,
-                    gridTemplateColumns: 'minmax(220px, 1fr) minmax(360px, 1.7fr)',
-                  }}
+                <div style={styles.photoFieldGroup}>
+                  <label style={styles.photoLabel}>Mobile No:</label>
+                  <input
+                    type="text"
+                    readOnly
+                    value={currentPatient?.phone || '-'}
+                    placeholder="Mobile"
+                    style={{ ...styles.photoInput, backgroundColor: '#F8FAFC' }}
+                  />
+                </div>
+              </div>
+
+              {/* Row 4: House No, Society / Area */}
+              <div style={styles.photoRow2Col}>
+                <div style={{ ...styles.photoFieldGroup, width: '135px', flexShrink: 0 }}>
+                  <label style={styles.photoLabel}>House No:</label>
+                  <input
+                    type="text"
+                    readOnly
+                    value={currentPatient?.houseNo || currentPatient?.family?.houseNo || ''}
+                    placeholder="House #"
+                    style={{ ...styles.photoInput, backgroundColor: '#F8FAFC' }}
+                  />
+                </div>
+
+                <div style={{ ...styles.photoFieldGroup, flex: 1 }}>
+                  <label style={styles.photoLabel}>Society / Area: <span style={{ color: '#DC2626' }}>*</span></label>
+                  <input
+                    type="text"
+                    readOnly
+                    value={currentPatient?.society || currentPatient?.area || currentPatient?.family?.society || currentPatient?.family?.area || ''}
+                    placeholder="Society / Area"
+                    style={{ ...styles.photoInput, backgroundColor: '#F8FAFC' }}
+                  />
+                </div>
+              </div>
+
+              {/* Row 5: B.P., Blood Sugar, Others / Spo2 */}
+              <div style={styles.photoRow3Col}>
+                <div style={styles.photoFieldGroup}>
+                  <label style={styles.photoLabel}>B.P.:</label>
+                  <input
+                    ref={bpInputRef}
+                    type="text"
+                    value={visitForm.bp}
+                    onChange={(e) => updateFormField('bp', e.target.value)}
+                    placeholder="120/80"
+                    style={styles.photoInput}
+                  />
+                </div>
+
+                <div style={styles.photoFieldGroup}>
+                  <label style={styles.photoLabel}>Blood Sugar:</label>
+                  <input
+                    type="text"
+                    value={visitForm.sugar}
+                    onChange={(e) => updateFormField('sugar', e.target.value)}
+                    placeholder="mg/dL"
+                    style={styles.photoInput}
+                  />
+                </div>
+
+                <div style={styles.photoFieldGroup}>
+                  <label style={styles.photoLabel}>Others / Spo2:</label>
+                  <input
+                    type="text"
+                    value={visitForm.other}
+                    onChange={(e) => updateFormField('other', e.target.value)}
+                    placeholder="Pulse / Spo2"
+                    style={styles.photoInput}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* CARD 2: Allergy (Red Theme) */}
+          <div style={{ ...styles.photoCard, borderColor: '#FCA5A5' }}>
+            <div style={styles.photoHeaderRed}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <ShieldAlert size={14} color="#DC2626" />
+                <span style={{ ...styles.photoHeaderTitle, color: '#991B1B' }}>Allergy</span>
+              </div>
+            </div>
+            <div style={styles.photoCardBody}>
+              <div style={styles.photoInputAddRow}>
+                <div style={{ flex: 1 }}>
+                  <MasterDataInput
+                    type="allergy"
+                    value={tempAllergy}
+                    onChange={(val) => setTempAllergy(val)}
+                    onEnterNext={() => handleAddAllergy()}
+                    placeholder="TYPE OR SELECT ALLERGY..."
+                    inputStyle={styles.photoInput}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleAddAllergy()}
+                  style={styles.photoAddBtnRed}
                 >
-                  {/* Left Column: TREATMENT (CLINIC) with Data Dictionary */}
-                  <div style={styles.halfSectionBlock}>
-                    <div style={styles.subSectionHeader}>
-                      <span style={styles.subSectionTitle}>TREATMENT (CLINIC)</span>
-                    </div>
+                  + Add
+                </button>
+              </div>
 
-                    {visitForm.treatments.map((treatment, idx) => (
-                      <div
-                        key={treatment.id}
-                        style={{
-                          ...styles.treatmentRow,
-                          position: 'relative',
-                          zIndex: (visitForm.treatments.length - idx) * 2 + 1,
-                        }}
+              {/* Pills row */}
+              <div style={styles.photoPillsContainer}>
+                {(visitForm.allergyList || []).length === 0 ? (
+                  <span style={styles.photoNoItemsText}>No allergies recorded</span>
+                ) : (
+                  (visitForm.allergyList || []).map((alg, idx) => (
+                    <span key={idx} style={styles.photoPillRed}>
+                      <ShieldAlert size={11} color="#DC2626" />
+                      <span>{alg}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveAllergy(alg)}
+                        style={styles.photoPillCloseBtn}
                       >
-                        {/* Data dictionary autocomplete for treatment */}
-                        <div style={{ flex: 1, minWidth: '95px' }}>
-                          <MasterDataInput
-                            id={`tr-item-${treatment.id}`}
-                            type="medicine"
-                            value={treatment.item}
-                            onChange={(val) =>
-                              handleUpdateTreatment(treatment.id, 'item', val)
-                            }
-                            onEnterNext={() => {
-                              const qtyEl = document.getElementById(`tr-qty-${treatment.id}`);
-                              if (qtyEl) {
-                                qtyEl.focus();
-                                qtyEl.select?.();
-                              }
-                            }}
-                            placeholder="Item (e.g. Dressing, PCM)"
-                            inputStyle={styles.tableInput}
-                          />
-                        </div>
+                        <X size={11} />
+                      </button>
+                    </span>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
 
-                        <div style={{ width: '42px', flexShrink: 0 }}>
-                          <input
-                            id={`tr-qty-${treatment.id}`}
-                            type="number"
-                            min="1"
-                            placeholder="Qty"
-                            value={treatment.qty}
-                            onChange={(e) =>
-                              handleUpdateTreatment(treatment.id, 'qty', e.target.value)
-                            }
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.preventDefault();
-                                if (idx < visitForm.treatments.length - 1) {
-                                  const nextItem = document.getElementById(`tr-item-${visitForm.treatments[idx + 1].id}`);
-                                  if (nextItem) {
-                                    nextItem.focus();
-                                    return;
-                                  }
-                                }
-                                const firstRx = visitForm.prescriptions?.[0];
-                                if (firstRx) {
-                                  const rxEl = document.getElementById(`rx-med-${firstRx.id}`);
-                                  if (rxEl) {
-                                    rxEl.focus();
-                                    return;
-                                  }
-                                }
-                                document.getElementById('billing-received-input')?.focus();
-                              }
-                            }}
-                            style={{ ...styles.tableInput, textAlign: 'center', padding: '0 2px' }}
-                          />
-                        </div>
+          {/* CARD 3: Complaints (Green Theme) */}
+          <div style={{ ...styles.photoCard, borderColor: '#6EE7B7' }}>
+            <div style={styles.photoHeaderGreen}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Stethoscope size={14} color="#059669" />
+                <span style={{ ...styles.photoHeaderTitle, color: '#065F46' }}>Complaints</span>
+              </div>
+            </div>
+            <div style={styles.photoCardBody}>
+              <div style={styles.photoInputAddRow}>
+                <div style={{ flex: 1 }}>
+                  <MasterDataInput
+                    type="complaint"
+                    value={tempComplaint}
+                    onChange={(val) => setTempComplaint(val)}
+                    onEnterNext={() => handleAddComplaint()}
+                    placeholder="TYPE OR SELECT COMPLAINT..."
+                    inputStyle={styles.photoInput}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleAddComplaint()}
+                  style={styles.photoAddBtnGreen}
+                >
+                  + Add
+                </button>
+              </div>
 
-                        <div style={styles.actionBtnCol}>
-                          {idx === visitForm.treatments.length - 1 ? (
-                            <button
-                              type="button"
-                              onClick={handleAddTreatment}
-                              style={styles.addRowBtn}
-                              title="Add treatment row"
-                            >
-                              <Plus size={14} color="var(--primary)" />
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveTreatment(treatment.id)}
-                              style={styles.removeRowBtn}
-                              title="Remove treatment row"
-                            >
-                              <Minus size={14} color="var(--danger)" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Right Column: PRESCRIPTION (MEDICAL STORE) */}
-                  <div style={styles.halfSectionBlock}>
-                    <div style={styles.subSectionHeader}>
-                      <span style={styles.subSectionTitle}>PRESCRIPTION (MEDICAL STORE)</span>
-                    </div>
-
-                    {visitForm.prescriptions.map((rx, idx) => (
-                      <div
-                        key={rx.id}
-                        style={{
-                          ...styles.prescriptionRow,
-                          position: 'relative',
-                          zIndex: (visitForm.prescriptions.length - idx) * 2 + 1,
-                        }}
+              {/* Pills row */}
+              <div style={styles.photoPillsContainer}>
+                {(visitForm.complaintList || []).length === 0 ? (
+                  <span style={styles.photoNoItemsText}>No complaints added</span>
+                ) : (
+                  (visitForm.complaintList || []).map((cmp, idx) => (
+                    <span key={idx} style={styles.photoPillGreen}>
+                      <span>{cmp}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveComplaint(cmp)}
+                        style={styles.photoPillCloseBtn}
                       >
-                        {/* Medicine Autocomplete */}
-                        <div style={{ flex: '1 1 110px', minWidth: '95px' }}>
-                          <MasterDataInput
-                            id={`rx-med-${rx.id}`}
-                            type="medicine"
-                            value={rx.medicine}
-                            onChange={(val) =>
-                              handleUpdatePrescription(rx.id, 'medicine', val)
-                            }
-                            onEnterNext={() => {
-                              const qtyEl = document.getElementById(`rx-qty-${rx.id}`);
-                              if (qtyEl) {
-                                qtyEl.focus();
-                                qtyEl.select?.();
-                              }
-                            }}
-                            placeholder="Medicine name"
-                            inputStyle={styles.tableInput}
-                          />
-                        </div>
+                        <X size={11} />
+                      </button>
+                    </span>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
 
-                        {/* Quantity */}
-                        <div style={{ width: '42px', flexShrink: 0 }}>
-                          <input
-                            id={`rx-qty-${rx.id}`}
-                            type="number"
-                            min="1"
-                            placeholder="Qty"
-                            value={rx.qty}
-                            onChange={(e) =>
-                              handleUpdatePrescription(rx.id, 'qty', e.target.value)
-                            }
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.preventDefault();
-                                const mEl = document.getElementById(`rx-m-${rx.id}`);
-                                if (mEl) {
-                                  mEl.focus();
-                                  mEl.select?.();
-                                }
-                              }
-                            }}
-                            style={{ ...styles.tableInput, textAlign: 'center', padding: '0 2px' }}
-                          />
-                        </div>
+          {/* CARD 4: Lab Investigation (Purple Theme) */}
+          <div style={{ ...styles.photoCard, borderColor: '#C4B5FD' }}>
+            <div style={styles.photoHeaderPurple}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <FlaskConical size={14} color="#7C3AED" />
+                <span style={{ ...styles.photoHeaderTitle, color: '#5B21B6' }}>Lab Investigation</span>
+              </div>
+            </div>
+            <div style={styles.photoCardBody}>
+              <div style={styles.photoInputAddRow}>
+                <div style={{ flex: '1 1 180px' }}>
+                  <MasterDataInput
+                    type="investigation"
+                    value={tempInvestigation}
+                    onChange={(val) => setTempInvestigation(val)}
+                    onEnterNext={() => handleAddInvestigation()}
+                    placeholder="REPORT TYPE..."
+                    inputStyle={styles.photoInput}
+                  />
+                </div>
+                <div style={{ width: '120px', flexShrink: 0 }}>
+                  <input
+                    type="text"
+                    value={tempLabName}
+                    onChange={(e) => setTempLabName(e.target.value)}
+                    placeholder="LAB NAME..."
+                    style={styles.photoInput}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleAddInvestigation}
+                  style={styles.photoAddBtnPurple}
+                >
+                  + Add
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowAddReportModal(true)}
+                  style={styles.photoLabEntryBtn}
+                  title="Open Detailed Lab Report Values Modal"
+                >
+                  <FileText size={12} />
+                  <span>Lab Entry</span>
+                </button>
+              </div>
 
-                        {/* M, N, E, Ng inputs */}
-                        <div style={{ width: '26px', flexShrink: 0 }}>
-                          <input
-                            id={`rx-m-${rx.id}`}
-                            type="text"
-                            placeholder="M"
-                            value={rx.morning}
-                            onChange={(e) =>
-                              handleUpdatePrescription(rx.id, 'morning', e.target.value)
-                            }
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.preventDefault();
-                                const nEl = document.getElementById(`rx-n-${rx.id}`);
-                                if (nEl) {
-                                  nEl.focus();
-                                  nEl.select?.();
-                                }
-                              }
-                            }}
-                            style={styles.doseInput}
-                            title="Morning dose"
-                          />
-                        </div>
-
-                        <div style={{ width: '26px', flexShrink: 0 }}>
-                          <input
-                            id={`rx-n-${rx.id}`}
-                            type="text"
-                            placeholder="N"
-                            value={rx.noon}
-                            onChange={(e) =>
-                              handleUpdatePrescription(rx.id, 'noon', e.target.value)
-                            }
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.preventDefault();
-                                const eEl = document.getElementById(`rx-e-${rx.id}`);
-                                if (eEl) {
-                                  eEl.focus();
-                                  eEl.select?.();
-                                }
-                              }
-                            }}
-                            style={styles.doseInput}
-                            title="Noon dose"
-                          />
-                        </div>
-
-                        <div style={{ width: '26px', flexShrink: 0 }}>
-                          <input
-                            id={`rx-e-${rx.id}`}
-                            type="text"
-                            placeholder="E"
-                            value={rx.evening}
-                            onChange={(e) =>
-                              handleUpdatePrescription(rx.id, 'evening', e.target.value)
-                            }
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.preventDefault();
-                                const ngEl = document.getElementById(`rx-ng-${rx.id}`);
-                                if (ngEl) {
-                                  ngEl.focus();
-                                  ngEl.select?.();
-                                }
-                              }
-                            }}
-                            style={styles.doseInput}
-                            title="Evening dose"
-                          />
-                        </div>
-
-                        <div style={{ width: '26px', flexShrink: 0 }}>
-                          <input
-                            id={`rx-ng-${rx.id}`}
-                            type="text"
-                            placeholder="Ng"
-                            value={rx.night}
-                            onChange={(e) =>
-                              handleUpdatePrescription(rx.id, 'night', e.target.value)
-                            }
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.preventDefault();
-                                if (idx < visitForm.prescriptions.length - 1) {
-                                  const nextRx = document.getElementById(`rx-med-${visitForm.prescriptions[idx + 1].id}`);
-                                  if (nextRx) {
-                                    nextRx.focus();
-                                    return;
-                                  }
-                                }
-                                const recEl = document.getElementById('billing-received-input');
-                                if (recEl) {
-                                  recEl.focus();
-                                  recEl.select?.();
-                                }
-                              }
-                            }}
-                            style={styles.doseInput}
-                            title="Night dose"
-                          />
-                        </div>
-
-                        {/* Timing Radio (BF / AF) */}
-                        <div style={styles.timingRadioGroup}>
-                          <label style={styles.radioLabel}>
-                            <input
-                              type="radio"
-                              name={`timing-${rx.id}`}
-                              value="BF"
-                              checked={rx.timing === 'BF'}
-                              onChange={() =>
-                                handleUpdatePrescription(rx.id, 'timing', 'BF')
-                              }
-                            />
-                            <span>BF</span>
-                          </label>
-                          <label style={styles.radioLabel}>
-                            <input
-                              type="radio"
-                              name={`timing-${rx.id}`}
-                              value="AF"
-                              checked={rx.timing === 'AF'}
-                              onChange={() =>
-                                handleUpdatePrescription(rx.id, 'timing', 'AF')
-                              }
-                            />
-                            <span>AF</span>
-                          </label>
-                        </div>
-
-                        {/* Add / Remove Button */}
-                        <div style={styles.actionBtnCol}>
-                          {idx === visitForm.prescriptions.length - 1 ? (
+              {/* Table of Added Investigations */}
+              <div style={styles.photoTableWrap}>
+                <table style={styles.photoTable}>
+                  <thead>
+                    <tr style={styles.photoTableThTr}>
+                      <th style={styles.photoTh}>Report Type</th>
+                      <th style={styles.photoTh}>Lab Name</th>
+                      <th style={{ ...styles.photoTh, width: '32px', textAlign: 'center' }}>X</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(visitForm.investigationList || []).length === 0 ? (
+                      <tr>
+                        <td colSpan={3} style={styles.photoTableEmptyTd}>
+                          No lab investigations added yet.
+                        </td>
+                      </tr>
+                    ) : (
+                      (visitForm.investigationList || []).map((inv) => (
+                        <tr key={inv.id} style={styles.photoTableTr}>
+                          <td style={styles.photoTdBold}>{inv.reportType}</td>
+                          <td style={styles.photoTd}>{inv.labName || 'CARE'}</td>
+                          <td style={{ ...styles.photoTd, textAlign: 'center' }}>
                             <button
                               type="button"
-                              onClick={handleAddPrescription}
-                              style={styles.addRowBtn}
-                              title="Add medicine row"
+                              onClick={() => handleRemoveInvestigation(inv.id)}
+                              style={styles.photoRowDeleteBtn}
                             >
-                              <Plus size={14} color="var(--primary)" />
+                              <X size={12} color="#DC2626" />
                             </button>
-                          ) : (
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          {/* CARD 5: IPD Detail (Amber/Orange Theme) - Injections & IV Bottles */}
+          <div style={{ ...styles.photoCard, borderColor: '#FDBA74' }}>
+            <div style={styles.photoHeaderAmber}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Syringe size={14} color="#EA580C" />
+                <span style={{ ...styles.photoHeaderTitle, color: '#9A3412' }}>IPD Detail</span>
+              </div>
+              <span style={{ fontSize: 10, color: '#9A3412', fontWeight: 600 }}>Injections, IV Bottles & Procedures</span>
+            </div>
+            <div style={styles.photoCardBody}>
+              <div style={styles.photoInputAddRow}>
+                <div style={{ flex: 1 }}>
+                  <MasterDataInput
+                    type="ipd"
+                    value={tempIpd}
+                    onChange={(val) => setTempIpd(val)}
+                    onEnterNext={() => handleAddIpdDetail()}
+                    placeholder="TYPE OR SELECT IPD DETAIL (e.g. RL 500ml IV, Inj. Voveran 2ml IM)..."
+                    inputStyle={styles.photoInput}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleAddIpdDetail()}
+                  style={styles.photoAddBtnAmber}
+                >
+                  + Add
+                </button>
+              </div>
+
+              {/* Pills row */}
+              <div style={styles.photoPillsContainer}>
+                {(visitForm.ipdDetails || []).length === 0 ? (
+                  <span style={styles.photoNoItemsText}>No IPD details/injections added</span>
+                ) : (
+                  (visitForm.ipdDetails || []).map((ipd, idx) => (
+                    <span key={idx} style={styles.photoPillAmber}>
+                      <Syringe size={11} color="#EA580C" />
+                      <span>{typeof ipd === 'string' ? ipd : ipd?.item}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveIpdDetail(idx)}
+                        style={styles.photoPillCloseBtn}
+                      >
+                        <X size={11} />
+                      </button>
+                    </span>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT COLUMN (~52% width) */}
+        <div style={styles.photoRightCol}>
+          {/* CARD 1: 1. Clinic Medicine (Blue Theme) */}
+          <div style={{ ...styles.photoCard, borderColor: '#93C5FD' }}>
+            <div style={styles.photoHeaderBlue}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Pill size={14} color="#1E40AF" />
+                <span style={styles.photoHeaderTitle}>1. Clinic Medicine</span>
+              </div>
+            </div>
+            <div style={styles.photoCardBody}>
+              <div style={styles.photoInputAddRow}>
+                <div style={{ flex: '1 1 200px' }}>
+                  <MasterDataInput
+                    type="medicine"
+                    value={clinicMedForm.medicine}
+                    onChange={(val) => setClinicMedForm((prev) => ({ ...prev, medicine: val }))}
+                    onEnterNext={handleAddClinicMedicine}
+                    placeholder="MEDICINE..."
+                    inputStyle={styles.photoInput}
+                  />
+                </div>
+                <div style={{ width: '48px', flexShrink: 0 }}>
+                  <input
+                    type="number"
+                    min="1"
+                    value={clinicMedForm.qty}
+                    onChange={(e) => setClinicMedForm((prev) => ({ ...prev, qty: e.target.value }))}
+                    placeholder="QTY"
+                    style={{ ...styles.photoInput, textAlign: 'center' }}
+                  />
+                </div>
+                {/* M, N, E dosage inputs */}
+                <div style={{ width: '30px', flexShrink: 0 }}>
+                  <input
+                    type="text"
+                    value={clinicMedForm.morning}
+                    onChange={(e) => setClinicMedForm((prev) => ({ ...prev, morning: e.target.value }))}
+                    placeholder="M"
+                    style={{ ...styles.photoInput, textAlign: 'center' }}
+                    title="Morning"
+                  />
+                </div>
+                <div style={{ width: '30px', flexShrink: 0 }}>
+                  <input
+                    type="text"
+                    value={clinicMedForm.noon}
+                    onChange={(e) => setClinicMedForm((prev) => ({ ...prev, noon: e.target.value }))}
+                    placeholder="N"
+                    style={{ ...styles.photoInput, textAlign: 'center' }}
+                    title="Noon"
+                  />
+                </div>
+                <div style={{ width: '30px', flexShrink: 0 }}>
+                  <input
+                    type="text"
+                    value={clinicMedForm.evening}
+                    onChange={(e) => setClinicMedForm((prev) => ({ ...prev, evening: e.target.value }))}
+                    placeholder="E"
+                    style={{ ...styles.photoInput, textAlign: 'center' }}
+                    title="Evening"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleAddClinicMedicine}
+                  style={styles.photoAddBtnBlue}
+                >
+                  +
+                </button>
+              </div>
+
+              {/* Clinic Medicines Table */}
+              <div style={styles.photoTableWrap}>
+                <table style={styles.photoTable}>
+                  <thead>
+                    <tr style={styles.photoTableThTr}>
+                      <th style={styles.photoTh}>Medicine</th>
+                      <th style={{ ...styles.photoTh, width: '45px', textAlign: 'center' }}>Qty</th>
+                      <th style={{ ...styles.photoTh, width: '70px', textAlign: 'center' }}>M N E</th>
+                      <th style={{ ...styles.photoTh, width: '32px', textAlign: 'center' }}>X</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(visitForm.treatments || []).length === 0 ? (
+                      <tr>
+                        <td colSpan={4} style={styles.photoTableEmptyTd}>
+                          No clinic medicines added.
+                        </td>
+                      </tr>
+                    ) : (
+                      (visitForm.treatments || []).map((tr) => (
+                        <tr key={tr.id} style={styles.photoTableTr}>
+                          <td style={styles.photoTdBold}>{tr.item}</td>
+                          <td style={{ ...styles.photoTd, textAlign: 'center' }}>{tr.qty || '1'}</td>
+                          <td style={{ ...styles.photoTd, textAlign: 'center' }}>
+                            {tr.morning || '1'}-{tr.noon || '0'}-{tr.evening || '1'}
+                          </td>
+                          <td style={{ ...styles.photoTd, textAlign: 'center' }}>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveTreatment(tr.id)}
+                              style={styles.photoRowDeleteBtn}
+                            >
+                              <X size={12} color="#DC2626" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          {/* CARD 2: 2. Prescription (Blue Theme) */}
+          <div style={{ ...styles.photoCard, borderColor: '#93C5FD' }}>
+            <div style={styles.photoHeaderBlue}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <FileText size={14} color="#1E40AF" />
+                <span style={styles.photoHeaderTitle}>2. Prescription</span>
+              </div>
+            </div>
+            <div style={styles.photoCardBody}>
+              <div style={styles.photoInputAddRow}>
+                <div style={{ flex: '1 1 180px' }}>
+                  <MasterDataInput
+                    type="medicine"
+                    value={rxForm.medicine}
+                    onChange={(val) => setRxForm((prev) => ({ ...prev, medicine: val }))}
+                    onEnterNext={handleAddPrescriptionItem}
+                    placeholder="MEDICINE..."
+                    inputStyle={styles.photoInput}
+                  />
+                </div>
+                <div style={{ width: '45px', flexShrink: 0 }}>
+                  <input
+                    type="number"
+                    min="1"
+                    value={rxForm.qty}
+                    onChange={(e) => setRxForm((prev) => ({ ...prev, qty: e.target.value }))}
+                    placeholder="QTY"
+                    style={{ ...styles.photoInput, textAlign: 'center' }}
+                  />
+                </div>
+                {/* M, N, E, NT */}
+                <div style={{ width: '26px', flexShrink: 0 }}>
+                  <input
+                    type="text"
+                    value={rxForm.morning}
+                    onChange={(e) => setRxForm((prev) => ({ ...prev, morning: e.target.value }))}
+                    placeholder="M"
+                    style={{ ...styles.photoInput, textAlign: 'center', padding: '2px 0' }}
+                    title="Morning"
+                  />
+                </div>
+                <div style={{ width: '26px', flexShrink: 0 }}>
+                  <input
+                    type="text"
+                    value={rxForm.noon}
+                    onChange={(e) => setRxForm((prev) => ({ ...prev, noon: e.target.value }))}
+                    placeholder="N"
+                    style={{ ...styles.photoInput, textAlign: 'center', padding: '2px 0' }}
+                    title="Noon"
+                  />
+                </div>
+                <div style={{ width: '26px', flexShrink: 0 }}>
+                  <input
+                    type="text"
+                    value={rxForm.evening}
+                    onChange={(e) => setRxForm((prev) => ({ ...prev, evening: e.target.value }))}
+                    placeholder="E"
+                    style={{ ...styles.photoInput, textAlign: 'center', padding: '2px 0' }}
+                    title="Evening"
+                  />
+                </div>
+                <div style={{ width: '26px', flexShrink: 0 }}>
+                  <input
+                    type="text"
+                    value={rxForm.night}
+                    onChange={(e) => setRxForm((prev) => ({ ...prev, night: e.target.value }))}
+                    placeholder="NT"
+                    style={{ ...styles.photoInput, textAlign: 'center', padding: '2px 0' }}
+                    title="Night"
+                  />
+                </div>
+                {/* Meal Instruction select */}
+                <div style={{ width: '92px', flexShrink: 0 }}>
+                  <select
+                    value={rxForm.timing}
+                    onChange={(e) => setRxForm((prev) => ({ ...prev, timing: e.target.value }))}
+                    style={styles.photoSelect}
+                  >
+                    <option value="AF">After Food</option>
+                    <option value="BF">Before Food</option>
+                  </select>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleAddPrescriptionItem}
+                  style={styles.photoAddBtnBlue}
+                >
+                  +
+                </button>
+              </div>
+
+              {/* Prescription Table */}
+              <div style={styles.photoTableWrap}>
+                <table style={styles.photoTable}>
+                  <thead>
+                    <tr style={styles.photoTableThTr}>
+                      <th style={styles.photoTh}>Medicine</th>
+                      <th style={{ ...styles.photoTh, width: '42px', textAlign: 'center' }}>Qty</th>
+                      <th style={{ ...styles.photoTh, width: '76px', textAlign: 'center' }}>M-N-E-Nt</th>
+                      <th style={{ ...styles.photoTh, width: '85px', textAlign: 'center' }}>Meal/Instruction</th>
+                      <th style={{ ...styles.photoTh, width: '32px', textAlign: 'center' }}>X</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(visitForm.prescriptions || []).length === 0 ? (
+                      <tr>
+                        <td colSpan={5} style={styles.photoTableEmptyTd}>
+                          No prescriptions added.
+                        </td>
+                      </tr>
+                    ) : (
+                      (visitForm.prescriptions || []).map((rx) => (
+                        <tr key={rx.id} style={styles.photoTableTr}>
+                          <td style={styles.photoTdBold}>{rx.medicine}</td>
+                          <td style={{ ...styles.photoTd, textAlign: 'center' }}>{rx.qty || '-'}</td>
+                          <td style={{ ...styles.photoTd, textAlign: 'center' }}>
+                            {rx.morning || '1'}-{rx.noon || '0'}-{rx.evening || '1'}-{rx.night || '0'}
+                          </td>
+                          <td style={{ ...styles.photoTd, textAlign: 'center' }}>
+                            {rx.timing === 'BF' ? 'Before Food' : 'After Food'}
+                          </td>
+                          <td style={{ ...styles.photoTd, textAlign: 'center' }}>
                             <button
                               type="button"
                               onClick={() => handleRemovePrescription(rx.id)}
-                              style={styles.removeRowBtn}
-                              title="Remove medicine row"
+                              style={styles.photoRowDeleteBtn}
                             >
-                              <Minus size={14} color="var(--danger)" />
+                              <X size={12} color="#DC2626" />
                             </button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          {/* CARD 3: 3. Advice / Diet / Food Instructions (Green Theme) */}
+          <div style={{ ...styles.photoCard, borderColor: '#86EFAC' }}>
+            <div style={styles.photoHeaderGreen}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <UtensilsCrossed size={14} color="#166534" />
+                <span style={{ ...styles.photoHeaderTitle, color: '#166534' }}>
+                  3. Advice / Diet / Food Instructions
+                </span>
+              </div>
+            </div>
+            <div style={styles.photoCardBody}>
+              <div style={styles.photoInputAddRow}>
+                <div style={{ width: '130px', flexShrink: 0 }}>
+                  <input
+                    type="text"
+                    value={dietaryCodeInput}
+                    onChange={(e) => setDietaryCodeInput(e.target.value.toUpperCase())}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleApplyDietary();
+                    }}
+                    placeholder="CODE (E.G. ADG)"
+                    style={styles.photoInput}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <input
+                    type="text"
+                    value={dietaryTextInput || visitForm.dietary || ''}
+                    onChange={(e) => {
+                      setDietaryTextInput(e.target.value);
+                      updateFormField('dietary', e.target.value);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleApplyDietary();
+                    }}
+                    placeholder="SPECIFIC FOOD ADVICE (AUTO-FILLS FROM CODE OR TYPE)..."
+                    style={styles.photoInput}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleApplyDietary}
+                  style={styles.photoApplyBtnGreen}
+                >
+                  Apply
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* CARD 4: Billing Details (Amber/Yellow Theme) */}
+          <div style={{ ...styles.photoCard, borderColor: '#FCD34D' }}>
+            <div style={styles.photoHeaderAmber}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Receipt size={14} color="#854D0E" />
+                <span style={{ ...styles.photoHeaderTitle, color: '#854D0E' }}>Billing Details</span>
+              </div>
+            </div>
+            <div style={styles.photoCardBody}>
+              <div style={styles.photoRow3Col}>
+                <div style={styles.photoFieldGroup}>
+                  <label style={styles.photoLabel}>Charged Amount (₹):</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={visitForm.charge}
+                    onChange={(e) => updateFormField('charge', e.target.value)}
+                    style={styles.photoInput}
+                  />
                 </div>
 
-                {/* BILLING & ACTIONS FOOTER ROW */}
-                <div style={styles.billingActionsRow}>
-                  {/* Left: Charge, Received, Due */}
-                  <div style={styles.billingInputsGroup}>
-                    <div style={styles.billingField}>
-                      <label style={styles.billingLabel}>CHARGE</label>
-                      <input
-                        id="billing-charge-input"
-                        type="number"
-                        min="0"
-                        value={visitForm.charge}
-                        onChange={(e) => updateFormField('charge', e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            const recEl = document.getElementById('billing-received-input');
-                            if (recEl) {
-                              recEl.focus();
-                              recEl.select?.();
-                            }
-                          }
-                        }}
-                        style={styles.billingInput}
-                      />
-                    </div>
+                <div style={styles.photoFieldGroup}>
+                  <label style={styles.photoLabel}>Received Amount (₹):</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={visitForm.received}
+                    onChange={(e) => updateFormField('received', e.target.value)}
+                    style={styles.photoInput}
+                  />
+                </div>
 
-                    <div style={styles.billingField}>
-                      <label style={styles.billingLabel}>RECEIVED</label>
-                      <input
-                        id="billing-received-input"
-                        type="number"
-                        min="0"
-                        value={visitForm.received}
-                        onChange={(e) => updateFormField('received', e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            handleSaveVisit(true);
-                          }
-                        }}
-                        style={styles.billingInput}
-                        title="Press Enter to Save & Print Case (or Ctrl+Enter)"
-                      />
-                    </div>
-
-                    <div style={styles.billingField}>
-                      <label style={styles.billingLabel}>DUE</label>
-                      <div
-                        style={{
-                          ...styles.dueDisplayBox,
-                          color: computedDue > 0 ? '#B3524A' : '#146B5C',
-                        }}
-                      >
-                        ₹{computedDue}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Right: Cancel & Save Buttons */}
-                  <div style={styles.actionButtonsGroup}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowNewCaseForm(false);
-                        showNewCaseFormRef.current = false;
-                        setEditingVisitId(null);
-                        editingVisitIdRef.current = null;
-                        setAttachedReport(null);
-                        attachedReportRef.current = null;
-                      }}
-                      style={styles.cancelDraftBtn}
-                    >
-                      Cancel
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleSaveVisit(false)}
-                      disabled={isSavingVisit}
-                      style={styles.saveOnlyBtn}
-                      title="Save Case without printing (Shortcut: Ctrl+S or Alt+S)"
-                    >
-                      <Save size={14} />
-                      <span>{isSavingVisit ? 'Saving...' : editingVisitId ? 'Update Case' : 'Save Case'}</span>
-                      <span style={styles.shortcutPill}>Ctrl+S</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleSaveVisit(true)}
-                      disabled={isSavingVisit}
-                      style={styles.saveAndPrintBtn}
-                      title="Save and Print Prescription (Shortcut: Ctrl+Enter)"
-                    >
-                      <Printer size={14} />
-                      <span>
-                        {isSavingVisit ? 'Recording...' : editingVisitId ? 'Update & Print' : 'Save & Print'}
-                      </span>
-                      <span style={styles.shortcutPillLight}>Ctrl+Enter</span>
-                    </button>
+                <div style={styles.photoFieldGroup}>
+                  <label style={styles.photoLabel}>Patient Total Due (₹):</label>
+                  <div style={styles.photoDueDisplay}>
+                    ₹{(currentPatient?.totalDue || 0) + computedDue}
                   </div>
                 </div>
               </div>
             </div>
-          )}
+          </div>
 
-          {/* RIGHT / BOTTOM PANE: PREVIOUS RECORDED VISITS LIST */}
-          <div
-            style={{
-              ...styles.visitHistoryPane,
-              width: showNewCaseForm && layoutMode === 'side-by-side' ? '44%' : '100%',
-              flex: 1,
-              overflowY: 'auto',
-            }}
-          >
-            <div style={styles.historyListSection}>
-              <div style={styles.historySectionHeaderRow}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <h4 style={styles.historySectionSubTitle}>
-                    Visit History ({patientVisits.length})
-                  </h4>
-                </div>
+          {/* BOTTOM ACTION BUTTONS */}
+          <div style={styles.photoBottomActionsRow}>
+            <button
+              type="button"
+              onClick={() => handleSaveVisit(false)}
+              disabled={isSavingVisit}
+              style={styles.photoSaveActionBtn}
+              title="Save clinical case (Ctrl+S / Alt+S)"
+            >
+              <Save size={15} />
+              <span>{isSavingVisit ? 'SAVING...' : 'SAVE'}</span>
+            </button>
 
-                {/* Prominent Button for New Case when form is not open */}
-                {!showNewCaseForm && (
-                  <button
-                    type="button"
-                    onClick={handleOpenNewCase}
-                    style={styles.openNewCaseBtn}
-                    title="Open clinical case entry form (Alt+N or F3)"
-                  >
-                    <Plus size={14} />
-                    <span>New Case</span>
-                    <span
-                      style={{
-                        fontSize: '10px',
-                        opacity: 0.9,
-                        backgroundColor: 'rgba(255,255,255,0.22)',
-                        padding: '1px 5px',
-                        borderRadius: '4px',
-                        marginLeft: '3px',
-                        fontWeight: 'bold',
-                      }}
-                    >
-                      Alt+N
-                    </span>
-                  </button>
-                )}
+            <button
+              type="button"
+              onClick={() => handleSaveVisit(true)}
+              disabled={isSavingVisit}
+              style={styles.photoSavePrintActionBtn}
+              title="Save case and open printable prescription (Ctrl+Enter / Alt+P)"
+            >
+              <Printer size={15} />
+              <span>{isSavingVisit ? 'SAVING...' : 'SAVE & PRINT'}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* HISTORY MODAL / SLIDE-OVER DRAWER (CLICKING *(History)* NEXT TO PATIENT NAME) */}
+      {showHistoryModal && (
+        <div style={styles.modalOverlay} onClick={() => setShowHistoryModal(false)}>
+          <div style={{ ...styles.modalCard, maxWidth: '820px', width: '92%' }} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.modalHeader}>
+              <div style={styles.modalHeaderTitle}>
+                <Clock size={16} color="var(--primary)" />
+                <h3>Past Consultations & Visits - {currentPatient?.name || 'Patient'}</h3>
+                <span style={styles.recentCountBadge}>{patientVisits.length} Visits</span>
               </div>
+              <button
+                type="button"
+                onClick={() => setShowHistoryModal(false)}
+                style={styles.closeModalBtn}
+              >
+                <X size={16} />
+              </button>
+            </div>
 
+            <div style={{ maxHeight: '70vh', overflowY: 'auto', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {loadingVisits ? (
                 <div style={styles.emptyState}>Loading visits...</div>
               ) : patientVisits.length === 0 ? (
-                <div style={styles.emptyState}>
-                  <p style={{ margin: 0, fontWeight: 500 }}>No visits recorded yet.</p>
-                  {!showNewCaseForm && (
-                    <button
-                      type="button"
-                      onClick={handleOpenNewCase}
-                      style={{ ...styles.openNewCaseBtn, marginTop: 8 }}
-                    >
-                      <Plus size={14} />
-                      <span>Start First Case Entry</span>
-                    </button>
-                  )}
-                </div>
+                <div style={styles.emptyState}>No previous visits recorded for this patient.</div>
               ) : (
-                <div style={styles.visitsListGrid}>
-                  {patientVisits.map((visit) => (
-                    <div key={visit._id} style={styles.visitHistoryCard}>
-                      {/* CARD HEADER: Date, Vitals & Actions */}
-                      <div style={styles.visitCardHeader}>
-                        <div style={styles.visitCardDate}>
-                          <Calendar size={14} color="#146B5C" />
-                          <span style={styles.visitDateText}>
-                            {new Date(visit.visitDate).toLocaleDateString('en-GB', {
-                              day: '2-digit',
-                              month: 'short',
-                              year: 'numeric',
-                            })}
-                          </span>
-                          {visit.bp && <span style={styles.vitalsBadgeBP}>BP: {visit.bp}</span>}
-                          {visit.sugar && (
-                            <span style={styles.vitalsBadgeSugar}>
-                              Sugar: {visit.sugar}
-                            </span>
-                          )}
-                          {visit.other && (
-                            <span style={styles.vitalsBadgeOther}>{visit.other}</span>
-                          )}
-                        </div>
-
-                        <div style={styles.visitCardActions}>
-                          <span
-                            style={{
-                              ...styles.visitDueBadge,
-                              backgroundColor:
-                                visit.due > 0 ? '#FEF2F2' : '#F0FDF4',
-                              borderColor:
-                                visit.due > 0 ? '#FECACA' : '#BBF7D0',
-                              color:
-                                visit.due > 0 ? '#DC2626' : '#16A34A',
-                            }}
-                          >
-                            {visit.due > 0 ? `Due: ₹${visit.due}` : '✓ Settled'}
-                          </span>
-
-                          {/* LAB REPORT BUTTON IF ATTACHED */}
-                          {visit.labReport && (
-                            <button
-                              type="button"
-                              onClick={() => setViewingPastReport(visit.labReport)}
-                              style={styles.viewPastReportBtn}
-                              title="Click to View Diagnostic Lab Report"
-                            >
-                              <FileText size={12} color="#0F766E" />
-                              <span>🔬 Lab Report ({visit.labReport.reportId || 'Attached'})</span>
-                            </button>
-                          )}
-
-                          {/* EDIT CASE OPTION FOR PAST RECORDED VISITS */}
-                          <button
-                            type="button"
-                            onClick={() => handleStartEditVisit(visit)}
-                            style={styles.editVisitBtn}
-                            title="Edit this recorded case"
-                          >
-                            <Edit3 size={12} />
-                            <span>Edit</span>
-                          </button>
-
-                          {/* PRINT CASE PRESCRIPTION */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setPrintVisit({
-                                ...visit,
-                                patient: currentPatient,
-                              });
-                              setPrintDietary(visit.dietary || '');
-                              setPrintLanguage('en');
-                              setShowPrintModal(true);
-                            }}
-                            style={styles.printPastRxBtn}
-                            title="Print Prescription"
-                          >
-                            <Printer size={12} />
-                            <span>Print</span>
-                          </button>
-
-                          {/* DELETE CASE OPTION FOR PAST RECORDED VISITS */}
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteVisit(visit._id)}
-                            style={styles.deleteVisitBtn}
-                            title="Delete this visit record"
-                          >
-                            <Trash2 size={12} />
-                            <span>Delete</span>
-                          </button>
-                        </div>
+                patientVisits.map((visit) => (
+                  <div key={visit._id} style={styles.visitHistoryCard}>
+                    {/* CARD HEADER: Date, Vitals & Actions */}
+                    <div style={styles.visitCardHeader}>
+                      <div style={styles.visitCardDate}>
+                        <Calendar size={14} color="#146B5C" />
+                        <span style={styles.visitDateText}>
+                          {new Date(visit.visitDate).toLocaleDateString('en-GB', {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric',
+                          })}
+                        </span>
+                        {visit.bp && <span style={styles.vitalsBadgeBP}>BP: {visit.bp}</span>}
+                        {visit.sugar && <span style={styles.vitalsBadgeSugar}>Sugar: {visit.sugar}</span>}
+                        {visit.other && <span style={styles.vitalsBadgeOther}>{visit.other}</span>}
                       </div>
 
-                      {/* ROW 1: CLINICAL FINDINGS (Complaints & Investigations in SAME ROW) */}
-                      {(visit.complaint || visit.investigation) && (
-                        <div
+                      <div style={styles.visitCardActions}>
+                        <span
                           style={{
-                            display: 'grid',
-                            gridTemplateColumns:
-                              visit.complaint && visit.investigation ? '1fr 1fr' : '1fr',
-                            gap: '6px',
+                            ...styles.visitDueBadge,
+                            backgroundColor: visit.due > 0 ? '#FEF2F2' : '#F0FDF4',
+                            borderColor: visit.due > 0 ? '#FECACA' : '#BBF7D0',
+                            color: visit.due > 0 ? '#DC2626' : '#16A34A',
                           }}
                         >
-                          {visit.complaint && (
-                            <div style={styles.complaintBlock}>
-                              <div style={styles.complaintHeaderRow}>
-                                <Stethoscope size={11} color="#DC2626" />
-                                <span style={styles.complaintHeaderLabel}>Complaint:</span>
-                              </div>
-                              <div style={styles.clinicalChipsRow}>
-                                {visit.complaint.split(',').map((c, i) => {
-                                  const trimmed = c.trim();
-                                  if (!trimmed) return null;
-                                  return (
-                                    <span key={i} style={styles.complaintChip}>
-                                      {trimmed}
-                                    </span>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          )}
+                          {visit.due > 0 ? `Due: ₹${visit.due}` : '✓ Settled'}
+                        </span>
 
-                          {visit.investigation && (
-                            <div style={styles.investigationBlock}>
-                              <div style={styles.investigationHeaderRow}>
-                                <Activity size={11} color="#2563EB" />
-                                <span style={styles.investigationHeaderLabel}>Investigation:</span>
-                              </div>
-                              <div style={styles.clinicalChipsRow}>
-                                {visit.investigation.split(',').map((inv, i) => {
-                                  const trimmed = inv.trim();
-                                  if (!trimmed) return null;
-                                  return (
-                                    <span key={i} style={styles.investigationChip}>
-                                      {trimmed}
-                                    </span>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* ROW 2: THERAPEUTICS (Treatments & Prescriptions in SAME ROW) */}
-                      {((visit.treatments && visit.treatments.length > 0) ||
-                        (visit.prescriptions && visit.prescriptions.length > 0)) && (
-                          <div
-                            style={{
-                              display: 'grid',
-                              gridTemplateColumns:
-                                visit.treatments?.length > 0 && visit.prescriptions?.length > 0
-                                  ? 'minmax(180px, 1fr) minmax(260px, 1.4fr)'
-                                  : '1fr',
-                              gap: '6px',
-                            }}
+                        {visit.labReport && (
+                          <button
+                            type="button"
+                            onClick={() => setViewingPastReport(visit.labReport)}
+                            style={styles.viewPastReportBtn}
+                            title="Click to View Diagnostic Lab Report"
                           >
-                            {/* TREATMENT (CLINIC) */}
-                            {visit.treatments && visit.treatments.length > 0 && (
-                              <div style={styles.pastTreatmentsBlock}>
-                                <div style={styles.treatmentHeaderRow}>
-                                  <span style={styles.treatmentHeaderLabel}>Treatment:</span>
-                                </div>
-                                <div style={styles.treatmentChipsRow}>
-                                  {visit.treatments.map((t, tIdx) => (
-                                    <span key={tIdx} style={styles.treatmentChip}>
-                                      {t.item} {t.qty ? `(${t.qty})` : ''}
-                                    </span>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* PRESCRIPTIONS (Rx) */}
-                            {visit.prescriptions && visit.prescriptions.length > 0 && (
-                              <div style={styles.pastPrescriptionBlock}>
-                                <div style={styles.rxHeaderRow}>
-                                  <Pill size={11} color="#0F766E" />
-                                  <span style={styles.rxHeaderLabel}>Rx:</span>
-                                </div>
-                                <div style={styles.pastRxChips}>
-                                  {visit.prescriptions.map((rx, rIdx) => (
-                                    <div key={rIdx} style={styles.rxCard}>
-                                      <span style={styles.rxMedName}>{rx.medicine}</span>
-                                      {rx.qty && (
-                                        <span style={styles.rxQtyBadge}>
-                                          {String(rx.qty).toLowerCase().includes('tab') ? rx.qty : `${rx.qty} Tab`}
-                                        </span>
-                                      )}
-                                      <span style={styles.rxDoseBadge}>
-                                        {rx.morning ?? 0}-{rx.noon ?? 0}-{rx.evening ?? 0}-{rx.night ?? 0}
-                                      </span>
-                                      {rx.timing && (
-                                        <span style={styles.rxTimingBadge}>
-                                          {rx.timing === 'AF' ? 'AF' : rx.timing === 'BF' ? 'BF' : rx.timing}
-                                        </span>
-                                      )}
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                          </div>
+                            <FileText size={12} color="#0F766E" />
+                            <span>🔬 Lab Report</span>
+                          </button>
                         )}
 
-                      {/* SUBTLE FINANCIAL BREAKDOWN FOOTER */}
-                      {(visit.charge > 0 || visit.received > 0 || visit.due > 0) && (
-                        <div style={styles.visitFinancialStrip}>
-                          <span>Charge: <strong>₹{visit.charge || 0}</strong></span>
-                          <span style={styles.stripDot}>•</span>
-                          <span>Paid: <strong style={{ color: '#16A34A' }}>₹{visit.received || 0}</strong></span>
-                          <span style={styles.stripDot}>•</span>
-                          <span>Due: <strong style={{ color: visit.due > 0 ? '#DC2626' : '#16A34A' }}>₹{visit.due || 0}</strong></span>
-                        </div>
-                      )}
+                        <button
+                          type="button"
+                          onClick={() => handleStartEditVisit(visit)}
+                          style={styles.editVisitBtn}
+                          title="Edit this recorded case"
+                        >
+                          <Edit3 size={12} />
+                          <span>Edit</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPrintVisit({ ...visit, patient: currentPatient });
+                            setPrintDietary(visit.dietary || '');
+                            setPrintLanguage('en');
+                            setShowPrintModal(true);
+                          }}
+                          style={styles.printPastRxBtn}
+                          title="Print Prescription"
+                        >
+                          <Printer size={12} />
+                          <span>Print</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteVisit(visit._id)}
+                          style={styles.deleteVisitBtn}
+                          title="Delete this visit record"
+                        >
+                          <Trash2 size={12} />
+                          <span>Delete</span>
+                        </button>
+                      </div>
                     </div>
-                  ))}
-                </div>
+
+                    {/* Findings & Prescriptions */}
+                    {(visit.complaint || visit.investigation) && (
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: 4 }}>
+                        {visit.complaint && (
+                          <div style={styles.complaintBlock}>
+                            <span style={styles.complaintHeaderLabel}>Complaints:</span>
+                            <span style={{ fontSize: 11, color: '#334155' }}>{visit.complaint}</span>
+                          </div>
+                        )}
+                        {visit.investigation && (
+                          <div style={styles.investigationBlock}>
+                            <span style={styles.investigationHeaderLabel}>Investigations:</span>
+                            <span style={{ fontSize: 11, color: '#334155' }}>{visit.investigation}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {Array.isArray(visit.ipdDetails) && visit.ipdDetails.length > 0 && (
+                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginTop: 4, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: '#9A3412' }}>IPD Injections/Fluids:</span>
+                        {visit.ipdDetails.map((ipd, idx) => (
+                          <span key={idx} style={{ backgroundColor: '#FFEDD5', border: '1px solid #FED7AA', borderRadius: 4, padding: '1px 6px', fontSize: 11, color: '#9A3412', fontWeight: 600 }}>
+                            {typeof ipd === 'string' ? ipd : ipd?.item}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {Array.isArray(visit.prescriptions) && visit.prescriptions.length > 0 && (
+                      <div style={{ marginTop: 6 }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: '#1E40AF' }}>Prescribed Medicines:</span>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 2 }}>
+                          {visit.prescriptions.map((p, idx) => (
+                            <span key={idx} style={{ backgroundColor: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 4, padding: '2px 6px', fontSize: 11, color: '#1E3A8A' }}>
+                              {p.medicine} ({p.qty ? `Qty: ${p.qty}` : ''} {p.morning}-{p.noon}-{p.evening}-{p.night} {p.timing})
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))
               )}
+            </div>
+
+            <div style={styles.dueModalFooter}>
+              <span style={{ fontSize: 11, color: '#64748B' }}>Past records are preserved in MongoDB and fully editable.</span>
+              <button
+                type="button"
+                onClick={() => setShowHistoryModal(false)}
+                style={{ ...styles.cancelDraftBtn, padding: '5px 14px' }}
+              >
+                Close History
+              </button>
             </div>
           </div>
         </div>
       )}
-
       {/* MODAL 1: EDIT PATIENT DETAILS */}
       {showEditModal && (
         <div style={styles.modalOverlay}>
@@ -3857,6 +3822,478 @@ const styles = {
     flex: 1,
     minHeight: 0,
     overflow: 'hidden',
+  },
+
+  // Photo Layout Styles (Matching user screenshot)
+  photoLayoutMain: {
+    display: 'flex',
+    width: '100%',
+    height: '100%',
+    flex: 1,
+    minHeight: 0,
+    gap: '8px',
+    padding: '4px 6px',
+    boxSizing: 'border-box',
+    overflow: 'hidden',
+    backgroundColor: '#F1F5F9',
+  },
+  photoLeftCol: {
+    width: '48%',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '5px',
+    overflowY: 'auto',
+    paddingRight: '2px',
+  },
+  photoRightCol: {
+    width: '52%',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '5px',
+    overflowY: 'auto',
+    paddingRight: '2px',
+  },
+  photoCard: {
+    backgroundColor: '#FFFFFF',
+    border: '1px solid #CBD5E1',
+    borderRadius: '4px',
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+    boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+  },
+  photoHeaderBlue: {
+    backgroundColor: '#E0EDF8',
+    borderBottom: '1px solid #BFDBFE',
+    padding: '3px 8px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: '25px',
+  },
+  photoHeaderRed: {
+    backgroundColor: '#FEE2E2',
+    borderBottom: '1px solid #FECACA',
+    padding: '3px 8px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: '25px',
+  },
+  photoHeaderGreen: {
+    backgroundColor: '#D1FAE5',
+    borderBottom: '1px solid #A7F3D0',
+    padding: '3px 8px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: '25px',
+  },
+  photoHeaderPurple: {
+    backgroundColor: '#EDE9FE',
+    borderBottom: '1px solid #DDD6FE',
+    padding: '3px 8px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: '25px',
+  },
+  photoHeaderAmber: {
+    backgroundColor: '#FFEDD5',
+    borderBottom: '1px solid #FED7AA',
+    padding: '3px 8px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: '25px',
+  },
+  photoHeaderTitle: {
+    fontSize: '11px',
+    fontWeight: 800,
+    color: '#1E40AF',
+    letterSpacing: '0.3px',
+    textTransform: 'uppercase',
+  },
+  photoMiniActionBtn: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '3px',
+    backgroundColor: '#FFFFFF',
+    border: '1px solid #93C5FD',
+    color: '#1D4ED8',
+    fontSize: '10px',
+    fontWeight: 600,
+    padding: '1px 6px',
+    borderRadius: '3px',
+    cursor: 'pointer',
+  },
+  photoCardBody: {
+    padding: '5px 8px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+  },
+  photoRow1Col: {
+    display: 'flex',
+    width: '100%',
+    gap: '6px',
+  },
+  photoRow2Col: {
+    display: 'flex',
+    width: '100%',
+    gap: '6px',
+  },
+  photoRow3Col: {
+    display: 'flex',
+    width: '100%',
+    gap: '6px',
+  },
+  photoFieldGroup: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '1px',
+    flex: 1,
+    minWidth: 0,
+  },
+  photoLabel: {
+    fontSize: '10px',
+    fontWeight: 700,
+    color: '#334155',
+  },
+  photoInput: {
+    width: '100%',
+    height: '24px',
+    padding: '2px 5px',
+    fontSize: '11px',
+    border: '1px solid #94A3B8',
+    borderRadius: '3px',
+    outline: 'none',
+    backgroundColor: '#FFFFFF',
+    color: '#0F172A',
+    boxSizing: 'border-box',
+  },
+  photoSelect: {
+    width: '100%',
+    height: '24px',
+    padding: '1px 4px',
+    fontSize: '10px',
+    border: '1px solid #94A3B8',
+    borderRadius: '3px',
+    outline: 'none',
+    backgroundColor: '#FFFFFF',
+    color: '#0F172A',
+    boxSizing: 'border-box',
+  },
+  photoHistoryLinkBtn: {
+    background: 'none',
+    border: 'none',
+    color: '#2563EB',
+    fontSize: '10px',
+    fontWeight: 700,
+    cursor: 'pointer',
+    padding: 0,
+    textDecoration: 'underline',
+  },
+  photoDueLink: {
+    background: 'none',
+    border: 'none',
+    color: '#DC2626',
+    fontSize: '10px',
+    fontWeight: 700,
+    cursor: 'pointer',
+    padding: 0,
+  },
+  photoPatientDropdown: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    backgroundColor: '#FFFFFF',
+    border: '1px solid #3B82F6',
+    borderRadius: '4px',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+    maxHeight: '220px',
+    overflowY: 'auto',
+    zIndex: 100,
+    marginTop: '2px',
+  },
+  photoDropdownItem: {
+    padding: '5px 8px',
+    borderBottom: '1px solid #F1F5F9',
+    cursor: 'pointer',
+  },
+  photoMiniBadge: {
+    fontSize: '9px',
+    fontWeight: 700,
+    backgroundColor: '#EFF6FF',
+    color: '#2563EB',
+    padding: '1px 4px',
+    borderRadius: '3px',
+  },
+  photoHeadBadge: {
+    fontSize: '9px',
+    fontWeight: 700,
+    backgroundColor: '#DCFCE7',
+    color: '#166534',
+    padding: '1px 4px',
+    borderRadius: '3px',
+  },
+  photoInputAddRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+    width: '100%',
+  },
+  photoAddBtnRed: {
+    height: '24px',
+    padding: '0 8px',
+    backgroundColor: '#DC2626',
+    color: '#FFFFFF',
+    border: 'none',
+    borderRadius: '3px',
+    fontSize: '11px',
+    fontWeight: 700,
+    cursor: 'pointer',
+    flexShrink: 0,
+  },
+  photoAddBtnGreen: {
+    height: '24px',
+    padding: '0 8px',
+    backgroundColor: '#059669',
+    color: '#FFFFFF',
+    border: 'none',
+    borderRadius: '3px',
+    fontSize: '11px',
+    fontWeight: 700,
+    cursor: 'pointer',
+    flexShrink: 0,
+  },
+  photoAddBtnPurple: {
+    height: '24px',
+    padding: '0 8px',
+    backgroundColor: '#7C3AED',
+    color: '#FFFFFF',
+    border: 'none',
+    borderRadius: '3px',
+    fontSize: '11px',
+    fontWeight: 700,
+    cursor: 'pointer',
+    flexShrink: 0,
+  },
+  photoAddBtnAmber: {
+    height: '24px',
+    padding: '0 8px',
+    backgroundColor: '#EA580C',
+    color: '#FFFFFF',
+    border: 'none',
+    borderRadius: '3px',
+    fontSize: '11px',
+    fontWeight: 700,
+    cursor: 'pointer',
+    flexShrink: 0,
+  },
+  photoAddBtnBlue: {
+    height: '24px',
+    padding: '0 10px',
+    backgroundColor: '#1E40AF',
+    color: '#FFFFFF',
+    border: 'none',
+    borderRadius: '3px',
+    fontSize: '13px',
+    fontWeight: 800,
+    cursor: 'pointer',
+    flexShrink: 0,
+  },
+  photoApplyBtnGreen: {
+    height: '24px',
+    padding: '0 10px',
+    backgroundColor: '#166534',
+    color: '#FFFFFF',
+    border: 'none',
+    borderRadius: '3px',
+    fontSize: '11px',
+    fontWeight: 700,
+    cursor: 'pointer',
+    flexShrink: 0,
+  },
+  photoLabEntryBtn: {
+    height: '24px',
+    padding: '0 8px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '3px',
+    backgroundColor: '#F3E8FF',
+    color: '#6B21A8',
+    border: '1px solid #D8B4FE',
+    borderRadius: '3px',
+    fontSize: '11px',
+    fontWeight: 700,
+    cursor: 'pointer',
+    flexShrink: 0,
+  },
+  photoPillsContainer: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '4px',
+    minHeight: '20px',
+    alignItems: 'center',
+  },
+  photoPillRed: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '4px',
+    backgroundColor: '#FEE2E2',
+    border: '1px solid #FCA5A5',
+    color: '#991B1B',
+    borderRadius: '3px',
+    padding: '1px 6px',
+    fontSize: '11px',
+    fontWeight: 700,
+  },
+  photoPillGreen: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '4px',
+    backgroundColor: '#D1FAE5',
+    border: '1px solid #6EE7B7',
+    color: '#065F46',
+    borderRadius: '3px',
+    padding: '1px 6px',
+    fontSize: '11px',
+    fontWeight: 700,
+  },
+  photoPillAmber: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '4px',
+    backgroundColor: '#FFEDD5',
+    border: '1px solid #FDBA74',
+    color: '#9A3412',
+    borderRadius: '3px',
+    padding: '1px 6px',
+    fontSize: '11px',
+    fontWeight: 700,
+  },
+  photoPillCloseBtn: {
+    background: 'none',
+    border: 'none',
+    color: 'inherit',
+    padding: 0,
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    opacity: 0.75,
+  },
+  photoNoItemsText: {
+    fontSize: '10px',
+    color: '#94A3B8',
+    fontStyle: 'italic',
+  },
+  photoTableWrap: {
+    border: '1px solid #CBD5E1',
+    borderRadius: '3px',
+    overflow: 'hidden',
+    maxHeight: '100px',
+    overflowY: 'auto',
+  },
+  photoTable: {
+    width: '100%',
+    borderCollapse: 'collapse',
+    fontSize: '11px',
+  },
+  photoTableThTr: {
+    backgroundColor: '#F8FAFC',
+    borderBottom: '1px solid #CBD5E1',
+  },
+  photoTh: {
+    padding: '3px 5px',
+    fontSize: '10px',
+    fontWeight: 700,
+    color: '#475569',
+    textAlign: 'left',
+  },
+  photoTableTr: {
+    borderBottom: '1px solid #F1F5F9',
+    backgroundColor: '#FFFFFF',
+  },
+  photoTd: {
+    padding: '2px 5px',
+    color: '#334155',
+    verticalAlign: 'middle',
+  },
+  photoTdBold: {
+    padding: '2px 5px',
+    fontWeight: 700,
+    color: '#0F172A',
+    verticalAlign: 'middle',
+  },
+  photoTableEmptyTd: {
+    padding: '6px 5px',
+    textAlign: 'center',
+    color: '#94A3B8',
+    fontStyle: 'italic',
+    fontSize: '10px',
+  },
+  photoRowDeleteBtn: {
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    padding: '1px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  photoDueDisplay: {
+    width: '100%',
+    height: '24px',
+    display: 'flex',
+    alignItems: 'center',
+    padding: '0 6px',
+    fontSize: '11px',
+    fontWeight: 800,
+    backgroundColor: '#FEF3C7',
+    border: '1px solid #FCD34D',
+    borderRadius: '3px',
+    color: '#B45309',
+    boxSizing: 'border-box',
+  },
+  photoBottomActionsRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    marginTop: '2px',
+  },
+  photoSaveActionBtn: {
+    flex: 1,
+    height: '32px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '6px',
+    backgroundColor: '#E0F2FE',
+    color: '#0369A1',
+    border: '1px solid #0284C7',
+    borderRadius: '4px',
+    fontSize: '12px',
+    fontWeight: 800,
+    cursor: 'pointer',
+    boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+  },
+  photoSavePrintActionBtn: {
+    flex: 1.4,
+    height: '32px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '6px',
+    backgroundColor: '#EDE9FE',
+    color: '#4338CA',
+    border: '1px solid #6366F1',
+    borderRadius: '4px',
+    fontSize: '12px',
+    fontWeight: 800,
+    cursor: 'pointer',
+    boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
   },
 
   toast: {

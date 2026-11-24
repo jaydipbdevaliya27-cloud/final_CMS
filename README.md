@@ -220,3 +220,4 @@ This project is configured for single-service deployment on **Render**:
 ## 📄 License
 
 This project is private and maintained for clinic administration. All rights reserved.
+

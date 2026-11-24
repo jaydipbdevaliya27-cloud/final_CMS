@@ -19,6 +19,7 @@ import {
   Building,
   MapPin,
   ShieldAlert,
+  Syringe,
 } from 'lucide-react';
 
 export const CATEGORIES = [
@@ -125,6 +126,19 @@ export const CATEGORIES = [
     searchPlaceholder: 'Search allergy or code...',
     namePlaceholder: 'e.g. Penicillin',
     codePlaceholder: 'e.g. PEN',
+  },
+  {
+    id: 'ipd',
+    label: 'IPD Details',
+    icon: Syringe,
+    title: 'All Injections, IV Bottles & IPD Procedures',
+    singular: 'IPD Item',
+    plural: 'IPD Items',
+    codeHeader: 'SHORTCUT',
+    nameHeader: 'INJECTION / IV FLUID / IPD ITEM NAME',
+    searchPlaceholder: 'Search IPD item or code...',
+    namePlaceholder: 'e.g. RL 500ml IV or Inj. Voveran 2ml IM',
+    codePlaceholder: 'e.g. RL or VOV',
   },
 ];
 

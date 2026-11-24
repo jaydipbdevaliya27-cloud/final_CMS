@@ -48,6 +48,9 @@ import {
   Plus,
   PieChart,
   Download,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Menu,
 } from 'lucide-react';
 
 export const Dashboard = () => {
@@ -195,9 +198,38 @@ export const Dashboard = () => {
     day: 'numeric',
   });
 
-  // Draggable Sidebar state
+  // Draggable & Collapsible Sidebar state
   const [sidebarWidth, setSidebarWidth] = useState(210);
   const [isDraggingSidebar, setIsDraggingSidebar] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem('cms_sidebar_collapsed') === 'true';
+    } catch (e) {
+      return false;
+    }
+  });
+
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('cms_sidebar_collapsed', String(next));
+      } catch (e) {}
+      return next;
+    });
+  };
+
+  // Keyboard shortcut to toggle navigation bar (Alt+B or Ctrl+B)
+  useEffect(() => {
+    const handleKeyToggle = (e) => {
+      if ((e.altKey && (e.key === 'b' || e.key === 'B')) || (e.ctrlKey && (e.key === 'b' || e.key === 'B'))) {
+        e.preventDefault();
+        toggleSidebar();
+      }
+    };
+    window.addEventListener('keydown', handleKeyToggle);
+    return () => window.removeEventListener('keydown', handleKeyToggle);
+  }, []);
 
   useEffect(() => {
     const handleMouseMove = (e) => {
@@ -1065,6 +1097,22 @@ export const Dashboard = () => {
       {/* Top Header / Bar */}
       <header style={styles.navbar}>
         <div style={styles.navBrand}>
+          <button
+            type="button"
+            onClick={toggleSidebar}
+            style={styles.navToggleBtn}
+            title={isSidebarCollapsed ? 'Show Navigation Menu (Alt+B)' : 'Hide Navigation Menu (Alt+B)'}
+          >
+            {isSidebarCollapsed ? (
+              <PanelLeftOpen size={17} color="var(--primary)" />
+            ) : (
+              <PanelLeftClose size={17} color="var(--primary)" />
+            )}
+            <span style={styles.navToggleBtnText}>
+              {isSidebarCollapsed ? 'Show Menu' : 'Hide Menu'}
+            </span>
+          </button>
+
           <div style={styles.brandIcon}>
             <Stethoscope size={24} color="#FFFFFF" />
           </div>
@@ -1279,33 +1327,55 @@ export const Dashboard = () => {
 
       {/* Main Body (Sidebar + Content Area) */}
       <div style={styles.body}>
-        {/* Exact Tab Navigation Sidebar */}
-        <SidebarTabs
-          activeTab={activeTab}
-          onSelectTab={(tabId) => {
-            if (tabId === 'patient-record') {
-              setSelectedPatientId('');
-            }
-            setActiveTab(tabId);
-          }}
-          onSearchFocus={handleSearchFocus}
-          width={sidebarWidth}
-        />
+        {/* Exact Tab Navigation Sidebar (Collapsible for big screens) */}
+        {!isSidebarCollapsed ? (
+          <>
+            <SidebarTabs
+              activeTab={activeTab}
+              onSelectTab={(tabId) => {
+                if (tabId === 'patient-record') {
+                  setSelectedPatientId('');
+                }
+                setActiveTab(tabId);
+              }}
+              onSearchFocus={handleSearchFocus}
+              width={sidebarWidth}
+            />
 
-        {/* DRAGGER AT BORDER: Resize Sidebar */}
-        <div
-          onMouseDown={() => setIsDraggingSidebar(true)}
-          title="Drag left/right to resize sidebar"
-          style={{
-            ...styles.sidebarDragger,
-            backgroundColor: isDraggingSidebar ? 'var(--primary)' : 'transparent',
-          }}
-        >
-          <div style={styles.draggerGripLine} />
-        </div>
+            {/* DRAGGER AT BORDER: Resize Sidebar */}
+            <div
+              onMouseDown={() => setIsDraggingSidebar(true)}
+              title="Drag left/right to resize sidebar"
+              style={{
+                ...styles.sidebarDragger,
+                backgroundColor: isDraggingSidebar ? 'var(--primary)' : 'transparent',
+              }}
+            >
+              <div style={styles.draggerGripLine} />
+            </div>
+          </>
+        ) : (
+          /* Sleek Collapsed Strip: 1-click restore button */
+          <div style={styles.collapsedSidebarStrip}>
+            <button
+              type="button"
+              onClick={toggleSidebar}
+              style={styles.floatingShowSidebarBtn}
+              title="Expand Navigation Menu (Alt+B)"
+            >
+              <PanelLeftOpen size={15} color="var(--primary)" />
+              <span style={styles.verticalNavLabel}>MENU</span>
+            </button>
+          </div>
+        )}
 
         {/* Content Pane */}
-        <main style={styles.mainContent}>
+        <main
+          style={{
+            ...styles.mainContent,
+            width: isSidebarCollapsed ? 'calc(100% - 28px)' : `calc(100% - ${sidebarWidth}px)`,
+          }}
+        >
           {renderTabContent()}
         </main>
       </div>
@@ -1340,6 +1410,57 @@ const styles = {
     alignItems: 'center',
     gap: '8px',
     flexShrink: 0,
+  },
+  navToggleBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    padding: '5px 9px',
+    backgroundColor: '#F0FDF9',
+    border: '1px solid #CCFBF1',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    color: 'var(--primary-dark)',
+    fontSize: '0.75rem',
+    fontWeight: 700,
+    transition: 'all 0.15s ease',
+    marginRight: '4px',
+  },
+  navToggleBtnText: {
+    display: 'inline-block',
+    letterSpacing: '0.01em',
+  },
+  collapsedSidebarStrip: {
+    width: '28px',
+    backgroundColor: 'var(--surface)',
+    borderRight: '1px solid var(--border)',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    paddingTop: '8px',
+    zIndex: 5,
+    userSelect: 'none',
+  },
+  floatingShowSidebarBtn: {
+    width: '24px',
+    padding: '8px 2px',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '6px',
+    backgroundColor: '#F0FDF9',
+    border: '1px solid #99F6E4',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    color: 'var(--primary)',
+  },
+  verticalNavLabel: {
+    fontSize: '9px',
+    fontWeight: 800,
+    letterSpacing: '1px',
+    writingMode: 'vertical-rl',
+    transform: 'rotate(180deg)',
+    color: 'var(--primary-dark)',
   },
   brandIcon: {
     width: '30px',

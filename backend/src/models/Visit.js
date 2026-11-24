@@ -87,6 +87,14 @@ const visitSchema = new mongoose.Schema(
       trim: true,
       default: '',
     },
+    ipdDetails: {
+      type: mongoose.Schema.Types.Mixed,
+      default: [],
+    },
+    allergies: {
+      type: [String],
+      default: [],
+    },
     charge: {
       type: Number,
       default: 0,

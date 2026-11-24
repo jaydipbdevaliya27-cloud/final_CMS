@@ -44,6 +44,8 @@ export const recordVisit = async (req, res) => {
       treatments,
       prescriptions,
       dietary,
+      ipdDetails,
+      allergies,
       charge,
       received,
       labReport,
@@ -102,6 +104,8 @@ export const recordVisit = async (req, res) => {
       treatments: cleanTreatments,
       prescriptions: cleanPrescriptions,
       dietary: dietary ? dietary.trim() : '',
+      ipdDetails: Array.isArray(ipdDetails) ? ipdDetails : (ipdDetails ? [ipdDetails] : []),
+      allergies: Array.isArray(allergies) ? allergies : (allergies ? [allergies] : []),
       charge: numCharge,
       received: numReceived,
       due: numDue,
@@ -136,6 +140,23 @@ export const recordVisit = async (req, res) => {
     }
     for (const tr of cleanTreatments) {
       if (tr.item) await autoSaveMasterItem('medicine', tr.item);
+    }
+    if (Array.isArray(ipdDetails)) {
+      for (const ipdItem of ipdDetails) {
+        const itemVal = typeof ipdItem === 'string' ? ipdItem : ipdItem?.item;
+        if (itemVal && itemVal.trim()) {
+          await autoSaveMasterItem('ipd', itemVal.trim());
+        }
+      }
+    }
+    if (Array.isArray(allergies) && allergies.length > 0) {
+      for (const alg of allergies) {
+        if (typeof alg === 'string' && alg.trim()) {
+          await autoSaveMasterItem('allergy', alg.trim());
+        }
+      }
+      // Also update allergies on Patient record
+      await Patient.findOneAndUpdate({ patientId: visit.patientId }, { allergies });
     }
 
     return res.status(201).json({
@@ -199,6 +220,8 @@ export const updateVisit = async (req, res) => {
       treatments,
       prescriptions,
       dietary,
+      ipdDetails,
+      allergies,
       charge,
       received,
       labReport,
@@ -234,6 +257,12 @@ export const updateVisit = async (req, res) => {
     visit.treatments = cleanTreatments;
     visit.prescriptions = cleanPrescriptions;
     if (dietary !== undefined) visit.dietary = dietary ? dietary.trim() : '';
+    if (ipdDetails !== undefined) {
+      visit.ipdDetails = Array.isArray(ipdDetails) ? ipdDetails : (ipdDetails ? [ipdDetails] : []);
+    }
+    if (allergies !== undefined) {
+      visit.allergies = Array.isArray(allergies) ? allergies : (allergies ? [allergies] : []);
+    }
     visit.charge = numCharge;
     visit.received = numReceived;
     visit.due = numDue;
@@ -297,6 +326,23 @@ export const updateVisit = async (req, res) => {
     }
     for (const tr of cleanTreatments) {
       if (tr.item) await autoSaveMasterItem('medicine', tr.item);
+    }
+    if (Array.isArray(ipdDetails)) {
+      for (const ipdItem of ipdDetails) {
+        const itemVal = typeof ipdItem === 'string' ? ipdItem : ipdItem?.item;
+        if (itemVal && itemVal.trim()) {
+          await autoSaveMasterItem('ipd', itemVal.trim());
+        }
+      }
+    }
+    if (Array.isArray(allergies) && allergies.length > 0) {
+      for (const alg of allergies) {
+        if (typeof alg === 'string' && alg.trim()) {
+          await autoSaveMasterItem('allergy', alg.trim());
+        }
+      }
+      // Also update allergies on Patient record
+      await Patient.findOneAndUpdate({ patientId: visit.patientId }, { allergies });
     }
 
     return res.status(200).json({
