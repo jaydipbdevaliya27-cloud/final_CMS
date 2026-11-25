@@ -108,16 +108,45 @@ export const universalSearch = async (req, res) => {
 
       const patients = await Patient.find({ $or: patientOrConditions })
         .select('patientId familyId name fullName relation isHead age gender bloodGroup allergies society area phone totalDue createdAt')
-        .sort({ createdAt: -1 })
-        .limit(30)
+        .limit(50)
         .lean();
+
+      // Sort patients by relevance to query
+      const queryUpper = rawQuery.toUpperCase();
+      patients.sort((a, b) => {
+        const aName = (a.name || '').toUpperCase();
+        const bName = (b.name || '').toUpperCase();
+        const aExact = aName === queryUpper;
+        const bExact = bName === queryUpper;
+        if (aExact && !bExact) return -1;
+        if (!aExact && bExact) return 1;
+
+        const aStarts = aName.startsWith(queryUpper);
+        const bStarts = bName.startsWith(queryUpper);
+        if (aStarts && !bStarts) return -1;
+        if (!aStarts && bStarts) return 1;
+
+        const aPid = (a.patientId || '').toUpperCase();
+        const bPid = (b.patientId || '').toUpperCase();
+        const aPidStarts = aPid.startsWith(queryUpper);
+        const bPidStarts = bPid.startsWith(queryUpper);
+        if (aPidStarts && !bPidStarts) return -1;
+        if (!aPidStarts && bPidStarts) return 1;
+
+        const aWordStarts = aName.split(/\s+/).some((w) => w.startsWith(queryUpper));
+        const bWordStarts = bName.split(/\s+/).some((w) => w.startsWith(queryUpper));
+        if (aWordStarts && !bWordStarts) return -1;
+        if (!aWordStarts && bWordStarts) return 1;
+
+        return aName.length - bName.length || aName.localeCompare(bName);
+      });
 
       return res.status(200).json({
         success: true,
         query: rawQuery,
         searchType: 'patient',
         count: patients.length,
-        data: patients,
+        data: patients.slice(0, 30),
       });
     }
   } catch (error) {

@@ -738,27 +738,9 @@ export const RecentHistory = ({
                         <span style={styles.chargedText}>₹{visit.charge || 0}</span>
                       </td>
 
-                      {/* 9. Due (₹) / Deposit - Strictly for this particular case record */}
+                      {/* 9. Due (₹) - Strictly for this particular case record */}
                       <td style={styles.tdDue}>
-                        {caseDeposit > 0 ? (
-                          <span
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '3px',
-                              backgroundColor: '#DCFCE7',
-                              color: '#15803D',
-                              border: '1px solid #86EFAC',
-                              padding: '2px 6px',
-                              borderRadius: '4px',
-                              fontSize: '11px',
-                              fontWeight: '800',
-                              whiteSpace: 'nowrap',
-                            }}
-                          >
-                            🟢 DEPOSIT: ₹{caseDeposit}
-                          </span>
-                        ) : caseDue > 0 ? (
+                        {caseDue > 0 ? (
                           <span
                             style={{
                               ...styles.dueText,
