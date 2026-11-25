@@ -232,6 +232,14 @@ export const PatientRecord = ({
   const bpInputRef = useRef(null);
   const caseFormPaneRef = useRef(null);
 
+  // Refs for keyboard navigation: Left Column Clinical Cards & Billing
+  const allergyInputRef = useRef(null);
+  const complaintInputRef = useRef(null);
+  const investigationInputRef = useRef(null);
+  const labNameInputRef = useRef(null);
+  const ipdInputRef = useRef(null);
+  const chargeInputRef = useRef(null);
+
   // Refs for keyboard navigation: Clinic Medicine
   const clinicMedInputRef = useRef(null);
   const clinicMedQtyRef = useRef(null);
@@ -2487,6 +2495,12 @@ export const PatientRecord = ({
                     type="text"
                     value={visitForm.other}
                     onChange={(e) => updateFormField('other', e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Tab' && !e.shiftKey) {
+                        e.preventDefault();
+                        allergyInputRef.current?.focus();
+                      }
+                    }}
                     placeholder="Pulse / Spo2"
                     style={styles.photoInput}
                   />
@@ -2507,9 +2521,14 @@ export const PatientRecord = ({
               <div style={{ ...styles.photoInputAddRow, position: 'relative' }}>
                 <div style={{ flex: 1 }}>
                   <MasterDataInput
+                    ref={allergyInputRef}
+                    inputRef={allergyInputRef}
                     type="allergy"
                     value={tempAllergy}
                     onChange={(val) => setTempAllergy(val)}
+                    onTabEmptyNext={() => {
+                      complaintInputRef.current?.focus();
+                    }}
                     onEnterNext={(chosen) => handleAddAllergy(chosen)}
                     onSelectCallback={(chosen) => setTempAllergy(chosen)}
                     placeholder="TYPE OR SELECT ALLERGY..."
@@ -2519,6 +2538,12 @@ export const PatientRecord = ({
                 <button
                   type="button"
                   onClick={() => handleAddAllergy()}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Tab' && !e.shiftKey) {
+                      e.preventDefault();
+                      complaintInputRef.current?.focus();
+                    }
+                  }}
                   style={styles.photoAddBtnRed}
                 >
                   + Add
@@ -2536,6 +2561,7 @@ export const PatientRecord = ({
                       <span>{alg}</span>
                       <button
                         type="button"
+                        tabIndex={-1}
                         onClick={() => handleRemoveAllergy(alg)}
                         style={styles.photoPillCloseBtn}
                       >
@@ -2560,9 +2586,14 @@ export const PatientRecord = ({
               <div style={{ ...styles.photoInputAddRow, position: 'relative' }}>
                 <div style={{ flex: 1 }}>
                   <MasterDataInput
+                    ref={complaintInputRef}
+                    inputRef={complaintInputRef}
                     type="complaint"
                     value={tempComplaint}
                     onChange={(val) => setTempComplaint(val)}
+                    onTabEmptyNext={() => {
+                      investigationInputRef.current?.focus();
+                    }}
                     onEnterNext={(chosen) => handleAddComplaint(chosen)}
                     onSelectCallback={(chosen) => setTempComplaint(chosen)}
                     placeholder="TYPE OR SELECT COMPLAINT..."
@@ -2572,6 +2603,12 @@ export const PatientRecord = ({
                 <button
                   type="button"
                   onClick={() => handleAddComplaint()}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Tab' && !e.shiftKey) {
+                      e.preventDefault();
+                      investigationInputRef.current?.focus();
+                    }
+                  }}
                   style={styles.photoAddBtnGreen}
                 >
                   + Add
@@ -2588,6 +2625,7 @@ export const PatientRecord = ({
                       <span>{cmp}</span>
                       <button
                         type="button"
+                        tabIndex={-1}
                         onClick={() => handleRemoveComplaint(cmp)}
                         style={styles.photoPillCloseBtn}
                       >
@@ -2612,10 +2650,20 @@ export const PatientRecord = ({
               <div style={{ ...styles.photoInputAddRow, position: 'relative' }}>
                 <div style={{ flex: '1 1 180px' }}>
                   <MasterDataInput
+                    ref={investigationInputRef}
+                    inputRef={investigationInputRef}
                     type="investigation"
                     value={tempInvestigation}
                     onChange={(val) => setTempInvestigation(val)}
-                    onEnterNext={(chosen) => handleAddInvestigation(chosen)}
+                    onTabEmptyNext={() => {
+                      ipdInputRef.current?.focus();
+                    }}
+                    onEnterNext={(chosen) => {
+                      if (chosen) {
+                        setTempInvestigation(chosen);
+                        labNameInputRef.current?.focus();
+                      }
+                    }}
                     onSelectCallback={(chosen) => setTempInvestigation(chosen)}
                     placeholder="REPORT TYPE..."
                     inputStyle={styles.photoInput}
@@ -2623,9 +2671,20 @@ export const PatientRecord = ({
                 </div>
                 <div style={{ width: '120px', flexShrink: 0 }}>
                   <input
+                    ref={labNameInputRef}
                     type="text"
                     value={tempLabName}
                     onChange={(e) => setTempLabName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddInvestigation();
+                        investigationInputRef.current?.focus();
+                      } else if (e.key === 'Tab' && !e.shiftKey && !tempInvestigation.trim()) {
+                        e.preventDefault();
+                        ipdInputRef.current?.focus();
+                      }
+                    }}
                     placeholder="LAB NAME..."
                     style={styles.photoInput}
                   />
@@ -2633,6 +2692,12 @@ export const PatientRecord = ({
                 <button
                   type="button"
                   onClick={() => handleAddInvestigation()}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Tab' && !e.shiftKey) {
+                      e.preventDefault();
+                      ipdInputRef.current?.focus();
+                    }
+                  }}
                   style={styles.photoAddBtnPurple}
                 >
                   + Add
@@ -2640,6 +2705,12 @@ export const PatientRecord = ({
                 <button
                   type="button"
                   onClick={() => setShowAddReportModal(true)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Tab' && !e.shiftKey) {
+                      e.preventDefault();
+                      ipdInputRef.current?.focus();
+                    }
+                  }}
                   style={styles.photoLabEntryBtn}
                   title="Open Detailed Lab Report Values Modal"
                 >
@@ -2673,6 +2744,7 @@ export const PatientRecord = ({
                           <td style={{ ...styles.photoTd, textAlign: 'center' }}>
                             <button
                               type="button"
+                              tabIndex={-1}
                               onClick={() => handleRemoveInvestigation(inv.id)}
                               style={styles.photoRowDeleteBtn}
                             >
@@ -2701,9 +2773,14 @@ export const PatientRecord = ({
               <div style={{ ...styles.photoInputAddRow, position: 'relative' }}>
                 <div style={{ flex: 1 }}>
                   <MasterDataInput
+                    ref={ipdInputRef}
+                    inputRef={ipdInputRef}
                     type="medicine"
                     value={tempIpd}
                     onChange={(val) => setTempIpd(val)}
+                    onTabEmptyNext={() => {
+                      clinicMedInputRef.current?.focus();
+                    }}
                     onEnterNext={(chosen) => handleAddIpdDetail(chosen)}
                     onSelectCallback={(chosen) => setTempIpd(chosen)}
                     placeholder="TYPE OR SELECT IPD DETAIL (e.g. RL 500ml IV, Inj. Voveran 2ml IM)..."
@@ -2713,6 +2790,12 @@ export const PatientRecord = ({
                 <button
                   type="button"
                   onClick={() => handleAddIpdDetail()}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Tab' && !e.shiftKey) {
+                      e.preventDefault();
+                      clinicMedInputRef.current?.focus();
+                    }
+                  }}
                   style={styles.photoAddBtnAmber}
                 >
                   + Add
@@ -2730,6 +2813,7 @@ export const PatientRecord = ({
                       <span>{typeof ipd === 'string' ? ipd : ipd?.item}</span>
                       <button
                         type="button"
+                        tabIndex={-1}
                         onClick={() => handleRemoveIpdDetail(idx)}
                         style={styles.photoPillCloseBtn}
                       >
@@ -3319,6 +3403,9 @@ export const PatientRecord = ({
                       if (e.key === 'Enter') {
                         e.preventDefault();
                         handleApplyDietary();
+                      } else if (e.key === 'Tab' && !e.shiftKey && !dietaryTextInput.trim()) {
+                        e.preventDefault();
+                        chargeInputRef.current?.focus();
                       }
                     }}
                     placeholder="SPECIFIC FOOD ADVICE (AUTO-FILLS FROM CODE OR TYPE DIRECTLY)..."
@@ -3329,6 +3416,12 @@ export const PatientRecord = ({
                 <button
                   type="button"
                   onClick={handleApplyDietary}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Tab' && !e.shiftKey) {
+                      e.preventDefault();
+                      chargeInputRef.current?.focus();
+                    }
+                  }}
                   style={styles.photoApplyBtnGreen}
                   title="Apply dietary instruction to case"
                 >
@@ -3347,6 +3440,7 @@ export const PatientRecord = ({
                       <button
                         key={item._id || idx}
                         type="button"
+                        tabIndex={-1}
                         onClick={() => {
                           if (isAlreadyAdded) {
                             handleRemoveDietaryItem(item.value);
@@ -3384,6 +3478,7 @@ export const PatientRecord = ({
                       <span>{item}</span>
                       <button
                         type="button"
+                        tabIndex={-1}
                         onClick={() => handleRemoveDietaryItem(item)}
                         style={styles.photoPillCloseBtn}
                         title="Remove this advice"
@@ -3458,6 +3553,7 @@ export const PatientRecord = ({
                 <div style={styles.photoFieldGroup}>
                   <label style={styles.photoLabel}>Charged Amount (₹):</label>
                   <input
+                    ref={chargeInputRef}
                     type="number"
                     min="0"
                     value={currentPatient ? visitForm.charge : '0'}
