@@ -41,18 +41,6 @@ export const SIDEBAR_TABS = [
     shortcut: 'F3',
   },
   {
-    id: 'cut-master',
-    label: 'Cut Master',
-    icon: Percent,
-    shortcut: 'F5',
-  },
-  {
-    id: 'expense-master',
-    label: 'Expense Master',
-    icon: Wallet,
-    shortcut: 'F6',
-  },
-  {
     id: 'recent-history',
     label: 'Recent History',
     icon: History,
@@ -69,6 +57,18 @@ export const SIDEBAR_TABS = [
     label: 'Master Data',
     icon: Layers,
     shortcut: 'F8',
+  },
+  {
+    id: 'cut-master',
+    label: 'Cut Master',
+    icon: Percent,
+    shortcut: 'F5',
+  },
+  {
+    id: 'expense-master',
+    label: 'Expense Master',
+    icon: Wallet,
+    shortcut: 'F6',
   },
   {
     id: 'medical-certificate',
