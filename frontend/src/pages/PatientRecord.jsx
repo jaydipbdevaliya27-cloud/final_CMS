@@ -3481,7 +3481,7 @@ export const PatientRecord = ({
                   </svg>
                 </div>
 
-                {/* 1. DOCTOR'S LETTERPAD HEADER (MATCHING CLINIC STATIONERY) */}
+                {/* 1. DOCTOR'S LETTERPAD HEADER (MATCHING AUTHENTIC CLINIC PRESCRIPTION) */}
                 <div
                   className="letterpad-preprinted-header"
                   style={{
@@ -3495,14 +3495,10 @@ export const PatientRecord = ({
                     <div>
                       <div style={styles.letterpadDocName}>
                         {doctor?.name || 'Dr. Chirag Paghdal'}
+                        <span style={styles.letterpadDocDegree}> ({doctor?.degree || 'B.H.M.S.'})</span>
                       </div>
-                      <div style={styles.letterpadDocSubRow}>
-                        <span style={styles.letterpadDocSpecialty}>
-                          {doctor?.specialization?.includes('B.H.M.S') ? 'FAMILY PHYSICIAN' : (doctor?.specialization || 'FAMILY PHYSICIAN')}
-                        </span>
-                        <span style={styles.letterpadDocDegree}>
-                          ({doctor?.degree || 'B.H.M.S.'})
-                        </span>
+                      <div style={styles.letterpadDocSpecialty}>
+                        {doctor?.specialization?.includes('B.H.M.S') ? 'FAMILY PHYSICIAN' : (doctor?.specialization || 'FAMILY PHYSICIAN')}
                       </div>
                     </div>
 
@@ -3522,231 +3518,215 @@ export const PatientRecord = ({
                   <div style={styles.letterpadAddressBar}>
                     {doctor?.clinicName || 'Dhyey Clinic & Nursing Home'} : {doctor?.address || 'Shop No. 1, Mahavir Heights, New Kosad Road, Amroli, Surat.'}
                   </div>
-                </div>
 
-                {/* 2. PATIENT INFO BAR (FOR, ________  DATE : _________) */}
-                <div style={styles.letterpadPatientRow}>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', flex: 1, minWidth: 0, paddingRight: '12px' }}>
-                    <span style={{ fontWeight: '900', letterSpacing: '0.5px', fontSize: '13px', color: '#000000' }}>
-                      FOR,
-                    </span>
-                    <span style={styles.letterpadForUnderline}>
-                      {printVisit.patientName || currentPatient?.name}
-                      {(currentPatient?.age || (currentPatient?.gender && currentPatient.gender !== 'Not Specified')) && (
-                        <span style={{ fontWeight: '700', color: '#1F2937' }}>
-                          {' '}({currentPatient.age ? `${currentPatient.age} Yrs` : ''}{currentPatient.age && currentPatient.gender && currentPatient.gender !== 'Not Specified' ? ' / ' : ''}{currentPatient.gender && currentPatient.gender !== 'Not Specified' ? currentPatient.gender : ''})
-                        </span>
-                      )}
-                      {currentPatient?.patientId && (
-                        <span style={{ fontSize: '11px', color: '#475569', marginLeft: '6px', fontWeight: '600' }}>
-                          [{currentPatient.patientId}]
-                        </span>
-                      )}
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', flexShrink: 0 }}>
-                    <span style={{ fontWeight: '900', letterSpacing: '0.5px', fontSize: '13px', color: '#000000' }}>
-                      DATE :
-                    </span>
-                    <span style={styles.letterpadDateUnderline}>
-                      {formattedDate}
-                    </span>
+                  {/* Subheader: FOR, _________________ DATE : ______________ */}
+                  <div style={styles.letterpadForDateRow}>
+                    <span style={{ fontWeight: 800, fontSize: '13px', color: '#000000' }}>FOR,</span>
+                    <span style={{ fontWeight: 800, fontSize: '13px', color: '#000000' }}>DATE :</span>
                   </div>
                 </div>
 
-                {/* 2B. CLINICAL VITALS & CASE OBSERVATIONS (MATCHING DR. CHIRAG PAGHDAL'S LETTERPAD BLUEPRINT) */}
-                <div style={styles.letterpadClinicalBox}>
-                  {/* Row 1: Date - Time | BP | Sugar | Other */}
-                  <div style={styles.letterpadClinicalRow}>
-                    <div style={styles.letterpadVitalsItem}>
-                      <span style={styles.clinicalHeaderLabel}>Date - Time :</span>
-                      <span style={styles.clinicalValueUnderline}>{dateTimeDisplay}</span>
-                    </div>
-
-                    {/* <div style={styles.letterpadVitalsItem}>
-                      <span style={styles.clinicalHeaderLabel}>BP :</span>
-                      <span style={styles.clinicalValueUnderline}>{printVisit.bp || '--'}</span>
-                    </div> */}
-
-                    {/* <div style={styles.letterpadVitalsItem}>
-                      <span style={styles.clinicalHeaderLabel}>Sugar :</span>
-                      <span style={styles.clinicalValueUnderline}>
-                        {printVisit.sugar ? `${printVisit.sugar} mg/dL` : '--'}
+                {/* 2. PATIENT INFO BLOCK (EXACT MATCH TO USER PHOTO) */}
+                <div style={styles.photoPatientInfoBlock}>
+                  <div style={styles.photoPatientInfoRow}>
+                    <div style={styles.photoPatientColLeft}>
+                      <span style={styles.photoPatientLabel}>Patient:</span>{' '}
+                      <span style={styles.photoPatientValueBold}>
+                        {printVisit.patientName || currentPatient?.name || '—'}
                       </span>
-                    </div> */}
-
-                    {/* <div style={styles.letterpadVitalsItem}>
-                      <span style={styles.clinicalHeaderLabel}>Other :</span>
-                      <span style={styles.clinicalValueUnderline}>{printVisit.other || '--'}</span>
-                    </div> */}
+                    </div>
+                    <div style={styles.photoPatientColRight}>
+                      <span style={styles.photoPatientLabel}>Date:</span>{' '}
+                      <span style={styles.photoPatientValue}>
+                        {(() => {
+                          let dPart = '';
+                          const rawDate = printVisit.visitDate;
+                          if (rawDate && rawDate.includes('-')) {
+                            const p = rawDate.split('-');
+                            if (p.length === 3 && p[0].length === 4) {
+                              dPart = `${p[2]}-${p[1]}-${p[0]}`;
+                            } else {
+                              dPart = rawDate;
+                            }
+                          } else {
+                            const now = new Date();
+                            const pad = (n) => String(n).padStart(2, '0');
+                            dPart = `${pad(now.getDate())}-${pad(now.getMonth() + 1)}-${now.getFullYear()}`;
+                          }
+                          let tPart = '';
+                          if (printVisit.createdAt) {
+                            try {
+                              tPart = new Date(printVisit.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+                            } catch (e) {}
+                          }
+                          if (!tPart) {
+                            tPart = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+                          }
+                          return `${dPart}, ${tPart}`;
+                        })()}
+                      </span>
+                    </div>
                   </div>
 
-                  {/* Row 2: Reference & Investigation (when available) */}
-                  {/* {(printVisit.reference || printVisit.investigation) && (
-                    <div style={styles.letterpadClinicalRow}>
-                      {printVisit.reference && (
-                        <div style={styles.letterpadVitalsItem}>
-                          <span style={styles.clinicalHeaderLabel}>Reference :</span>
-                          <span style={styles.clinicalValueUnderline}>{printVisit.reference}</span>
-                        </div>
-                      )}
-                      {printVisit.investigation && (
-                        <div style={styles.letterpadVitalsItem}>
-                          <span style={styles.clinicalHeaderLabel}>Investigation :</span>
-                          <span style={styles.clinicalValueUnderline}>{printVisit.investigation}</span>
-                        </div>
-                      )}
+                  <div style={styles.photoPatientInfoRow}>
+                    <div style={styles.photoPatientColLeft}>
+                      <span style={styles.photoPatientLabel}>Age:</span>{' '}
+                      <span style={styles.photoPatientValue}>
+                        {currentPatient?.age ? `${currentPatient.age} Y` : (printVisit.age ? `${printVisit.age} Y` : '—')}
+                      </span>
                     </div>
-                  )} */}
-
-                  {/* Row 3: [ T ] Treatments in Clinic & • Complaints */}
-                  {(hasTreatments || printVisit.complaint) && (
-                    <div style={styles.letterpadTreatmentsComplaintsRow}>
-                      {/* {hasTreatments && (
-                        <div style={styles.letterpadTreatmentGroup}>
-                          <span style={styles.letterpadTBox}>[ T ]</span>
-                          <span style={styles.letterpadTreatmentText}>
-                            {validTreatments
-                              .map((tr) => `${tr.item}${tr.qty ? ` (${tr.qty})` : ''}`)
-                              .join(', ')}
-                          </span>
-                        </div>
-                      )} */}
-
-                      {printVisit.complaint && (
-                        <div style={styles.letterpadComplaintGroup}>
-                          <span style={styles.complaintBulletPoint}>&bull;</span>
-                          <span style={styles.complaintTitleLabel}>Complaints :</span>
-                          <span style={styles.complaintTextValue}>{printVisit.complaint}</span>
-                        </div>
-                      )}
+                    <div style={styles.photoPatientColRight}>
+                      <span style={styles.photoPatientLabel}>B.P.:</span>{' '}
+                      <span style={styles.photoPatientValue}>
+                        {printVisit.bp ? printVisit.bp : '-'}
+                      </span>
                     </div>
-                  )}
-                </div>
-
-                {/* 3. PRESCRIPTION BODY */}
-                <div style={styles.cleanRxBody}>
-                  <div style={styles.cleanRxTitleRow}>
-                    <span style={styles.cleanRxSymbol}>&#8478;</span>
-                    <span style={styles.cleanRxTitle}>{t.rxTitle}</span>
                   </div>
 
-                  {printVisit.prescriptions && printVisit.prescriptions.length > 0 ? (
-                    <table style={styles.cleanRxTable}>
-                      <thead>
-                        <tr>
-                          <th style={{ ...styles.cleanTh, width: '36px', textAlign: 'center' }}>
-                            {t.colNum}
-                          </th>
-                          <th style={{ ...styles.cleanTh, textAlign: 'left', minWidth: '160px' }}>
-                            {t.colMedicine}
-                          </th>
-                          <th style={{ ...styles.cleanTh, width: '65px', textAlign: 'center' }}>
-                            {t.colQty}
-                          </th>
-                          <th style={{ ...styles.cleanTh, textAlign: 'left' }}>
-                            {t.colDosageInstructions}
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {printVisit.prescriptions.map((rx, idx) => {
-                          const doseNumbers = `${rx.morning || '0'} - ${rx.noon || '0'} - ${rx.evening || '0'} - ${rx.night || '0'}`;
-                          const isBf = rx.timing === 'BF';
-                          const humanDose = formatDoseInstruction(rx.morning, rx.noon, rx.evening, rx.night, rx.timing, printLanguage, rx.sosInstruction);
-
-                          return (
-                            <tr key={idx}>
-                              <td style={{ ...styles.cleanTd, textAlign: 'center', fontWeight: 'bold' }}>
-                                {idx + 1}
-                              </td>
-                              <td style={styles.cleanTd}>
-                                <strong style={styles.cleanMedName}>{rx.medicine}</strong>
-                              </td>
-                              <td style={{ ...styles.cleanTd, textAlign: 'center', fontWeight: 'bold', fontSize: '12.5px' }}>
-                                {rx.qty || '-'}
-                              </td>
-                              <td style={styles.cleanTd}>
-                                <div style={styles.dosageCellWrapper}>
-                                  {/* <div style={styles.dosageHeaderRow}>
-                                    <span style={styles.dosePillBadge}>{doseNumbers}</span>
-                                    <span style={{
-                                      ...styles.timingPillBadge,
-                                      backgroundColor: isBf ? '#FEF3C7' : '#DCFCE7',
-                                      color: isBf ? '#92400E' : '#166534',
-                                      borderColor: isBf ? '#FDE68A' : '#BBF7D0',
-                                    }}>
-                                      {isBf ? t.bfLabel : t.afLabel}
-                                    </span>
-                                  </div> */}
-                                  <div style={styles.humanDoseInstruction}>
-                                    {humanDose}
-                                  </div>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  ) : (
-                    <p style={{ fontStyle: 'italic', color: '#6B7280', padding: '16px 0' }}>
-                      {t.noPrescription}
-                    </p>
-                  )}
-
-                  {/* 4. DIETARY SUGGESTIONS (IF SELECTED / ADDED) */}
-                  {dietaryItems.length > 0 && (
-                    <div style={styles.cleanDietaryBox} className="clean-dietary-box">
-                      <strong style={styles.cleanDietaryTitle}>{t.dietaryTitle}</strong>
-                      <ul style={styles.cleanDietaryList}>
-                        {dietaryItems.map((item, idx) => (
-                          <li key={idx} style={styles.cleanDietaryItem}>
-                            {item}
-                          </li>
-                        ))}
-                      </ul>
+                  <div style={styles.photoPatientInfoRow}>
+                    <div style={styles.photoPatientColLeft}>
+                      <span style={styles.photoPatientLabel}>Mobile:</span>{' '}
+                      <span style={styles.photoPatientValue}>
+                        {currentPatient?.phone || printVisit.phone || '-'}
+                      </span>
                     </div>
-                  )}
-                </div>
-
-                {/* 5. DOCTOR LETTERPAD FOOTER WITH DIGITAL SIGNATURE */}
-                <div style={styles.letterpadFooterRow}>
-                  <div style={styles.letterpadFooterAdviceCol}>
-                    <p style={styles.letterpadFooterAdviceText}>
-                      {t.footerAdvice}
-                    </p>
-                    <p style={styles.letterpadFooterTimingsText}>
-                      {t.opdTimings}
-                    </p>
-                  </div>
-                  <div style={styles.letterpadSignCol}>
-                    <div style={styles.letterpadCursiveSignature}>
-                      {doctor?.name || 'Dr. Chirag Paghdal'}
-                    </div>
-                    <div style={styles.letterpadSignLine} />
-                    <div style={styles.letterpadSignName}>
-                      {doctor?.name || 'Dr. Chirag Paghdal'}
-                    </div>
-                    <div style={styles.letterpadSignRole}>
-                      FAMILY PHYSICIAN (B.H.M.S.) &bull; Reg. No. {doctor?.regNo || 'G-9035'}
+                    <div style={styles.photoPatientColRight}>
+                      <span style={styles.photoPatientLabel}>Sugar:</span>{' '}
+                      <span style={styles.photoPatientValue}>
+                        {printVisit.sugar ? printVisit.sugar : '-'}
+                      </span>
                     </div>
                   </div>
                 </div>
 
-                {/* 6. BOTTOM PHARMACY SPONSOR BAR (+ HARSH MEDICAL & GENERAL STORES +) */}
+                {/* Solid horizontal line across page */}
+                <div style={styles.photoBlackDivider} />
+
+                {/* 3. ℞ SYMBOL & PRESCRIPTION TABLE */}
+                <div style={styles.photoRxRow}>
+                  <span style={styles.photoRxSymbol}>&#8478;</span>
+                </div>
+
+                <table style={styles.photoRxTable}>
+                  <thead>
+                    <tr>
+                      <th style={{ ...styles.photoRxTh, width: '42%', textAlign: 'left' }}>Medicine Name</th>
+                      <th style={{ ...styles.photoRxTh, width: '12%', textAlign: 'center' }}>Qty</th>
+                      <th style={{ ...styles.photoRxTh, width: '26%', textAlign: 'center' }}>Dose</th>
+                      <th style={{ ...styles.photoRxTh, width: '20%', textAlign: 'left' }}>Instruction</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {printVisit.prescriptions && printVisit.prescriptions.length > 0 ? (
+                      printVisit.prescriptions.map((rx, idx) => {
+                        const isSos = rx.timing === 'SOS';
+                        const hasDosageNumbers =
+                          (rx.morning && rx.morning !== '0') ||
+                          (rx.noon && rx.noon !== '0') ||
+                          (rx.evening && rx.evening !== '0') ||
+                          (rx.night && rx.night !== '0');
+
+                        // Gujarati instruction text
+                        let instructionText = '';
+                        if (isSos) {
+                          instructionText = rx.sosInstruction?.trim() || 'તાવ આવે ત્યારે';
+                        } else if (rx.timing === 'BF') {
+                          instructionText = 'જમ્યા પહેલા';
+                        } else {
+                          instructionText = 'જમ્યા પછી';
+                        }
+
+                        return (
+                          <tr key={idx} style={styles.photoRxTr}>
+                            {/* 1. Medicine Name */}
+                            <td style={styles.photoRxTdMedName}>
+                              {rx.medicine}
+                            </td>
+
+                            {/* 2. Qty */}
+                            <td style={styles.photoRxTdQty}>
+                              {rx.qty || '-'}
+                            </td>
+
+                            {/* 3. Dose (4-column mini-grid or dash) */}
+                            <td style={styles.photoRxTdDose}>
+                              {isSos || !hasDosageNumbers ? (
+                                <span style={styles.photoDashText}>-</span>
+                              ) : (
+                                <table style={styles.photoDoseMiniTable}>
+                                  <thead>
+                                    <tr>
+                                      <th style={styles.photoDoseMiniTh}>સવાર</th>
+                                      <th style={styles.photoDoseMiniTh}>બપોર</th>
+                                      <th style={styles.photoDoseMiniTh}>સાંજ</th>
+                                      <th style={{ ...styles.photoDoseMiniTh, borderRight: 'none' }}>રાત</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr>
+                                      <td style={styles.photoDoseMiniTd}>
+                                        {rx.morning && rx.morning !== '0' ? rx.morning : ''}
+                                      </td>
+                                      <td style={styles.photoDoseMiniTd}>
+                                        {rx.noon && rx.noon !== '0' ? rx.noon : ''}
+                                      </td>
+                                      <td style={styles.photoDoseMiniTd}>
+                                        {rx.evening && rx.evening !== '0' ? rx.evening : ''}
+                                      </td>
+                                      <td style={{ ...styles.photoDoseMiniTd, borderRight: 'none' }}>
+                                        {rx.night && rx.night !== '0' ? rx.night : ''}
+                                      </td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              )}
+                            </td>
+
+                            {/* 4. Instruction */}
+                            <td style={styles.photoRxTdInstruction}>
+                              {instructionText}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    ) : (
+                      <tr>
+                        <td colSpan={4} style={{ textAlign: 'center', padding: '16px', color: '#64748B', fontStyle: 'italic' }}>
+                          No prescription medicines recorded
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+
+                {/* 4. ADVICE BOX (સૂચન / પરહેજ (ADVICE)) */}
+                <div style={styles.photoAdviceBox}>
+                  <span style={styles.photoAdviceTitle}>
+                    સૂચન / પરહેજ (ADVICE):{' '}
+                  </span>
+                  <span style={styles.photoAdviceText}>
+                    {printDietary && printDietary.trim()
+                      ? printDietary
+                      : '---અનાજ [ રોટલી , ભાખરી , રોટલો ] , બટાકા , દૂધ ના લેવુ----- --- દાળ ભાત, ખીચડી , છાશ, દહીં, લીંબુ પાણી, મોસંબી નુ જ્યુસ, પાઈનેપલ નુ જ્યુસ, લસ્સી વધારે લેવી'}
+                  </span>
+                </div>
+
+                {/* Separator line above footer */}
+                <div style={styles.photoFooterDivider} />
+
+                {/* 5. PHARMACY FOOTER: + Harsh Medical & General Stores + */}
                 <div
                   className="letterpad-preprinted-footer"
                   style={{
-                    ...styles.letterpadPharmacyBar,
+                    ...styles.photoPharmacyBar,
                     visibility: printMode === 'padOnly' ? 'hidden' : 'visible',
                   }}
                 >
-                  <span style={styles.letterpadPharmacyPlus}>+</span>
-                  <span style={styles.letterpadPharmacyText}>
+                  <span style={styles.photoPharmacyPlus}>+</span>
+                  <span style={styles.photoPharmacyText}>
                     {doctor?.medicalStore || 'Harsh Medical & General Stores'}
                   </span>
-                  <span style={styles.letterpadPharmacyPlus}>+</span>
+                  <span style={styles.photoPharmacyPlus}>+</span>
                 </div>
               </div>
             </div>
@@ -6702,15 +6682,220 @@ const styles = {
     color: '#1E293B',
   },
   letterpadAddressBar: {
-    backgroundColor: '#DCE2E6',
+    backgroundColor: '#D4D8DC',
     border: '1px solid #CBD5E1',
+    borderRadius: '3px',
     padding: '3px 8px',
-    margin: '6px 0 8px 0',
+    margin: '4px 0 6px 0',
     textAlign: 'center',
-    fontSize: '11px',
+    fontSize: '10.5px',
+    fontStyle: 'italic',
     fontWeight: '600',
     color: '#1E293B',
     letterSpacing: '0.2px',
+  },
+  letterpadForDateRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    padding: '3px 0 5px 0',
+    position: 'relative',
+    zIndex: 1,
+  },
+  photoPatientInfoBlock: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '3px',
+    margin: '3px 0 5px 0',
+    position: 'relative',
+    zIndex: 1,
+  },
+  photoPatientInfoRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    fontSize: '12px',
+    color: '#000000',
+  },
+  photoPatientColLeft: {
+    width: '58%',
+    display: 'flex',
+    alignItems: 'baseline',
+    gap: '4px',
+  },
+  photoPatientColRight: {
+    width: '42%',
+    display: 'flex',
+    alignItems: 'baseline',
+    gap: '4px',
+  },
+  photoPatientLabel: {
+    fontWeight: 700,
+    fontSize: '12px',
+    color: '#000000',
+  },
+  photoPatientValue: {
+    fontWeight: 600,
+    fontSize: '12px',
+    color: '#000000',
+  },
+  photoPatientValueBold: {
+    fontWeight: 800,
+    fontSize: '12.5px',
+    color: '#000000',
+    textTransform: 'uppercase',
+  },
+  photoBlackDivider: {
+    height: '1px',
+    backgroundColor: '#000000',
+    width: '100%',
+    margin: '3px 0 5px 0',
+    position: 'relative',
+    zIndex: 1,
+  },
+  photoRxRow: {
+    display: 'flex',
+    alignItems: 'center',
+    margin: '1px 0 3px 0',
+    position: 'relative',
+    zIndex: 1,
+  },
+  photoRxSymbol: {
+    fontSize: '22px',
+    fontWeight: 900,
+    fontFamily: 'serif',
+    color: '#000000',
+    lineHeight: 1,
+  },
+  photoRxTable: {
+    width: '100%',
+    borderCollapse: 'collapse',
+    fontSize: '11px',
+    color: '#000000',
+    position: 'relative',
+    zIndex: 1,
+  },
+  photoRxTh: {
+    padding: '4px 6px',
+    color: '#000000',
+    fontWeight: 700,
+    fontSize: '11px',
+    borderBottom: '1.5px solid #000000',
+  },
+  photoRxTr: {
+    borderBottom: '1px solid #E2E8F0',
+  },
+  photoRxTdMedName: {
+    padding: '7px 6px',
+    fontSize: '12px',
+    fontWeight: 800,
+    color: '#000000',
+    textTransform: 'uppercase',
+    verticalAlign: 'middle',
+  },
+  photoRxTdQty: {
+    padding: '7px 6px',
+    fontSize: '12px',
+    fontWeight: 800,
+    color: '#000000',
+    textAlign: 'center',
+    verticalAlign: 'middle',
+  },
+  photoRxTdDose: {
+    padding: '5px 4px',
+    textAlign: 'center',
+    verticalAlign: 'middle',
+  },
+  photoDoseMiniTable: {
+    borderCollapse: 'collapse',
+    border: '1px solid #000000',
+    margin: '0 auto',
+    fontSize: '9px',
+    backgroundColor: '#FFFFFF',
+  },
+  photoDoseMiniTh: {
+    padding: '1px 5px',
+    borderRight: '1px solid #000000',
+    borderBottom: '1px solid #000000',
+    fontWeight: 600,
+    fontSize: '9px',
+    color: '#000000',
+    textAlign: 'center',
+    whiteSpace: 'nowrap',
+  },
+  photoDoseMiniTd: {
+    padding: '2px 5px',
+    borderRight: '1px solid #000000',
+    textAlign: 'center',
+    fontWeight: 800,
+    fontSize: '10px',
+    color: '#000000',
+    minWidth: '22px',
+    height: '14px',
+  },
+  photoDashText: {
+    fontSize: '13px',
+    fontWeight: 700,
+    color: '#000000',
+  },
+  photoRxTdInstruction: {
+    padding: '7px 6px',
+    fontSize: '11px',
+    fontWeight: 700,
+    color: '#000000',
+    verticalAlign: 'middle',
+  },
+  photoAdviceBox: {
+    border: '1px solid #000000',
+    borderRadius: '4px',
+    padding: '6px 10px',
+    marginTop: '10px',
+    marginBottom: '8px',
+    fontSize: '11px',
+    lineHeight: 1.45,
+    backgroundColor: '#FFFFFF',
+    position: 'relative',
+    zIndex: 1,
+  },
+  photoAdviceTitle: {
+    fontWeight: 800,
+    textDecoration: 'underline',
+    color: '#000000',
+  },
+  photoAdviceText: {
+    fontWeight: 700,
+    color: '#000000',
+  },
+  photoFooterDivider: {
+    height: '1px',
+    backgroundColor: '#CBD5E1',
+    width: '100%',
+    margin: '12px 0 6px 0',
+    position: 'relative',
+    zIndex: 1,
+  },
+  photoPharmacyBar: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '12px',
+    padding: '4px 0',
+    position: 'relative',
+    zIndex: 1,
+  },
+  photoPharmacyPlus: {
+    fontSize: '18px',
+    fontWeight: 900,
+    color: '#0F172A',
+    lineHeight: 1,
+  },
+  photoPharmacyText: {
+    fontSize: '15px',
+    fontWeight: 800,
+    fontStyle: 'italic',
+    color: '#0B63AC',
+    letterSpacing: '0.4px',
+    fontFamily: "'Segoe UI', -apple-system, sans-serif",
   },
   letterpadPatientRow: {
     display: 'flex',

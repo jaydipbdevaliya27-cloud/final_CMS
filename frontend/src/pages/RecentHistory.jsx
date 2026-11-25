@@ -894,97 +894,236 @@ export const RecentHistory = ({
               </button>
             </div>
 
-            <div style={styles.printMemoSheet}>
-              {/* Clinic Header */}
-              <div style={styles.printHeaderBlock}>
-                <h2 style={styles.printClinicName}>
-                  {doctor?.clinicName || 'PAGHDAL CLINIC & NURSING HOME'}
-                </h2>
-                <div style={styles.printDoctorName}>
-                  {doctor?.name || 'Dr. Chirag Paghdal'}
-                  <span style={styles.printDoctorDegree}> ({doctor?.degree || 'B.H.M.S.'})</span>
-                </div>
-                <div style={styles.printClinicAddress}>
-                  {doctor?.address || 'Shop No. 1, Mahavir Heights, New Kosad Road, Amroli, Surat.'} | Tel: {doctor?.phone || '98793 80508'}
-                </div>
+            <div style={styles.printMemoSheet} id="printable-rx">
+              {/* WATERMARK: DR. CHIRAG PAGHDAL SEAL */}
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '52%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  pointerEvents: 'none',
+                  zIndex: 0,
+                  opacity: 0.08,
+                }}
+              >
+                <svg width="270" height="270" viewBox="0 0 300 300">
+                  <defs>
+                    <path id="watermarkTopArcRH" d="M 45,150 A 105,105 0 0,1 255,150" fill="none" />
+                    <path id="watermarkBottomArcRH" d="M 255,150 A 105,105 0 0,1 45,150" fill="none" />
+                  </defs>
+                  <circle cx="150" cy="150" r="138" fill="none" stroke="#0B63AC" strokeWidth="2.5" />
+                  <circle cx="150" cy="150" r="128" fill="none" stroke="#0B63AC" strokeWidth="1" strokeDasharray="4 3" />
+                  <circle cx="150" cy="150" r="86" fill="none" stroke="#0B63AC" strokeWidth="1.5" />
+                  <text fill="#0B63AC" fontSize="13" fontWeight="900" letterSpacing="3.5" textAnchor="middle">
+                    <textPath href="#watermarkTopArcRH" startOffset="50%">
+                      DR. CHIRAG PAGHDAL
+                    </textPath>
+                  </text>
+                  <text fill="#0B63AC" fontSize="12" fontWeight="800" letterSpacing="4" textAnchor="middle">
+                    <textPath href="#watermarkBottomArcRH" startOffset="50%">
+                      ★ DHYEY CLINIC ★
+                    </textPath>
+                  </text>
+                  <g transform="translate(150, 150) scale(0.9) translate(-50, -60)" stroke="#0B63AC" fill="none" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="50" y1="15" x2="50" y2="105" strokeWidth="3" />
+                    <circle cx="50" cy="12" r="4.5" fill="#0B63AC" />
+                    <polygon points="50,110 47,104 53,104" fill="#0B63AC" />
+                    <path d="M 50,25 C 32,15 15,18 8,28 C 18,32 30,34 50,38" fill="none" strokeWidth="2.2" />
+                    <path d="M 50,25 C 68,15 85,18 92,28 C 82,32 70,34 50,38" fill="none" strokeWidth="2.2" />
+                    <path d="M 50,32 C 36,25 22,27 16,35 C 25,38 36,40 50,44" fill="none" strokeWidth="1.8" />
+                    <path d="M 50,32 C 64,25 78,27 84,35 C 75,38 64,40 50,44" fill="none" strokeWidth="1.8" />
+                    <path d="M 50,42 C 30,48 28,62 50,68 C 72,74 70,88 50,96" strokeWidth="2.2" />
+                    <path d="M 50,42 C 70,48 72,62 50,68 C 28,74 30,88 50,96" strokeWidth="2.2" />
+                    <circle cx="43" cy="40" r="2" fill="#0B63AC" />
+                    <circle cx="57" cy="40" r="2" fill="#0B63AC" />
+                  </g>
+                </svg>
               </div>
 
-              <div style={styles.printDivider} />
+              {/* 1. DOCTOR LETTERPAD HEADER */}
+              <div style={styles.rhLetterpadHeader}>
+                <div style={styles.rhHeaderTopRow}>
+                  <div>
+                    <div style={styles.rhDocName}>
+                      {doctor?.name || 'Dr. Chirag Paghdal'}
+                      <span style={styles.rhDocDegree}> ({doctor?.degree || 'B.H.M.S.'})</span>
+                    </div>
+                    <div style={styles.rhDocSpecialty}>
+                      {doctor?.specialization?.includes('B.H.M.S') ? 'FAMILY PHYSICIAN' : (doctor?.specialization || 'FAMILY PHYSICIAN')}
+                    </div>
+                  </div>
 
-              {/* Patient Meta Strip */}
-              <div style={styles.printMetaStrip}>
-                <div><strong>Patient:</strong> {visitToPrint.patientName}</div>
-                <div><strong>PID:</strong> {visitToPrint.patientId}</div>
-                <div><strong>Date:</strong> {visitToPrint.visitDate}</div>
-                <div><strong>BP:</strong> {visitToPrint.bp || '120/80'}</div>
-                {visitToPrint.sugar && <div><strong>Sugar:</strong> {visitToPrint.sugar}</div>}
-              </div>
-
-              {/* Clinical Details */}
-              {visitToPrint.complaint && (
-                <div style={styles.printSection}>
-                  <span style={styles.printSectionLabel}>Complaints:</span>
-                  <span style={styles.printSectionVal}>{visitToPrint.complaint}</span>
-                </div>
-              )}
-
-              {/* Medicines / Treatments */}
-              {visitToPrint.treatments && visitToPrint.treatments.length > 0 && (
-                <div style={styles.printSection}>
-                  <span style={styles.printSectionLabel}>Clinic Medicines:</span>
-                  <div style={styles.printMedRows}>
-                    {visitToPrint.treatments.map((t, idx) => (
-                      <div key={idx} style={styles.printMedRow}>
-                        <span>{idx + 1}. {t.item}</span>
-                        <span>Qty: {t.qty || 1}</span>
-                      </div>
-                    ))}
+                  <div style={styles.rhRightContact}>
+                    <div>Mo.: <strong>{doctor?.phone || '98793 80508'}</strong></div>
+                    <div>Reg. No. <strong>{doctor?.regNo || 'G-9035'}</strong></div>
                   </div>
                 </div>
-              )}
 
-              {/* Rx Prescriptions */}
-              {visitToPrint.prescriptions && visitToPrint.prescriptions.length > 0 && (
-                <div style={styles.printSection}>
-                  <span style={styles.printSectionLabel}>Rx (Pharmacy Prescriptions):</span>
-                  <table style={styles.printRxTable}>
-                    <thead>
-                      <tr>
-                        <th style={{ textAlign: 'left' }}>Medicine</th>
-                        <th style={{ textAlign: 'center' }}>Dosage (M-N-E-Nt)</th>
-                        <th style={{ textAlign: 'center' }}>Timing</th>
-                        <th style={{ textAlign: 'center' }}>Qty</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {visitToPrint.prescriptions.map((p, idx) => (
-                        <tr key={idx}>
-                          <td>{p.medicine}</td>
-                          <td style={{ textAlign: 'center' }}>
-                            {p.morning || 0}-{p.noon || 0}-{p.evening || 0}-{p.night || 0}
-                          </td>
-                          <td style={{ textAlign: 'center' }}>{p.timing || 'AF'}</td>
-                          <td style={{ textAlign: 'center' }}>{p.qty || '-'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div style={styles.rhAddressBar}>
+                  {doctor?.clinicName || 'Dhyey Clinic & Nursing Home'} : {doctor?.address || 'Shop No. 1, Mahavir Heights, New Kosad Road, Amroli, Surat.'}
                 </div>
-              )}
 
-              {/* Financials */}
-              <div style={styles.printBillingStrip}>
-                <div>Charged: <strong>₹{visitToPrint.charge || 0}</strong></div>
-                <div>Received: <strong>₹{visitToPrint.received || 0}</strong></div>
-                <div>
-                  {(visitToPrint.received || 0) > (visitToPrint.charge || 0) ? (
-                    <span style={{ color: '#15803D', fontWeight: 'bold' }}>
-                      🟢 Deposit: ₹{(visitToPrint.received || 0) - (visitToPrint.charge || 0)}
+                <div style={styles.rhForDateRow}>
+                  <span style={{ fontWeight: 800, fontSize: '13px', color: '#000000' }}>FOR,</span>
+                  <span style={{ fontWeight: 800, fontSize: '13px', color: '#000000' }}>DATE :</span>
+                </div>
+              </div>
+
+              {/* 2. PATIENT INFO BLOCK */}
+              <div style={styles.rhPatientInfoBlock}>
+                <div style={styles.rhPatientRow}>
+                  <div style={{ width: '58%', display: 'flex', gap: '4px' }}>
+                    <span style={{ fontWeight: 700 }}>Patient:</span>{' '}
+                    <span style={{ fontWeight: 800, textTransform: 'uppercase' }}>
+                      {visitToPrint.patientName}
                     </span>
-                  ) : (
-                    <span>Due: <strong>₹{Math.max(0, visitToPrint.due || 0)}</strong></span>
-                  )}
+                  </div>
+                  <div style={{ width: '42%', display: 'flex', gap: '4px' }}>
+                    <span style={{ fontWeight: 700 }}>Date:</span>{' '}
+                    <span>
+                      {(() => {
+                        let d = visitToPrint.visitDate || '';
+                        if (d.includes('-')) {
+                          const p = d.split('-');
+                          if (p.length === 3 && p[0].length === 4) d = `${p[2]}-${p[1]}-${p[0]}`;
+                        }
+                        let t = '';
+                        if (visitToPrint.createdAt) {
+                          try {
+                            t = new Date(visitToPrint.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+                          } catch (e) {}
+                        }
+                        return t ? `${d}, ${t}` : d;
+                      })()}
+                    </span>
+                  </div>
                 </div>
+
+                <div style={styles.rhPatientRow}>
+                  <div style={{ width: '58%', display: 'flex', gap: '4px' }}>
+                    <span style={{ fontWeight: 700 }}>Age:</span>{' '}
+                    <span>{visitToPrint.age ? `${visitToPrint.age} Y` : '—'}</span>
+                  </div>
+                  <div style={{ width: '42%', display: 'flex', gap: '4px' }}>
+                    <span style={{ fontWeight: 700 }}>B.P.:</span>{' '}
+                    <span>{visitToPrint.bp || '-'}</span>
+                  </div>
+                </div>
+
+                <div style={styles.rhPatientRow}>
+                  <div style={{ width: '58%', display: 'flex', gap: '4px' }}>
+                    <span style={{ fontWeight: 700 }}>Mobile:</span>{' '}
+                    <span>{visitToPrint.phone || '-'}</span>
+                  </div>
+                  <div style={{ width: '42%', display: 'flex', gap: '4px' }}>
+                    <span style={{ fontWeight: 700 }}>Sugar:</span>{' '}
+                    <span>{visitToPrint.sugar || '-'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Horizontal Line Divider */}
+              <div style={styles.rhBlackDivider} />
+
+              {/* 3. ℞ SYMBOL & TABLE */}
+              <div style={{ margin: '2px 0 4px', fontSize: '22px', fontWeight: 900, fontFamily: 'serif' }}>
+                &#8478;
+              </div>
+
+              <table style={styles.rhRxTable}>
+                <thead>
+                  <tr>
+                    <th style={{ width: '42%', textAlign: 'left', padding: '4px 6px', borderBottom: '1.5px solid #000', fontWeight: 700, fontSize: '11px' }}>Medicine Name</th>
+                    <th style={{ width: '12%', textAlign: 'center', padding: '4px 6px', borderBottom: '1.5px solid #000', fontWeight: 700, fontSize: '11px' }}>Qty</th>
+                    <th style={{ width: '26%', textAlign: 'center', padding: '4px 6px', borderBottom: '1.5px solid #000', fontWeight: 700, fontSize: '11px' }}>Dose</th>
+                    <th style={{ width: '20%', textAlign: 'left', padding: '4px 6px', borderBottom: '1.5px solid #000', fontWeight: 700, fontSize: '11px' }}>Instruction</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visitToPrint.prescriptions && visitToPrint.prescriptions.length > 0 ? (
+                    visitToPrint.prescriptions.map((p, idx) => {
+                      const isSos = p.timing === 'SOS';
+                      const hasDose = (p.morning && p.morning !== '0') || (p.noon && p.noon !== '0') || (p.evening && p.evening !== '0') || (p.night && p.night !== '0');
+                      let instr = '';
+                      if (isSos) {
+                        instr = p.sosInstruction?.trim() || 'તાવ આવે ત્યારે';
+                      } else if (p.timing === 'BF') {
+                        instr = 'જમ્યા પહેલા';
+                      } else {
+                        instr = 'જમ્યા પછી';
+                      }
+
+                      return (
+                        <tr key={idx} style={{ borderBottom: '1px solid #E2E8F0' }}>
+                          <td style={{ padding: '7px 6px', fontWeight: 800, textTransform: 'uppercase', fontSize: '12px' }}>
+                            {p.medicine}
+                          </td>
+                          <td style={{ padding: '7px 6px', textAlign: 'center', fontWeight: 800, fontSize: '12px' }}>
+                            {p.qty || '-'}
+                          </td>
+                          <td style={{ padding: '5px 4px', textAlign: 'center' }}>
+                            {isSos || !hasDose ? (
+                              <span style={{ fontSize: '13px', fontWeight: 700 }}>-</span>
+                            ) : (
+                              <table style={styles.rhDoseMiniTable}>
+                                <thead>
+                                  <tr>
+                                    <th style={styles.rhDoseMiniTh}>સવાર</th>
+                                    <th style={styles.rhDoseMiniTh}>બપોર</th>
+                                    <th style={styles.rhDoseMiniTh}>સાંજ</th>
+                                    <th style={{ ...styles.rhDoseMiniTh, borderRight: 'none' }}>રાત</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  <tr>
+                                    <td style={styles.rhDoseMiniTd}>{p.morning && p.morning !== '0' ? p.morning : ''}</td>
+                                    <td style={styles.rhDoseMiniTd}>{p.noon && p.noon !== '0' ? p.noon : ''}</td>
+                                    <td style={styles.rhDoseMiniTd}>{p.evening && p.evening !== '0' ? p.evening : ''}</td>
+                                    <td style={{ ...styles.rhDoseMiniTd, borderRight: 'none' }}>{p.night && p.night !== '0' ? p.night : ''}</td>
+                                  </tr>
+                                </tbody>
+                              </table>
+                            )}
+                          </td>
+                          <td style={{ padding: '7px 6px', fontWeight: 700, fontSize: '11px' }}>
+                            {instr}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan={4} style={{ padding: '16px', textAlign: 'center', color: '#64748B', fontStyle: 'italic' }}>
+                        No prescriptions recorded for this visit
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+
+              {/* 4. ADVICE BOX */}
+              <div style={styles.rhAdviceBox}>
+                <span style={{ fontWeight: 800, textDecoration: 'underline' }}>
+                  સૂચન / પરહેજ (ADVICE):{' '}
+                </span>
+                <span style={{ fontWeight: 700 }}>
+                  {visitToPrint.dietary && visitToPrint.dietary.trim()
+                    ? visitToPrint.dietary
+                    : '---અનાજ [ રોટલી , ભાખરી , રોટલો ] , બટાકા , દૂધ ના લેવુ----- --- દાળ ભાત, ખીચડી , છાશ, દહીં, લીંબુ પાણી, મોસંબી નુ જ્યુસ, પાઈનેપલ નુ જ્યુસ, લસ્સી વધારે લેવી'}
+                </span>
+              </div>
+
+              {/* Separator line */}
+              <div style={{ height: '1px', backgroundColor: '#CBD5E1', width: '100%', margin: '12px 0 6px' }} />
+
+              {/* 5. FOOTER */}
+              <div style={styles.rhPharmacyFooter}>
+                <span style={{ fontSize: '18px', fontWeight: 900, color: '#0F172A' }}>✚</span>
+                <span style={styles.rhPharmacyText}>
+                  {doctor?.medicalStore || 'Harsh Medical & General Stores'}
+                </span>
+                <span style={{ fontSize: '18px', fontWeight: 900, color: '#0F172A' }}>✚</span>
               </div>
             </div>
 
@@ -1641,9 +1780,157 @@ const styles = {
   printMemoSheet: {
     flex: 1,
     overflowY: 'auto',
-    padding: '24px',
+    padding: '24px 30px',
     backgroundColor: '#FFFFFF',
-    fontFamily: 'serif',
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    position: 'relative',
+    color: '#000000',
+  },
+  rhLetterpadHeader: {
+    position: 'relative',
+    zIndex: 1,
+    marginBottom: '4px',
+  },
+  rhHeaderTopRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: '12px',
+  },
+  rhDocName: {
+    fontSize: '26px',
+    fontWeight: '900',
+    color: '#0B63AC',
+    letterSpacing: '0.4px',
+    lineHeight: 1.1,
+    fontFamily: "'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif",
+  },
+  rhDocDegree: {
+    fontSize: '12.5px',
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  rhDocSpecialty: {
+    fontSize: '13px',
+    fontWeight: '800',
+    color: '#0B63AC',
+    letterSpacing: '0.6px',
+    textTransform: 'uppercase',
+    marginTop: '2px',
+  },
+  rhRightContact: {
+    textAlign: 'right',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px',
+    fontSize: '12px',
+    color: '#1E293B',
+  },
+  rhAddressBar: {
+    backgroundColor: '#D4D8DC',
+    border: '1px solid #CBD5E1',
+    borderRadius: '3px',
+    padding: '3px 8px',
+    margin: '4px 0 6px 0',
+    textAlign: 'center',
+    fontSize: '10.5px',
+    fontStyle: 'italic',
+    fontWeight: '600',
+    color: '#1E293B',
+    letterSpacing: '0.2px',
+  },
+  rhForDateRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    padding: '3px 0 5px 0',
+  },
+  rhPatientInfoBlock: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '3px',
+    margin: '3px 0 5px 0',
+    position: 'relative',
+    zIndex: 1,
+  },
+  rhPatientRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    fontSize: '12px',
+    color: '#000000',
+  },
+  rhBlackDivider: {
+    height: '1px',
+    backgroundColor: '#000000',
+    width: '100%',
+    margin: '3px 0 5px 0',
+    position: 'relative',
+    zIndex: 1,
+  },
+  rhRxTable: {
+    width: '100%',
+    borderCollapse: 'collapse',
+    fontSize: '11px',
+    color: '#000000',
+    position: 'relative',
+    zIndex: 1,
+  },
+  rhDoseMiniTable: {
+    borderCollapse: 'collapse',
+    border: '1px solid #000000',
+    margin: '0 auto',
+    fontSize: '9px',
+    backgroundColor: '#FFFFFF',
+  },
+  rhDoseMiniTh: {
+    padding: '1px 5px',
+    borderRight: '1px solid #000000',
+    borderBottom: '1px solid #000000',
+    fontWeight: 600,
+    fontSize: '9px',
+    color: '#000000',
+    textAlign: 'center',
+    whiteSpace: 'nowrap',
+  },
+  rhDoseMiniTd: {
+    padding: '2px 5px',
+    borderRight: '1px solid #000000',
+    textAlign: 'center',
+    fontWeight: 800,
+    fontSize: '10px',
+    color: '#000000',
+    minWidth: '22px',
+    height: '14px',
+  },
+  rhAdviceBox: {
+    border: '1px solid #000000',
+    borderRadius: '4px',
+    padding: '6px 10px',
+    marginTop: '10px',
+    marginBottom: '8px',
+    fontSize: '11px',
+    lineHeight: 1.45,
+    backgroundColor: '#FFFFFF',
+    position: 'relative',
+    zIndex: 1,
+  },
+  rhPharmacyFooter: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '12px',
+    padding: '4px 0',
+    position: 'relative',
+    zIndex: 1,
+  },
+  rhPharmacyText: {
+    fontSize: '15px',
+    fontWeight: 800,
+    fontStyle: 'italic',
+    color: '#0B63AC',
+    letterSpacing: '0.4px',
+    fontFamily: "'Segoe UI', -apple-system, sans-serif",
   },
   printHeaderBlock: {
     textAlign: 'center',
