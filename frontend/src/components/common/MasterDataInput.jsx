@@ -383,7 +383,15 @@ export const MasterDataInput = ({
         const shortcutMatch = cached.find(
           (i) => i.shortcut && i.shortcut.trim().toUpperCase() === token
         );
-        const itemToUse = shortcutMatch || (isOpen && suggestions.length > 0 ? suggestions[0] : null);
+        let itemToUse = null;
+        if (isOpen && suggestions.length > 0 && highlightedIndex >= 0 && highlightedIndex < suggestions.length) {
+          itemToUse = suggestions[highlightedIndex];
+        } else if (shortcutMatch) {
+          itemToUse = shortcutMatch;
+        } else if (suggestions.length > 0) {
+          itemToUse = suggestions[0];
+        }
+
         if (itemToUse) {
           selectItem(itemToUse);
         } else if (currentVal !== value) {
@@ -403,21 +411,32 @@ export const MasterDataInput = ({
         ? cached.find((i) => i.shortcut && i.shortcut.trim().toUpperCase() === token)
         : null;
 
-      const itemToUse = shortcutMatch || (suggestions.length > 0 ? (suggestions[highlightedIndex] || suggestions[0]) : null);
+      // Prioritize the highlighted suggestion if dropdown is open and has suggestions!
+      let itemToUse = null;
+      if (isOpen && suggestions.length > 0 && highlightedIndex >= 0 && highlightedIndex < suggestions.length) {
+        itemToUse = suggestions[highlightedIndex];
+      } else if (shortcutMatch) {
+        itemToUse = shortcutMatch;
+      } else if (suggestions.length > 0) {
+        itemToUse = suggestions[0];
+      }
+
       if (itemToUse) {
         e.preventDefault();
         e.stopPropagation();
+        const selectedVal = itemToUse.value;
         selectItem(itemToUse);
-        if (!allowMultiple && onEnterNext) {
-          setTimeout(() => onEnterNext(), 40);
+        if (onEnterNext) {
+          onEnterNext(selectedVal);
         }
-      } else if (!allowMultiple && onEnterNext) {
+      } else if (onEnterNext) {
         e.preventDefault();
         e.stopPropagation();
+        const finalVal = currentVal || value || '';
         if (currentVal !== value) {
-          onChange(currentVal);
+          onChange(finalVal);
         }
-        onEnterNext();
+        onEnterNext(finalVal);
       }
       return;
     }
@@ -476,7 +495,7 @@ export const MasterDataInput = ({
       style={{
         position: 'relative',
         width: '100%',
-        zIndex: isOpen ? 9999 : 'auto',
+        zIndex: isOpen ? 99999 : 'auto',
         ...style,
       }}
     >
@@ -570,7 +589,7 @@ const styles = {
     maxHeight: '220px',
     overflowY: 'auto',
     listStyle: 'none',
-    zIndex: 99999,
+    zIndex: 999999,
     padding: '4px 0',
   },
   dropdownItem: {

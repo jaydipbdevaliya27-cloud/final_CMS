@@ -204,6 +204,20 @@ export const PatientRecord = ({
   const bpInputRef = useRef(null);
   const caseFormPaneRef = useRef(null);
 
+  // Refs for keyboard navigation: Clinic Medicine
+  const clinicMedQtyRef = useRef(null);
+  const clinicMedMorningRef = useRef(null);
+  const clinicMedNoonRef = useRef(null);
+  const clinicMedEveningRef = useRef(null);
+
+  // Refs for keyboard navigation: Prescription
+  const rxQtyRef = useRef(null);
+  const rxMorningRef = useRef(null);
+  const rxNoonRef = useRef(null);
+  const rxEveningRef = useRef(null);
+  const rxNightRef = useRef(null);
+  const rxTimingRef = useRef(null);
+
   // --- Modals State ---
   const [showEditModal, setShowEditModal] = useState(false);
   const [editFormData, setEditFormData] = useState({});
@@ -951,7 +965,7 @@ export const PatientRecord = ({
 
   // --- New Card Quick Handlers for Exact Photo Layout ---
   const handleAddAllergy = (valToAdd = null) => {
-    const raw = (valToAdd !== null ? valToAdd : tempAllergy).trim();
+    const raw = (typeof valToAdd === 'string' && valToAdd.trim() ? valToAdd : tempAllergy).trim();
     if (!raw) return;
     setVisitForm((prev) => {
       const current = prev || visitFormRef.current || visitForm;
@@ -977,7 +991,7 @@ export const PatientRecord = ({
   };
 
   const handleAddComplaint = (valToAdd = null) => {
-    const raw = (valToAdd !== null ? valToAdd : tempComplaint).trim();
+    const raw = (typeof valToAdd === 'string' && valToAdd.trim() ? valToAdd : tempComplaint).trim();
     if (!raw) return;
     const tokens = raw.split(',').map((t) => t.trim().toUpperCase()).filter(Boolean);
     setVisitForm((prev) => {
@@ -1012,8 +1026,8 @@ export const PatientRecord = ({
     });
   };
 
-  const handleAddInvestigation = () => {
-    const repType = tempInvestigation.trim().toUpperCase();
+  const handleAddInvestigation = (valToAdd = null) => {
+    const repType = (typeof valToAdd === 'string' && valToAdd.trim() ? valToAdd : tempInvestigation).trim().toUpperCase();
     if (!repType) return;
     const labName = (tempLabName.trim() || 'CARE').toUpperCase();
     setVisitForm((prev) => {
@@ -1046,7 +1060,7 @@ export const PatientRecord = ({
   };
 
   const handleAddIpdDetail = (valToAdd = null) => {
-    const raw = (valToAdd !== null ? valToAdd : tempIpd).trim();
+    const raw = (typeof valToAdd === 'string' && valToAdd.trim() ? valToAdd : tempIpd).trim();
     if (!raw) return;
     setVisitForm((prev) => {
       const current = prev || visitFormRef.current || visitForm;
@@ -1716,7 +1730,7 @@ export const PatientRecord = ({
         {/* LEFT COLUMN (~50% width on desktop, 100% on mobile/tablet) */}
         <div className="patient-record-left-col" style={styles.photoLeftCol}>
           {/* CARD 1: Patient Details (Blue Theme) */}
-          <div style={{ ...styles.photoCard, borderColor: '#93C5FD' }}>
+          <div style={{ ...styles.photoCard, borderColor: '#93C5FD', position: 'relative', zIndex: 50, overflow: 'visible' }}>
             <div style={styles.photoHeaderBlue}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <User size={14} color="#1E40AF" />
@@ -2186,21 +2200,22 @@ export const PatientRecord = ({
           )}
 
           {/* CARD 2: Allergy (Red Theme) */}
-          <div style={{ ...styles.photoCard, borderColor: '#FCA5A5' }}>
+          <div style={{ ...styles.photoCard, borderColor: '#FCA5A5', position: 'relative', zIndex: 40, overflow: 'visible' }}>
             <div style={styles.photoHeaderRed}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <ShieldAlert size={14} color="#DC2626" />
                 <span style={{ ...styles.photoHeaderTitle, color: '#991B1B' }}>Allergy</span>
               </div>
             </div>
-            <div style={styles.photoCardBody}>
-              <div style={styles.photoInputAddRow}>
+            <div style={{ ...styles.photoCardBody, overflow: 'visible' }}>
+              <div style={{ ...styles.photoInputAddRow, position: 'relative' }}>
                 <div style={{ flex: 1 }}>
                   <MasterDataInput
                     type="allergy"
                     value={tempAllergy}
                     onChange={(val) => setTempAllergy(val)}
-                    onEnterNext={() => handleAddAllergy()}
+                    onEnterNext={(chosen) => handleAddAllergy(chosen)}
+                    onSelectCallback={(chosen) => setTempAllergy(chosen)}
                     placeholder="TYPE OR SELECT ALLERGY..."
                     inputStyle={styles.photoInput}
                   />
@@ -2238,21 +2253,22 @@ export const PatientRecord = ({
           </div>
 
           {/* CARD 3: Complaints (Green Theme) */}
-          <div style={{ ...styles.photoCard, borderColor: '#6EE7B7' }}>
+          <div style={{ ...styles.photoCard, borderColor: '#6EE7B7', position: 'relative', zIndex: 30, overflow: 'visible' }}>
             <div style={styles.photoHeaderGreen}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Stethoscope size={14} color="#059669" />
                 <span style={{ ...styles.photoHeaderTitle, color: '#065F46' }}>Complaints</span>
               </div>
             </div>
-            <div style={styles.photoCardBody}>
-              <div style={styles.photoInputAddRow}>
+            <div style={{ ...styles.photoCardBody, overflow: 'visible' }}>
+              <div style={{ ...styles.photoInputAddRow, position: 'relative' }}>
                 <div style={{ flex: 1 }}>
                   <MasterDataInput
                     type="complaint"
                     value={tempComplaint}
                     onChange={(val) => setTempComplaint(val)}
-                    onEnterNext={() => handleAddComplaint()}
+                    onEnterNext={(chosen) => handleAddComplaint(chosen)}
+                    onSelectCallback={(chosen) => setTempComplaint(chosen)}
                     placeholder="TYPE OR SELECT COMPLAINT..."
                     inputStyle={styles.photoInput}
                   />
@@ -2289,21 +2305,22 @@ export const PatientRecord = ({
           </div>
 
           {/* CARD 4: Lab Investigation (Purple Theme) */}
-          <div style={{ ...styles.photoCard, borderColor: '#C4B5FD' }}>
+          <div style={{ ...styles.photoCard, borderColor: '#C4B5FD', position: 'relative', zIndex: 20, overflow: 'visible' }}>
             <div style={styles.photoHeaderPurple}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <FlaskConical size={14} color="#7C3AED" />
                 <span style={{ ...styles.photoHeaderTitle, color: '#5B21B6' }}>Lab Investigation</span>
               </div>
             </div>
-            <div style={styles.photoCardBody}>
-              <div style={styles.photoInputAddRow}>
+            <div style={{ ...styles.photoCardBody, overflow: 'visible' }}>
+              <div style={{ ...styles.photoInputAddRow, position: 'relative' }}>
                 <div style={{ flex: '1 1 180px' }}>
                   <MasterDataInput
                     type="investigation"
                     value={tempInvestigation}
                     onChange={(val) => setTempInvestigation(val)}
-                    onEnterNext={() => handleAddInvestigation()}
+                    onEnterNext={(chosen) => handleAddInvestigation(chosen)}
+                    onSelectCallback={(chosen) => setTempInvestigation(chosen)}
                     placeholder="REPORT TYPE..."
                     inputStyle={styles.photoInput}
                   />
@@ -2319,7 +2336,7 @@ export const PatientRecord = ({
                 </div>
                 <button
                   type="button"
-                  onClick={handleAddInvestigation}
+                  onClick={() => handleAddInvestigation()}
                   style={styles.photoAddBtnPurple}
                 >
                   + Add
@@ -2376,7 +2393,7 @@ export const PatientRecord = ({
           </div>
 
           {/* CARD 5: IPD Detail (Amber/Orange Theme) - Injections & IV Bottles */}
-          <div className="patient-card-ipd" style={{ ...styles.photoCard, ...styles.photoCardIpd, borderColor: '#FDBA74' }}>
+          <div className="patient-card-ipd" style={{ ...styles.photoCard, ...styles.photoCardIpd, borderColor: '#FDBA74', position: 'relative', zIndex: 10, overflow: 'visible' }}>
             <div style={styles.photoHeaderAmber}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Syringe size={14} color="#EA580C" />
@@ -2384,14 +2401,15 @@ export const PatientRecord = ({
               </div>
               <span style={{ fontSize: 10, color: '#9A3412', fontWeight: 600 }}>Injections, IV Bottles & Procedures</span>
             </div>
-            <div style={{ ...styles.photoCardBody, flex: 1, minHeight: 0 }}>
-              <div style={styles.photoInputAddRow}>
+            <div style={{ ...styles.photoCardBody, flex: 1, minHeight: 0, overflow: 'visible' }}>
+              <div style={{ ...styles.photoInputAddRow, position: 'relative' }}>
                 <div style={{ flex: 1 }}>
                   <MasterDataInput
                     type="medicine"
                     value={tempIpd}
                     onChange={(val) => setTempIpd(val)}
-                    onEnterNext={() => handleAddIpdDetail()}
+                    onEnterNext={(chosen) => handleAddIpdDetail(chosen)}
+                    onSelectCallback={(chosen) => setTempIpd(chosen)}
                     placeholder="TYPE OR SELECT IPD DETAIL (e.g. RL 500ml IV, Inj. Voveran 2ml IM)..."
                     inputStyle={styles.photoInput}
                   />
@@ -2432,31 +2450,57 @@ export const PatientRecord = ({
         {/* RIGHT COLUMN (~50% width on desktop, 100% on mobile/tablet) */}
         <div className="patient-record-right-col" style={styles.photoRightCol}>
           {/* CARD 1: 1. Clinic Medicine (Blue Theme) */}
-          <div className="patient-card-clinic-med" style={{ ...styles.photoCard, ...styles.photoCardClinicMed, borderColor: '#93C5FD' }}>
+          <div className="patient-card-clinic-med" style={{ ...styles.photoCard, ...styles.photoCardClinicMed, borderColor: '#93C5FD', position: 'relative', zIndex: 40, overflow: 'visible' }}>
             <div style={styles.photoHeaderBlue}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Pill size={14} color="#1E40AF" />
                 <span style={styles.photoHeaderTitle}>1. Clinic Medicine</span>
               </div>
             </div>
-            <div style={{ ...styles.photoCardBody, flex: 1, minHeight: 0 }}>
-              <div style={styles.photoInputAddRow}>
+            <div style={{ ...styles.photoCardBody, flex: 1, minHeight: 0, overflow: 'visible' }}>
+              <div style={{ ...styles.photoInputAddRow, position: 'relative' }}>
                 <div style={{ flex: '1 1 200px' }}>
                   <MasterDataInput
                     type="medicine"
                     value={clinicMedForm.medicine}
                     onChange={(val) => setClinicMedForm((prev) => ({ ...prev, medicine: val }))}
-                    onEnterNext={handleAddClinicMedicine}
+                    onEnterNext={(chosen) => {
+                      const med = chosen || clinicMedForm.medicine;
+                      if (med) {
+                        setClinicMedForm((prev) => ({ ...prev, medicine: med }));
+                      }
+                      setTimeout(() => {
+                        clinicMedQtyRef.current?.focus();
+                        clinicMedQtyRef.current?.select();
+                      }, 30);
+                    }}
+                    onSelectCallback={(chosen) => {
+                      if (chosen) {
+                        setClinicMedForm((prev) => ({ ...prev, medicine: chosen }));
+                      }
+                      setTimeout(() => {
+                        clinicMedQtyRef.current?.focus();
+                        clinicMedQtyRef.current?.select();
+                      }, 30);
+                    }}
                     placeholder="MEDICINE..."
                     inputStyle={styles.photoInput}
                   />
                 </div>
                 <div style={{ width: '48px', flexShrink: 0 }}>
                   <input
+                    ref={clinicMedQtyRef}
                     type="number"
                     min="1"
                     value={clinicMedForm.qty}
                     onChange={(e) => setClinicMedForm((prev) => ({ ...prev, qty: e.target.value }))}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        clinicMedMorningRef.current?.focus();
+                        clinicMedMorningRef.current?.select();
+                      }
+                    }}
                     placeholder="QTY"
                     style={{ ...styles.photoInput, textAlign: 'center' }}
                   />
@@ -2464,9 +2508,17 @@ export const PatientRecord = ({
                 {/* M, N, E dosage inputs */}
                 <div style={{ width: '30px', flexShrink: 0 }}>
                   <input
+                    ref={clinicMedMorningRef}
                     type="text"
                     value={clinicMedForm.morning}
                     onChange={(e) => setClinicMedForm((prev) => ({ ...prev, morning: e.target.value }))}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        clinicMedNoonRef.current?.focus();
+                        clinicMedNoonRef.current?.select();
+                      }
+                    }}
                     placeholder="M"
                     style={{ ...styles.photoInput, textAlign: 'center' }}
                     title="Morning"
@@ -2474,9 +2526,17 @@ export const PatientRecord = ({
                 </div>
                 <div style={{ width: '30px', flexShrink: 0 }}>
                   <input
+                    ref={clinicMedNoonRef}
                     type="text"
                     value={clinicMedForm.noon}
                     onChange={(e) => setClinicMedForm((prev) => ({ ...prev, noon: e.target.value }))}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        clinicMedEveningRef.current?.focus();
+                        clinicMedEveningRef.current?.select();
+                      }
+                    }}
                     placeholder="N"
                     style={{ ...styles.photoInput, textAlign: 'center' }}
                     title="Noon"
@@ -2484,9 +2544,16 @@ export const PatientRecord = ({
                 </div>
                 <div style={{ width: '30px', flexShrink: 0 }}>
                   <input
+                    ref={clinicMedEveningRef}
                     type="text"
                     value={clinicMedForm.evening}
                     onChange={(e) => setClinicMedForm((prev) => ({ ...prev, evening: e.target.value }))}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddClinicMedicine();
+                      }
+                    }}
                     placeholder="E"
                     style={{ ...styles.photoInput, textAlign: 'center' }}
                     title="Evening"
@@ -2546,31 +2613,57 @@ export const PatientRecord = ({
           </div>
 
           {/* CARD 2: 2. Prescription (Blue Theme) */}
-          <div className="patient-card-prescription" style={{ ...styles.photoCard, ...styles.photoCardPrescription, borderColor: '#93C5FD' }}>
+          <div className="patient-card-prescription" style={{ ...styles.photoCard, ...styles.photoCardPrescription, borderColor: '#93C5FD', position: 'relative', zIndex: 30, overflow: 'visible' }}>
             <div style={styles.photoHeaderBlue}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <FileText size={14} color="#1E40AF" />
                 <span style={styles.photoHeaderTitle}>2. Prescription</span>
               </div>
             </div>
-            <div style={{ ...styles.photoCardBody, flex: 1, minHeight: 0 }}>
-              <div style={styles.photoInputAddRow}>
+            <div style={{ ...styles.photoCardBody, flex: 1, minHeight: 0, overflow: 'visible' }}>
+              <div style={{ ...styles.photoInputAddRow, position: 'relative' }}>
                 <div style={{ flex: '1 1 180px' }}>
                   <MasterDataInput
                     type="medicine"
                     value={rxForm.medicine}
                     onChange={(val) => setRxForm((prev) => ({ ...prev, medicine: val }))}
-                    onEnterNext={handleAddPrescriptionItem}
+                    onEnterNext={(chosen) => {
+                      const med = chosen || rxForm.medicine;
+                      if (med) {
+                        setRxForm((prev) => ({ ...prev, medicine: med }));
+                      }
+                      setTimeout(() => {
+                        rxQtyRef.current?.focus();
+                        rxQtyRef.current?.select();
+                      }, 30);
+                    }}
+                    onSelectCallback={(chosen) => {
+                      if (chosen) {
+                        setRxForm((prev) => ({ ...prev, medicine: chosen }));
+                      }
+                      setTimeout(() => {
+                        rxQtyRef.current?.focus();
+                        rxQtyRef.current?.select();
+                      }, 30);
+                    }}
                     placeholder="MEDICINE..."
                     inputStyle={styles.photoInput}
                   />
                 </div>
                 <div style={{ width: '45px', flexShrink: 0 }}>
                   <input
+                    ref={rxQtyRef}
                     type="number"
                     min="1"
                     value={rxForm.qty}
                     onChange={(e) => setRxForm((prev) => ({ ...prev, qty: e.target.value }))}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        rxMorningRef.current?.focus();
+                        rxMorningRef.current?.select();
+                      }
+                    }}
                     placeholder="QTY"
                     style={{ ...styles.photoInput, textAlign: 'center' }}
                   />
@@ -2578,9 +2671,17 @@ export const PatientRecord = ({
                 {/* M, N, E, NT */}
                 <div style={{ width: '26px', flexShrink: 0 }}>
                   <input
+                    ref={rxMorningRef}
                     type="text"
                     value={rxForm.morning}
                     onChange={(e) => setRxForm((prev) => ({ ...prev, morning: e.target.value }))}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        rxNoonRef.current?.focus();
+                        rxNoonRef.current?.select();
+                      }
+                    }}
                     placeholder="M"
                     style={{ ...styles.photoInput, textAlign: 'center', padding: '2px 0' }}
                     title="Morning"
@@ -2588,9 +2689,17 @@ export const PatientRecord = ({
                 </div>
                 <div style={{ width: '26px', flexShrink: 0 }}>
                   <input
+                    ref={rxNoonRef}
                     type="text"
                     value={rxForm.noon}
                     onChange={(e) => setRxForm((prev) => ({ ...prev, noon: e.target.value }))}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        rxEveningRef.current?.focus();
+                        rxEveningRef.current?.select();
+                      }
+                    }}
                     placeholder="N"
                     style={{ ...styles.photoInput, textAlign: 'center', padding: '2px 0' }}
                     title="Noon"
@@ -2598,9 +2707,17 @@ export const PatientRecord = ({
                 </div>
                 <div style={{ width: '26px', flexShrink: 0 }}>
                   <input
+                    ref={rxEveningRef}
                     type="text"
                     value={rxForm.evening}
                     onChange={(e) => setRxForm((prev) => ({ ...prev, evening: e.target.value }))}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        rxNightRef.current?.focus();
+                        rxNightRef.current?.select();
+                      }
+                    }}
                     placeholder="E"
                     style={{ ...styles.photoInput, textAlign: 'center', padding: '2px 0' }}
                     title="Evening"
@@ -2608,9 +2725,16 @@ export const PatientRecord = ({
                 </div>
                 <div style={{ width: '26px', flexShrink: 0 }}>
                   <input
+                    ref={rxNightRef}
                     type="text"
                     value={rxForm.night}
                     onChange={(e) => setRxForm((prev) => ({ ...prev, night: e.target.value }))}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        rxTimingRef.current?.focus();
+                      }
+                    }}
                     placeholder="NT"
                     style={{ ...styles.photoInput, textAlign: 'center', padding: '2px 0' }}
                     title="Night"
@@ -2619,8 +2743,15 @@ export const PatientRecord = ({
                 {/* Meal Instruction select with AF, BF, SOS */}
                 <div style={{ width: rxForm.timing === 'SOS' ? '70px' : '92px', flexShrink: 0 }}>
                   <select
+                    ref={rxTimingRef}
                     value={rxForm.timing}
                     onChange={(e) => setRxForm((prev) => ({ ...prev, timing: e.target.value }))}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && rxForm.timing !== 'SOS') {
+                        e.preventDefault();
+                        handleAddPrescriptionItem();
+                      }
+                    }}
                     style={styles.photoSelect}
                   >
                     <option value="AF">After Food</option>
@@ -2637,6 +2768,12 @@ export const PatientRecord = ({
                       list="sosSuggestionsList"
                       value={rxForm.sosInstruction || ''}
                       onChange={(e) => setRxForm((prev) => ({ ...prev, sosInstruction: e.target.value }))}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddPrescriptionItem();
+                        }
+                      }}
                       placeholder="Custom SOS (e.g. In severe pain)..."
                       style={styles.photoInput}
                     />
@@ -2714,7 +2851,7 @@ export const PatientRecord = ({
           </div>
 
           {/* CARD 3: 3. Advice / Diet / Food Instructions (Green Theme) */}
-          <div style={{ ...styles.photoCard, borderColor: '#86EFAC' }}>
+          <div style={{ ...styles.photoCard, borderColor: '#86EFAC', position: 'relative', zIndex: 20, overflow: 'visible' }}>
             <div style={styles.photoHeaderGreen}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <UtensilsCrossed size={14} color="#166534" />
@@ -2723,8 +2860,8 @@ export const PatientRecord = ({
                 </span>
               </div>
             </div>
-            <div style={styles.photoCardBody}>
-              <div style={styles.photoInputAddRow}>
+            <div style={{ ...styles.photoCardBody, overflow: 'visible' }}>
+              <div style={{ ...styles.photoInputAddRow, position: 'relative' }}>
                 <div style={{ width: '130px', flexShrink: 0 }}>
                   <input
                     type="text"
@@ -2764,7 +2901,7 @@ export const PatientRecord = ({
           </div>
 
           {/* CARD 4: Billing Details (Amber/Yellow Theme) */}
-          <div style={{ ...styles.photoCard, borderColor: '#FCD34D' }}>
+          <div style={{ ...styles.photoCard, borderColor: '#FCD34D', position: 'relative', zIndex: 10, overflow: 'visible' }}>
             <div style={styles.photoHeaderAmber}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Receipt size={14} color="#854D0E" />
@@ -4362,7 +4499,8 @@ const styles = {
     borderRadius: '4px',
     display: 'flex',
     flexDirection: 'column',
-    overflow: 'hidden',
+    overflow: 'visible',
+    position: 'relative',
     boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
   },
   photoHeaderBlue: {
@@ -4435,6 +4573,7 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     gap: '4px',
+    overflow: 'visible',
   },
   photoRow1Col: {
     display: 'flex',
