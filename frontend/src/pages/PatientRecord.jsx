@@ -501,20 +501,24 @@ export const PatientRecord = ({
       const raw = localStorage.getItem(DRAFT_KEY);
       if (raw) {
         const d = JSON.parse(raw);
-        if (d.currentPatient) {
+        // ONLY restore draft if there is a valid patient selected
+        if (d.currentPatient && d.currentPatient.name) {
           setCurrentPatient(d.currentPatient);
           currentPatientRef.current = d.currentPatient;
+          if (d.visitForm) {
+            setVisitForm(d.visitForm);
+            visitFormRef.current = d.visitForm;
+          }
+          if (d.patientDob !== undefined) setPatientDob(d.patientDob);
+          if (d.patientAge !== undefined) setPatientAge(d.patientAge);
+          if (d.patientPhone !== undefined) setPatientPhone(d.patientPhone);
+          if (d.patientHouseNo !== undefined) setPatientHouseNo(d.patientHouseNo);
+          if (d.patientSociety !== undefined) setPatientSociety(d.patientSociety);
+          if (d.patientArea !== undefined) setPatientArea(d.patientArea);
+        } else {
+          // No active patient in draft - clean up orphan storage
+          localStorage.removeItem(DRAFT_KEY);
         }
-        if (d.visitForm) {
-          setVisitForm(d.visitForm);
-          visitFormRef.current = d.visitForm;
-        }
-        if (d.patientDob !== undefined) setPatientDob(d.patientDob);
-        if (d.patientAge !== undefined) setPatientAge(d.patientAge);
-        if (d.patientPhone !== undefined) setPatientPhone(d.patientPhone);
-        if (d.patientHouseNo !== undefined) setPatientHouseNo(d.patientHouseNo);
-        if (d.patientSociety !== undefined) setPatientSociety(d.patientSociety);
-        if (d.patientArea !== undefined) setPatientArea(d.patientArea);
       }
     } catch (e) {
       console.warn('Could not restore draft:', e);
@@ -530,8 +534,15 @@ export const PatientRecord = ({
       } catch (e) {}
       return;
     }
+    // NEVER persist drafts without an active patient selected
+    if (!currentPatient || !currentPatient.name) {
+      try {
+        localStorage.removeItem(DRAFT_KEY);
+      } catch (e) {}
+      return;
+    }
+
     const hasData =
-      currentPatient ||
       visitForm.bp ||
       visitForm.sugar ||
       visitForm.complaint ||
@@ -966,6 +977,48 @@ export const PatientRecord = ({
     }
   };
 
+  // --- Cleanly clear active patient and reset all clinical form fields to pristine state ---
+  const handleClearActivePatient = () => {
+    setCurrentPatient(null);
+    currentPatientRef.current = null;
+    setPatientDob('');
+    setPatientAge('');
+    setPatientPhone('');
+    setPatientHouseNo('');
+    setPatientSociety('');
+    setPatientArea('');
+    setPatientVisits([]);
+    setEditingVisitId(null);
+    editingVisitIdRef.current = null;
+    setEditingVisit(null);
+    editingVisitRef.current = null;
+    setAttachedReport(null);
+    attachedReportRef.current = null;
+    const cleanForm = {
+      ...initialVisitForm,
+      visitDate: getTodayDateStr(),
+      bp: '',
+      sugar: '',
+      other: '',
+      reference: '',
+      allergyList: [],
+      complaintList: [],
+      investigationList: [],
+      ipdDetails: [],
+      treatments: [],
+      prescriptions: [],
+      dietary: '',
+      charge: '0',
+      received: '0',
+      due: '0',
+    };
+    setVisitForm(cleanForm);
+    visitFormRef.current = cleanForm;
+    try {
+      localStorage.removeItem(DRAFT_KEY);
+    } catch (e) {}
+  };
+
   // --- Open Family Due Details Modal ---
   const handleOpenFamilyDueModal = async () => {
     const famId = currentPatient?.familyId || currentPatient?.family?.familyId;
@@ -991,13 +1044,13 @@ export const PatientRecord = ({
   };
 
   // --- Calculated Due vs Deposit for current case and patient overall ---
-  const chargeNum = Math.max(0, Number(visitForm.charge) || 0);
-  const receivedNum = Math.max(0, Number(visitForm.received) || 0);
+  const chargeNum = currentPatient ? Math.max(0, Number(visitForm.charge) || 0) : 0;
+  const receivedNum = currentPatient ? Math.max(0, Number(visitForm.received) || 0) : 0;
   const computedDue = Math.max(0, chargeNum - receivedNum);
 
   // Existing recorded patient balance before this session (positive = due, negative = deposit)
-  const recordedPatientDue = Math.max(0, Number(currentPatient?.totalDue) || 0);
-  const recordedPatientDeposit = Math.max(0, Number(currentPatient?.deposit) || 0);
+  const recordedPatientDue = currentPatient ? Math.max(0, Number(currentPatient?.totalDue) || 0) : 0;
+  const recordedPatientDeposit = currentPatient ? Math.max(0, Number(currentPatient?.deposit) || 0) : 0;
   const recordedPatientBalance = recordedPatientDue - recordedPatientDeposit;
 
   // If editing an existing stored visit, subtract its original net impact (charge - received)
@@ -1007,28 +1060,28 @@ export const PatientRecord = ({
     ? ((Math.max(0, Number(activeEditingVisit.charge) || 0)) - (Math.max(0, Number(activeEditingVisit.received) || 0)))
     : 0;
 
-  // Baseline patient balance prior to this visit
-  const baselinePatientBalance = recordedPatientBalance - origVisitNet;
+  // Baseline patient balance prior to this visit (strictly 0 if no patient selected)
+  const baselinePatientBalance = currentPatient ? (recordedPatientBalance - origVisitNet) : 0;
 
   // Net projected patient balance after current form's charge and received are applied:
-  const newNetBalance = baselinePatientBalance + (chargeNum - receivedNum);
-  const finalPatientDue = newNetBalance > 0 ? newNetBalance : 0;
-  const finalPatientDeposit = newNetBalance < 0 ? Math.abs(newNetBalance) : 0;
+  const newNetBalance = currentPatient ? (baselinePatientBalance + (chargeNum - receivedNum)) : 0;
+  const finalPatientDue = currentPatient && newNetBalance > 0 ? newNetBalance : 0;
+  const finalPatientDeposit = currentPatient && newNetBalance < 0 ? Math.abs(newNetBalance) : 0;
 
-  // Personal Due & Family Due values for display in Billing Details section
-  const personalDue = recordedPatientDue;
-  const personalDeposit = recordedPatientDeposit;
+  // Personal Due & Family Due values for display in Billing Details section (0 when no patient)
+  const personalDue = currentPatient ? recordedPatientDue : 0;
+  const personalDeposit = currentPatient ? recordedPatientDeposit : 0;
 
-  const familyDue = Math.max(0, Number(
+  const familyDue = currentPatient ? Math.max(0, Number(
     currentPatient?.family?.familyDue !== undefined
       ? currentPatient.family.familyDue
       : (currentPatient?.familyDue || familyData?.family?.familyDue || 0)
-  ));
-  const familyDeposit = Math.max(0, Number(
+  )) : 0;
+  const familyDeposit = currentPatient ? Math.max(0, Number(
     currentPatient?.family?.familyDeposit !== undefined
       ? currentPatient.family.familyDeposit
       : (currentPatient?.familyDeposit || familyData?.family?.familyDeposit || 0)
-  ));
+  )) : 0;
 
   // --- New Card Quick Handlers for Exact Photo Layout ---
   const handleAddAllergy = (valToAdd = null) => {
@@ -1926,9 +1979,7 @@ export const PatientRecord = ({
                   <button
                     type="button"
                     onClick={() => {
-                      setCurrentPatient(null);
-                      setEditingVisitId(null);
-                      setEditingVisit(null);
+                      handleClearActivePatient();
                       setPatientSearch('');
                       setSearchResults([]);
                     }}
@@ -1978,7 +2029,7 @@ export const PatientRecord = ({
                     placeholder="TYPE OR SEARCH PATIENT NAME (0ms RAM SEARCH)..."
                     onChange={(e) => {
                       if (currentPatient) {
-                        setCurrentPatient(null);
+                        handleClearActivePatient();
                       }
                       handlePatientSearchChange(e.target.value);
                     }}
@@ -2177,7 +2228,7 @@ export const PatientRecord = ({
                     type="text"
                     value={visitForm.bp}
                     onChange={(e) => updateFormField('bp', e.target.value)}
-                    placeholder="120/80"
+                    placeholder="e.g. 120/80"
                     style={styles.photoInput}
                   />
                 </div>
@@ -3172,9 +3223,11 @@ export const PatientRecord = ({
                   <input
                     type="number"
                     min="0"
-                    value={visitForm.charge}
+                    value={currentPatient ? visitForm.charge : '0'}
                     onChange={(e) => updateFormField('charge', e.target.value)}
                     style={styles.photoInput}
+                    disabled={!currentPatient}
+                    placeholder="0"
                   />
                 </div>
 
@@ -3183,9 +3236,11 @@ export const PatientRecord = ({
                   <input
                     type="number"
                     min="0"
-                    value={visitForm.received}
+                    value={currentPatient ? visitForm.received : '0'}
                     onChange={(e) => updateFormField('received', e.target.value)}
                     style={styles.photoInput}
+                    disabled={!currentPatient}
+                    placeholder="0"
                   />
                 </div>
 
@@ -3208,7 +3263,9 @@ export const PatientRecord = ({
                       fontWeight: 800,
                     }}
                   >
-                    {finalPatientDeposit > 0 ? `🟢 DEPOSIT: ₹${finalPatientDeposit}` : `₹${finalPatientDue}`}
+                    {currentPatient
+                      ? (finalPatientDeposit > 0 ? `🟢 DEPOSIT: ₹${finalPatientDeposit}` : `₹${finalPatientDue}`)
+                      : '₹0'}
                   </div>
                 </div>
               </div>
