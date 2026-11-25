@@ -115,14 +115,14 @@ const renderRangeStatusBadge = (status) => {
           display: 'inline-flex',
           alignItems: 'center',
           gap: '2px',
-          fontSize: '9px',
+          fontSize: '8.5px',
           fontWeight: '800',
           color: '#DC2626',
           backgroundColor: '#FEE2E2',
           border: '1px solid #FECACA',
-          padding: '1px 5px',
+          padding: '1px 4px',
           borderRadius: '4px',
-          marginLeft: '4px',
+          marginLeft: '3px',
           flexShrink: 0,
         }}
       >
@@ -137,14 +137,14 @@ const renderRangeStatusBadge = (status) => {
           display: 'inline-flex',
           alignItems: 'center',
           gap: '2px',
-          fontSize: '9px',
+          fontSize: '8.5px',
           fontWeight: '800',
           color: '#D97706',
           backgroundColor: '#FEF3C7',
           border: '1px solid #FDE68A',
-          padding: '1px 5px',
+          padding: '1px 4px',
           borderRadius: '4px',
-          marginLeft: '4px',
+          marginLeft: '3px',
           flexShrink: 0,
         }}
       >
@@ -158,14 +158,14 @@ const renderRangeStatusBadge = (status) => {
         style={{
           display: 'inline-flex',
           alignItems: 'center',
-          fontSize: '9px',
+          fontSize: '8.5px',
           fontWeight: '700',
           color: '#16A34A',
           backgroundColor: '#DCFCE7',
           border: '1px solid #BBF7D0',
-          padding: '1px 5px',
+          padding: '1px 4px',
           borderRadius: '4px',
-          marginLeft: '4px',
+          marginLeft: '3px',
           flexShrink: 0,
         }}
       >
@@ -314,8 +314,8 @@ export const InvestigationReportModal = ({
     const highlightStyle = getHighlightInputStyle(status);
 
     return (
-      <div style={styles.paramRow}>
-        <span style={styles.paramLabel}>{label} :</span>
+      <div style={styles.paramRow} title={`${label}: ${rangeText}`}>
+        <span style={styles.paramLabel} title={label}>{label} :</span>
         <input
           type="text"
           placeholder="--"
@@ -332,6 +332,7 @@ export const InvestigationReportModal = ({
             color: status === 'high' ? '#DC2626' : status === 'low' ? '#D97706' : '#64748B',
             fontWeight: status === 'high' || status === 'low' ? 700 : 500,
           }}
+          title={rangeText}
         >
           {rangeText}
         </span>
@@ -496,12 +497,12 @@ export const InvestigationReportModal = ({
   };
 
   return (
-    <div style={styles.overlay}>
-      <div style={styles.modal}>
+    <div style={styles.overlay} className="lab-modal-overlay">
+      <div style={styles.modal} className="lab-modal-container">
         {/* TOP ROW: PATIENT & LAB HEADER BAR (Image 1) */}
-        <div style={styles.headerBar}>
+        <div style={styles.headerBar} className="lab-header-bar">
           {/* Row 1 */}
-          <div style={styles.headerCol}>
+          <div style={styles.headerCol} className="lab-header-col">
             <span style={styles.headerLabel}>FAMILY NAME :</span>
             <input
               type="text"
@@ -511,7 +512,7 @@ export const InvestigationReportModal = ({
             />
           </div>
 
-          <div style={styles.headerCol}>
+          <div style={styles.headerCol} className="lab-header-col">
             <span style={styles.headerLabel}>LAB NAME :</span>
             <input
               type="text"
@@ -521,7 +522,7 @@ export const InvestigationReportModal = ({
             />
           </div>
 
-          <div style={styles.headerCol}>
+          <div style={styles.headerCol} className="lab-header-col">
             <span style={styles.headerLabel}>CASE NO :</span>
             <input
               type="text"
@@ -532,7 +533,7 @@ export const InvestigationReportModal = ({
           </div>
 
           {/* Row 2 */}
-          <div style={styles.headerCol}>
+          <div style={styles.headerCol} className="lab-header-col">
             <span style={styles.headerLabel}>PATIENT NAME :</span>
             <input
               type="text"
@@ -542,7 +543,7 @@ export const InvestigationReportModal = ({
             />
           </div>
 
-          <div style={styles.headerCol}>
+          <div style={styles.headerCol} className="lab-header-col">
             <span style={styles.headerLabel}>DR NAME :</span>
             <input
               type="text"
@@ -552,7 +553,7 @@ export const InvestigationReportModal = ({
             />
           </div>
 
-          <div style={styles.headerCol}>
+          <div style={styles.headerCol} className="lab-header-col">
             <span style={styles.headerLabel}>ENTRY DATE :</span>
             <input
               type="text"
@@ -564,7 +565,7 @@ export const InvestigationReportModal = ({
         </div>
 
         {/* TABS ROW (Image 1 - with 2nd tab removed, 3rd tab matching Image 2) */}
-        <div style={styles.tabsRow}>
+        <div style={styles.tabsRow} className="lab-tabs-row">
           <button
             type="button"
             onClick={() => setActiveTab('hematology')}
@@ -605,13 +606,13 @@ export const InvestigationReportModal = ({
         )}
 
         {/* MAIN BODY AREA */}
-        <div style={styles.bodyContent}>
+        <div style={styles.bodyContent} className="lab-body-content">
           {/* TAB 1: ROUTINE HEMATOLOGY REPORT (Image 1) */}
           {activeTab === 'hematology' && (
-            <div style={styles.tab1Container}>
-              <div style={styles.cardsGrid}>
+            <div style={styles.tab1Container} className="lab-tab1-container">
+              <div style={styles.cardsGrid} className="lab-cards-grid">
                 {/* 1. ROUTINE HEMATOLOGY (CBC) PARAMETERS */}
-                <div style={styles.paramCard}>
+                <div style={styles.paramCard} className="lab-param-card">
                   <h4 style={styles.cardTitleTeal}>ROUTINE HEMATOLOGY (CBC) PARAMETERS</h4>
                   <div style={styles.paramRowsList}>
                     {renderParamRow('Hemoglobin', 'hb', hematology.hb, handleHematologyChange, '( 12.0 - 16.0 gm% )')}
@@ -623,7 +624,7 @@ export const InvestigationReportModal = ({
                 </div>
 
                 {/* 2. BLOOD GLUCOSE & RENAL PROFILE */}
-                <div style={styles.paramCard}>
+                <div style={styles.paramCard} className="lab-param-card">
                   <h4 style={styles.cardTitleTeal}>BLOOD GLUCOSE &amp; RENAL PROFILE</h4>
                   <div style={styles.paramRowsList}>
                     {renderParamRow('RBS', 'rbs', bloodGlucoseRenal.rbs, handleGlucoseRenalChange, '( 70 - 140 mg% )')}
@@ -635,7 +636,7 @@ export const InvestigationReportModal = ({
                 </div>
 
                 {/* 3. DIFFERENTIAL WBC COUNT POLYMORPHS (Yellow Card) */}
-                <div style={{ ...styles.paramCard, ...styles.cardYellow }}>
+                <div style={{ ...styles.paramCard, ...styles.cardYellow }} className="lab-param-card">
                   <h4 style={styles.cardTitleYellow}>DIFFERENTIAL WBC COUNT POLYMORPHS</h4>
                   <div style={styles.paramRowsList}>
                     {renderParamRow('Band Cell', 'bandCell', differentialWbc.bandCell, handleDifferentialWbcChange, '( 0 - 6 % )')}
@@ -649,7 +650,7 @@ export const InvestigationReportModal = ({
                 </div>
 
                 {/* 4. THYROID FUNCTION TEST : (Green Card) */}
-                <div style={{ ...styles.paramCard, ...styles.cardGreen }}>
+                <div style={{ ...styles.paramCard, ...styles.cardGreen }} className="lab-param-card">
                   <h4 style={styles.cardTitleGreen}>THYROID FUNCTION TEST :</h4>
                   <div style={styles.paramRowsList}>
                     {renderParamRow('T3', 't3', thyroid.t3, handleThyroidChange, '( 82 - 200 ng/ml )')}
@@ -660,7 +661,7 @@ export const InvestigationReportModal = ({
               </div>
 
               {/* VERTICAL ACTION BUTTONS COLUMN (Image 1 Right Stack) */}
-              <div style={styles.actionsColumn}>
+              <div style={styles.actionsColumn} className="lab-actions-column">
                 <button
                   type="button"
                   onClick={handleSave}
@@ -701,7 +702,7 @@ export const InvestigationReportModal = ({
                   <span>Cancel</span>
                 </button>
 
-                <div style={{ marginTop: 'auto', paddingTop: '16px' }}>
+                <div style={{ marginTop: 'auto', paddingTop: '16px' }} className="lab-exit-btn-wrap">
                   <button
                     type="button"
                     onClick={onClose}
@@ -718,9 +719,9 @@ export const InvestigationReportModal = ({
 
           {/* TAB 2: OTHER REPORTS (Image 2) */}
           {activeTab === 'other' && (
-            <div style={styles.tab2Container}>
+            <div style={styles.tab2Container} className="lab-tab2-container">
               {/* Header with Title and '+ Add New Box' Button */}
-              <div style={styles.specialHeaderBar}>
+              <div style={styles.specialHeaderBar} className="lab-special-header-bar">
                 <h4 style={styles.specialTitle}>
                   DIAGNOSTIC RADIOLOGY, SONOGRAPHY &amp; SPECIAL REPORTS (DOCTOR FREE-TEXT FINDINGS)
                 </h4>
@@ -737,9 +738,9 @@ export const InvestigationReportModal = ({
               </div>
 
               {/* Responsive Grid of Free-Text Finding Cards (Image 2) */}
-              <div style={styles.specialCardsGrid}>
+              <div style={styles.specialCardsGrid} className="lab-special-cards-grid">
                 {specialBoxes.map((box, idx) => (
-                  <div key={box.key || idx} style={styles.specialCard}>
+                  <div key={box.key || idx} style={styles.specialCard} className="lab-special-card">
                     <div style={styles.specialCardHeader}>
                       <span style={styles.specialCardTitle}>{box.title}</span>
                       <button
@@ -764,8 +765,8 @@ export const InvestigationReportModal = ({
               </div>
 
               {/* Action Buttons for Tab 2 */}
-              <div style={styles.tab2BottomActions}>
-                <div style={{ display: 'flex', gap: '8px' }}>
+              <div style={styles.tab2BottomActions} className="lab-tab2-bottom-actions">
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                   <button
                     type="button"
                     onClick={handleSave}
@@ -1087,8 +1088,9 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: '16px',
+    padding: '12px',
     overflowY: 'auto',
+    boxSizing: 'border-box',
   },
   modal: {
     backgroundColor: '#FFFFFF',
@@ -1096,44 +1098,52 @@ const styles = {
     border: '1px solid #DCEAE7',
     boxShadow: '0 20px 40px rgba(0, 0, 0, 0.2)',
     width: '100%',
-    maxWidth: '1080px',
+    maxWidth: '1140px',
     maxHeight: '94vh',
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden',
+    boxSizing: 'border-box',
   },
   // Top Header Bar
   headerBar: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-    gap: '8px 16px',
+    gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+    gap: '8px 14px',
     backgroundColor: '#F8FAF9',
-    padding: '12px 18px',
+    padding: '10px 16px',
     borderBottom: '1px solid #E2E8F0',
+    boxSizing: 'border-box',
   },
   headerCol: {
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
+    gap: '6px',
+    minWidth: 0,
+    width: '100%',
   },
   headerLabel: {
     fontSize: '11px',
     fontWeight: '700',
     color: '#1B2B29',
     whiteSpace: 'nowrap',
-    minWidth: '95px',
+    minWidth: '85px',
+    flexShrink: 0,
   },
   headerInput: {
     flex: 1,
+    minWidth: 0,
+    width: '100%',
     height: '28px',
     borderRadius: '14px',
     border: '1px solid #DCEAE7',
     backgroundColor: '#FFFFFF',
-    padding: '0 12px',
-    fontSize: '12px',
+    padding: '0 10px',
+    fontSize: '11.5px',
     fontWeight: '600',
     color: '#1B2B29',
     outline: 'none',
+    boxSizing: 'border-box',
   },
   // Tabs Row
   tabsRow: {
@@ -1143,6 +1153,8 @@ const styles = {
     borderBottom: '1px solid #CBD5E1',
     padding: '0 16px',
     gap: '4px',
+    overflowX: 'auto',
+    flexShrink: 0,
   },
   tabBtn: {
     display: 'flex',
@@ -1155,6 +1167,7 @@ const styles = {
     fontWeight: '600',
     color: '#475569',
     cursor: 'pointer',
+    whiteSpace: 'nowrap',
     transition: 'all 0.15s ease',
   },
   tabBtnActive: {
@@ -1176,27 +1189,33 @@ const styles = {
     flex: 1,
     overflowY: 'auto',
     padding: '14px 18px',
+    minHeight: 0,
   },
   // Tab 1 Layout
   tab1Container: {
     display: 'flex',
-    gap: '16px',
+    gap: '14px',
     alignItems: 'stretch',
-    flexWrap: 'wrap',
+    width: '100%',
+    minWidth: 0,
   },
   cardsGrid: {
     flex: 1,
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-    gap: '14px',
-    minWidth: '280px',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(290px, 1fr))',
+    gap: '12px',
+    minWidth: 0,
+    width: '100%',
   },
   paramCard: {
     backgroundColor: '#FFFFFF',
     border: '1px solid #DCEAE7',
     borderRadius: '8px',
-    padding: '12px 14px',
+    padding: '10px 12px',
     boxShadow: '0 1px 3px rgba(0, 0, 0, 0.03)',
+    minWidth: 0,
+    overflow: 'hidden',
+    boxSizing: 'border-box',
   },
   cardYellow: {
     backgroundColor: '#FFFDF5',
@@ -1233,38 +1252,56 @@ const styles = {
   paramRowsList: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '7px',
+    gap: '6px',
+    width: '100%',
+    minWidth: 0,
   },
   paramRow: {
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
+    gap: '6px',
+    width: '100%',
+    minWidth: 0,
+    boxSizing: 'border-box',
   },
   paramLabel: {
     fontSize: '11px',
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#1E293B',
-    width: '110px',
+    width: '88px',
+    minWidth: '80px',
     textAlign: 'right',
     flexShrink: 0,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
   paramInput: {
-    width: '74px',
+    width: '62px',
+    minWidth: '52px',
     height: '24px',
     borderRadius: '12px',
     border: '1px solid #CBD5E1',
     backgroundColor: '#FFFFFF',
     textAlign: 'center',
     fontSize: '11px',
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#0F172A',
     outline: 'none',
+    flexShrink: 0,
+    boxSizing: 'border-box',
+    padding: '0 4px',
   },
   rangeText: {
-    fontSize: '10.5px',
+    fontSize: '10px',
     color: '#64748B',
     fontWeight: '500',
+    flex: 1,
+    minWidth: 0,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
+    lineHeight: 1.2,
   },
   // Right Vertical Actions Column (Image 1)
   actionsColumn: {
@@ -1322,13 +1359,17 @@ const styles = {
   tab2Container: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '14px',
+    gap: '12px',
+    width: '100%',
+    minWidth: 0,
   },
   specialHeaderBar: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: '4px 0',
+    flexWrap: 'wrap',
+    gap: '8px',
   },
   specialTitle: {
     fontSize: '12px',
@@ -1353,8 +1394,10 @@ const styles = {
   },
   specialCardsGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
     gap: '12px',
+    width: '100%',
+    minWidth: 0,
   },
   specialCard: {
     backgroundColor: '#FFFFFF',
@@ -1365,6 +1408,9 @@ const styles = {
     flexDirection: 'column',
     gap: '6px',
     boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
+    minWidth: 0,
+    overflow: 'hidden',
+    boxSizing: 'border-box',
   },
   specialCardHeader: {
     display: 'flex',
@@ -1390,6 +1436,8 @@ const styles = {
   },
   specialTextarea: {
     width: '100%',
+    minWidth: 0,
+    boxSizing: 'border-box',
     padding: '8px 10px',
     fontSize: '11px',
     color: '#1E293B',
@@ -1407,6 +1455,8 @@ const styles = {
     justifyContent: 'space-between',
     paddingTop: '12px',
     borderTop: '1px solid #E2E8F0',
+    flexWrap: 'wrap',
+    gap: '8px',
   },
   // Sub Modal
   subModalOverlay: {

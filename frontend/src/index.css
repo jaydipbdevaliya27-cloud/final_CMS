@@ -371,3 +371,109 @@ input:focus, select:focus, textarea:focus {
   }
 }
 
+/* ===================================================
+   LAB ENTRY INVESTIGATION REPORT MODAL RESPONSIVENESS
+   =================================================== */
+.lab-modal-container {
+  width: 95vw !important;
+  max-width: 1140px !important;
+  max-height: 94vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+.lab-header-bar {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 8px 14px !important;
+  box-sizing: border-box !important;
+}
+
+.lab-tab1-container {
+  display: flex !important;
+  gap: 14px !important;
+  align-items: stretch !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.lab-cards-grid {
+  flex: 1 !important;
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)) !important;
+  gap: 12px !important;
+  min-width: 0 !important;
+  width: 100% !important;
+}
+
+.lab-param-card {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+.lab-actions-column {
+  width: 105px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+  flex-shrink: 0 !important;
+}
+
+@media screen and (max-width: 980px) {
+  .lab-modal-container {
+    max-height: 96vh !important;
+  }
+
+  .lab-header-bar {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  
+  .lab-tab1-container {
+    flex-direction: column !important;
+  }
+  
+  .lab-actions-column {
+    width: 100% !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    justify-content: flex-end !important;
+    padding-top: 10px !important;
+    border-top: 1px solid #E2E8F0 !important;
+  }
+  
+  .lab-actions-column button {
+    flex: 1 1 120px !important;
+  }
+  
+  .lab-actions-column > div,
+  .lab-exit-btn-wrap {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+    flex: 1 1 100px !important;
+  }
+}
+
+@media screen and (max-width: 640px) {
+  .lab-modal-container {
+    width: 98vw !important;
+    padding: 8px !important;
+  }
+
+  .lab-header-bar {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .lab-cards-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .lab-special-cards-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+
