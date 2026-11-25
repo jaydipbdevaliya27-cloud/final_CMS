@@ -61,6 +61,7 @@ export const MedicalCertificate = () => {
   const [medicalDiagnosis, setMedicalDiagnosis] = useState('');
   const [fromDate, setFromDate] = useState(todayStr);
   const [toDate, setToDate] = useState(todayStr);
+  const [joiningDate, setJoiningDate] = useState(todayStr);
   const [restDays, setRestDays] = useState(1);
   const [issuePlace, setIssuePlace] = useState('Ahmedabad');
   const [bodyText, setBodyText] = useState('');
@@ -100,7 +101,7 @@ export const MedicalCertificate = () => {
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
 
-  // Auto-calculate Rest Days whenever fromDate or toDate changes
+  // Auto-calculate Rest Days and default Joining Date whenever fromDate or toDate changes
   useEffect(() => {
     if (fromDate && toDate) {
       const start = new Date(fromDate);
@@ -108,6 +109,14 @@ export const MedicalCertificate = () => {
       const diffTime = end - start;
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
       setRestDays(diffDays > 0 ? diffDays : 1);
+
+      if (!isNaN(end.getTime())) {
+        const nextDay = new Date(end);
+        nextDay.setDate(nextDay.getDate() + 1);
+        const pad = (n) => String(n).padStart(2, '0');
+        const nextStr = `${nextDay.getFullYear()}-${pad(nextDay.getMonth() + 1)}-${pad(nextDay.getDate())}`;
+        setJoiningDate(nextStr);
+      }
     }
   }, [fromDate, toDate]);
 
@@ -273,6 +282,7 @@ export const MedicalCertificate = () => {
     const pDiag = medicalDiagnosis ? medicalDiagnosis.trim() : '{DIAGNOSIS}';
     const fDate = fromDate || '{FROM_DATE}';
     const tDate = toDate || '{TO_DATE}';
+    const jDate = joiningDate || '{JOINING_DATE}';
     const rDays = restDays ? `${restDays}` : '{REST_DAYS}';
     const cId = nextCertId || '{CERT_ID}';
     const cName = doctor?.clinicName || 'Dhyey Main Clinic';
@@ -282,12 +292,13 @@ export const MedicalCertificate = () => {
     text = text.replace(/\{DIAGNOSIS\}/g, pDiag);
     text = text.replace(/\{FROM_DATE\}/g, fDate);
     text = text.replace(/\{TO_DATE\}/g, tDate);
+    text = text.replace(/\{JOINING_DATE\}/g, jDate);
     text = text.replace(/\{REST_DAYS\}/g, rDays);
     text = text.replace(/\{CERT_ID\}/g, cId);
     text = text.replace(/\{CLINIC_NAME\}/g, cName);
 
     return text;
-  }, [bodyText, patientFullName, age, medicalDiagnosis, fromDate, toDate, restDays, nextCertId, doctor]);
+  }, [bodyText, patientFullName, age, medicalDiagnosis, fromDate, toDate, joiningDate, restDays, nextCertId, doctor]);
 
   // Handle Form Submission & Print
   const handleIssueAndPrint = async (e) => {
@@ -325,6 +336,7 @@ export const MedicalCertificate = () => {
         medicalDiagnosis: medicalDiagnosis.trim(),
         fromDate,
         toDate,
+        joiningDate,
         restDays,
         issuePlace: issuePlace.trim() || 'Ahmedabad',
         bodyText: currentFormattedBody,
@@ -498,6 +510,7 @@ export const MedicalCertificate = () => {
     medicalDiagnosis: medicalDiagnosis || 'Acute Viral Pyrexia',
     fromDate,
     toDate,
+    joiningDate,
     restDays,
     issuePlace: issuePlace || 'Ahmedabad',
     bodyText: currentFormattedBody,
@@ -871,7 +884,7 @@ export const MedicalCertificate = () => {
                   </div>
                 </div>
 
-                {/* Row 4: From Date, To Date, Days, Issue Place */}
+                {/* Row 4: From Date, To Date, Days, Joining Date, Issue Place */}
                 <div style={styles.formRow}>
                   <div style={{ flex: 1 }}>
                     <label style={styles.label}>From Date *</label>
@@ -895,7 +908,7 @@ export const MedicalCertificate = () => {
                     />
                   </div>
 
-                  <div style={{ width: '90px' }}>
+                  <div style={{ width: '85px' }}>
                     <div style={styles.fieldHeader}>
                       <label style={styles.label}>Days</label>
                       <span style={styles.autoTag}>Auto</span>
@@ -906,6 +919,20 @@ export const MedicalCertificate = () => {
                       value={restDays}
                       onChange={(e) => setRestDays(Number(e.target.value))}
                       style={styles.input}
+                    />
+                  </div>
+
+                  <div style={{ flex: 1 }}>
+                    <div style={styles.fieldHeader}>
+                      <label style={styles.label}>Joining Date</label>
+                      <span style={styles.autoTag}>Auto</span>
+                    </div>
+                    <input
+                      type="date"
+                      value={joiningDate}
+                      onChange={(e) => setJoiningDate(e.target.value)}
+                      style={styles.input}
+                      title="Date of joining / resuming duty"
                     />
                   </div>
 
@@ -944,6 +971,7 @@ export const MedicalCertificate = () => {
                       { key: '{FROM_DATE}', label: '+ From' },
                       { key: '{TO_DATE}', label: '+ To' },
                       { key: '{REST_DAYS}', label: '+ Days' },
+                      { key: '{JOINING_DATE}', label: '+ Joining Date' },
                       { key: '{CERT_ID}', label: '+ Cert ID' },
                       { key: '{CLINIC_NAME}', label: '+ Clinic' },
                     ].map((tok) => (
@@ -1222,7 +1250,12 @@ export const MedicalCertificate = () => {
                       <td style={{ ...styles.td, color: 'var(--text-muted)' }}>{cert.templateName}</td>
                       <td style={{ ...styles.td, fontWeight: '500' }}>{cert.medicalDiagnosis}</td>
                       <td style={{ ...styles.td, whiteSpace: 'nowrap' }}>
-                        {cert.fromDate} to {cert.toDate} ({cert.restDays}d)
+                        <div>{cert.fromDate} to {cert.toDate} ({cert.restDays}d)</div>
+                        {cert.joiningDate && (
+                          <div style={{ fontSize: '11px', color: '#166534', fontWeight: '600' }}>
+                            Join: {cert.joiningDate}
+                          </div>
+                        )}
                       </td>
                       <td style={{ ...styles.td, whiteSpace: 'nowrap' }}>{cert.issueDate}</td>
                       <td style={{ ...styles.td, textAlign: 'center' }}>
@@ -1332,6 +1365,9 @@ export const MedicalCertificate = () => {
               <div style={styles.printFootLeft}>
                 <p><strong>Date of Issue:</strong> {activePrintCert.issueDate || todayStr}</p>
                 <p><strong>Place of Issue:</strong> {activePrintCert.issuePlace || 'Ahmedabad'}</p>
+                {activePrintCert.joiningDate && (
+                  <p><strong>Date of Joining / Resumption:</strong> {activePrintCert.joiningDate}</p>
+                )}
                 <p style={{ fontSize: '10px', color: '#666', marginTop: 4 }}>
                   Security Verifiable Medical Document &bull; Reg: G-14285
                 </p>
@@ -1489,6 +1525,9 @@ export const MedicalCertificate = () => {
                       <div><strong>Diagnosis:</strong> {verificationResult.certificate.diagnosis}</div>
                       <div><strong>Type:</strong> {verificationResult.certificate.templateName}</div>
                       <div><strong>Validity:</strong> {verificationResult.certificate.validityPeriod}</div>
+                      {verificationResult.certificate.joiningDate && (
+                        <div><strong>Joining Date:</strong> {verificationResult.certificate.joiningDate}</div>
+                      )}
                       <div><strong>Issued On:</strong> {verificationResult.certificate.issueDate}</div>
                       <div><strong>Practitioner:</strong> {verificationResult.certificate.doctorName}</div>
                     </div>
