@@ -2216,6 +2216,22 @@ export const PatientRecord = ({
                           ? p.recentVisits
                           : (dropdownVisitsMap[p.patientId] || []);
 
+                        // Gender validation: omit "Not Specified", "-", "Unknown"
+                        const genderVal = p.gender && !['NOT SPECIFIED', 'UNKNOWN', '-', 'NOT_SPECIFIED'].includes(String(p.gender).trim().toUpperCase())
+                          ? String(p.gender).trim()
+                          : null;
+
+                        // Demographics: only written, non-empty data
+                        const demoItems = [];
+                        if (p.age && String(p.age).trim() && String(p.age).trim() !== '-') demoItems.push(`Age ${p.age}`);
+                        if (p.phone && String(p.phone).trim() && String(p.phone).trim() !== '-') demoItems.push(String(p.phone).trim());
+                        const areaStr = p.area || p.family?.area || p.society || '';
+                        if (areaStr && areaStr.trim() && areaStr.trim() !== '-') demoItems.push(areaStr.trim());
+
+                        // Real allergies (ignore NONE, NIL, NO)
+                        const realAllergies = (Array.isArray(p.allergies) ? p.allergies : [])
+                          .filter((a) => a && typeof a === 'string' && a.trim() && !['NONE', 'NIL', 'NO', 'NO ALLERGIES', 'NA'].includes(a.trim().toUpperCase()));
+
                         return (
                           <div
                             key={p._id || p.patientId}
@@ -2223,73 +2239,79 @@ export const PatientRecord = ({
                             onMouseEnter={() => setPatientHighlightIndex(idx)}
                             style={{
                               ...styles.photoDropdownItem,
-                              backgroundColor: isHighlighted ? '#EFF6FF' : '#FFFFFF',
-                              borderLeft: isHighlighted ? '4px solid #2563EB' : '4px solid transparent',
+                              backgroundColor: isHighlighted ? '#F0FDF4' : '#FFFFFF',
+                              borderLeft: isHighlighted ? '4px solid #0D5C4E' : '4px solid transparent',
+                              transition: 'all 0.15s ease',
                             }}
                           >
-                            {/* Patient Demographics Row */}
+                            {/* Patient Top Row: Name, ID, Badges, Dues, Visit Count */}
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                                <span style={{ fontWeight: 800, fontSize: 13, color: '#1E293B' }}>{p.name}</span>
+                                <span style={{ fontWeight: 800, fontSize: 14, color: '#0F172A', letterSpacing: '-0.2px' }}>
+                                  {p.name}
+                                </span>
                                 <span style={styles.photoMiniBadge}>{p.patientId}</span>
                                 {p.isHead && <span style={styles.photoHeadBadge}>HEAD</span>}
-                                {p.gender && (
-                                  <span style={{ fontSize: 10, color: '#475569', fontWeight: 600 }}>({p.gender})</span>
+                                {genderVal && (
+                                  <span style={{ fontSize: 10, color: '#475569', fontWeight: 600, backgroundColor: '#F1F5F9', padding: '1px 6px', borderRadius: 4, border: '1px solid #E2E8F0' }}>
+                                    {genderVal}
+                                  </span>
                                 )}
-                                <span style={{ fontSize: 11, color: '#64748B' }}>
-                                  Age {p.age || '-'} &bull; Phone: {p.phone || '-'} &bull; {p.area || p.family?.area || p.society || ''}
-                                </span>
                               </div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                                 {Number(p.totalDue || 0) > 0 ? (
-                                  <span style={{ fontSize: 10, fontWeight: 700, color: '#DC2626', backgroundColor: '#FEF2F2', padding: '1px 6px', borderRadius: 4, border: '1px solid #FECACA' }}>
+                                  <span style={{ fontSize: 11, fontWeight: 800, color: '#DC2626', backgroundColor: '#FEE2E2', padding: '2px 8px', borderRadius: 5, border: '1px solid #FECACA' }}>
                                     Due: ₹{p.totalDue}
                                   </span>
                                 ) : Number(p.deposit || 0) > 0 ? (
-                                  <span style={{ fontSize: 10, fontWeight: 700, color: '#16A34A', backgroundColor: '#F0FDF4', padding: '1px 6px', borderRadius: 4, border: '1px solid #BBF7D0' }}>
+                                  <span style={{ fontSize: 11, fontWeight: 800, color: '#16A34A', backgroundColor: '#DCFCE7', padding: '2px 8px', borderRadius: 5, border: '1px solid #BBF7D0' }}>
                                     Deposit: ₹{p.deposit}
                                   </span>
                                 ) : null}
-                                <span style={{ fontSize: 10, color: '#2563EB', fontWeight: 600 }}>
-                                  {visits.length > 0 ? `${visits.length} past case${visits.length > 1 ? 's' : ''}` : 'Select ↵'}
+                                <span style={{ fontSize: 10, color: '#0D5C4E', fontWeight: 700, backgroundColor: '#E6F4F1', padding: '2px 8px', borderRadius: 5, border: '1px solid #B2DFDB' }}>
+                                  {visits.length > 0 ? `${visits.length} Visit${visits.length > 1 ? 's' : ''}` : 'New Patient'}
                                 </span>
                               </div>
                             </div>
 
-                            {/* Allergies alert */}
-                            {(() => {
-                              const realAllergies = (Array.isArray(p.allergies) ? p.allergies : [])
-                                .filter((a) => a && typeof a === 'string' && a.trim() && !['NONE', 'NIL', 'NO', 'NO ALLERGIES', 'NA'].includes(a.trim().toUpperCase()));
-                              if (realAllergies.length === 0) return null;
-                              return (
-                                <div style={{ marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
-                                  <span style={{ fontSize: 9, fontWeight: 700, color: '#DC2626', backgroundColor: '#FEE2E2', padding: '1px 5px', borderRadius: 3, border: '1px solid #FECACA' }}>
-                                    ALLERGY:
-                                  </span>
-                                  <span style={{ fontSize: 10, color: '#B91C1C', fontWeight: 700 }}>
-                                    {realAllergies.join(', ')}
-                                  </span>
-                                </div>
-                              );
-                            })()}
+                            {/* Demographics Row: Only written data */}
+                            {demoItems.length > 0 && (
+                              <div style={{ fontSize: 11, color: '#64748B', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 3 }}>
+                                {demoItems.map((item, dIdx) => (
+                                  <React.Fragment key={dIdx}>
+                                    {dIdx > 0 && <span style={{ color: '#CBD5E1' }}>&bull;</span>}
+                                    <span>{item}</span>
+                                  </React.Fragment>
+                                ))}
+                              </div>
+                            )}
 
-                            {/* Past 2 to 3 Case Records Preview */}
-                            <div style={styles.dropdownCaseHistoryBox}>
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
-                                <span style={{ fontSize: 10, fontWeight: 700, color: '#0F5C4E', letterSpacing: '0.2px' }}>
-                                  Past Records (Last {Math.min(visits.length || 3, 3)} Cases):
+                            {/* Allergies Badge: Sleek high-contrast warning pill */}
+                            {realAllergies.length > 0 && (
+                              <div style={{ marginTop: 4, display: 'inline-flex', alignItems: 'center', gap: 6, backgroundColor: '#FEF2F2', border: '1px solid #FCA5A5', padding: '2px 8px', borderRadius: 4 }}>
+                                <span style={{ fontSize: 9, fontWeight: 800, color: '#DC2626', letterSpacing: '0.4px' }}>ALLERGY:</span>
+                                <span style={{ fontSize: 11, color: '#991B1B', fontWeight: 700 }}>{realAllergies.join(', ')}</span>
+                              </div>
+                            )}
+
+                            {/* Past 2 to 3 Case Records Preview: Modern Timeline Box */}
+                            <div style={{ marginTop: 6, padding: '7px 10px', backgroundColor: isHighlighted ? '#FFFFFF' : '#F8FAFC', borderRadius: 8, border: '1px solid #E2E8F0' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
+                                <span style={{ fontSize: 10, fontWeight: 800, color: '#0D5C4E', letterSpacing: '0.3px', textTransform: 'uppercase' }}>
+                                  Past Consultations {visits.length > 0 ? `(${Math.min(visits.length, 3)})` : ''}
                                 </span>
-                                <span style={{ fontSize: 9, color: '#64748B' }}>
+                                <span style={{ fontSize: 10, color: '#64748B', fontWeight: 500 }}>
                                   {visits.length > 0 ? 'Click to select patient' : 'No past visits recorded'}
                                 </span>
                               </div>
 
                               {visits.length === 0 ? (
-                                <div style={{ fontSize: 10, color: '#64748B', fontStyle: 'italic', padding: '2px 0' }}>
-                                  No previous case records found (New Consultation).
+                                <div style={{ fontSize: 11, color: '#64748B', padding: '4px 0', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                  <span style={{ color: '#0D9488', fontWeight: 800 }}>•</span>
+                                  <span>First Consultation (New Case)</span>
                                 </div>
                               ) : (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                                   {visits.slice(0, 3).map((v, vIdx) => {
                                     const clinicMeds = (v.treatments || []).map((t) => t.medicine).filter(Boolean);
                                     const rxMeds = (v.prescriptions || []).map((rx) => rx.medicine).filter(Boolean);
@@ -2309,27 +2331,28 @@ export const PatientRecord = ({
                                         style={{
                                           display: 'flex',
                                           flexDirection: 'column',
-                                          gap: 3,
-                                          fontSize: 10,
-                                          backgroundColor: isHighlighted ? '#FFFFFF' : '#F8FAFC',
-                                          padding: '4px 8px',
-                                          borderRadius: 4,
+                                          gap: 4,
+                                          fontSize: 11,
+                                          backgroundColor: '#FFFFFF',
+                                          padding: '5px 8px',
+                                          borderRadius: 6,
                                           border: '1px solid #E2E8F0',
+                                          boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
                                         }}
                                       >
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                                          <span style={{ fontWeight: 700, color: '#0D5C4E', backgroundColor: '#E6F4F1', padding: '1px 6px', borderRadius: 3, border: '1px solid #B2DFDB' }}>
+                                          <span style={{ fontWeight: 700, color: '#0D5C4E', backgroundColor: '#E6F4F1', padding: '1px 7px', borderRadius: 4, border: '1px solid #B2DFDB', fontSize: 10 }}>
                                             Date: {formattedDate}
                                           </span>
 
                                           {visitAllergies.length > 0 && (
-                                            <span style={{ fontWeight: 700, color: '#B91C1C', backgroundColor: '#FEF2F2', padding: '1px 6px', borderRadius: 3, border: '1px solid #FECACA' }}>
+                                            <span style={{ fontWeight: 700, color: '#B91C1C', backgroundColor: '#FEF2F2', padding: '1px 6px', borderRadius: 4, border: '1px solid #FECACA', fontSize: 10 }}>
                                               Allergy: {visitAllergies.join(', ')}
                                             </span>
                                           )}
 
                                           {labInfo && (
-                                            <span style={{ fontWeight: 600, color: '#92400E', backgroundColor: '#FEF3C7', padding: '1px 6px', borderRadius: 3, border: '1px solid #FDE68A' }}>
+                                            <span style={{ fontWeight: 600, color: '#92400E', backgroundColor: '#FEF3C7', padding: '1px 6px', borderRadius: 4, border: '1px solid #FDE68A', fontSize: 10 }}>
                                               Lab: {labInfo}
                                             </span>
                                           )}
@@ -5646,41 +5669,45 @@ const styles = {
     right: 0,
     minWidth: '100%',
     backgroundColor: '#FFFFFF',
-    border: '1.5px solid #2563EB',
-    borderRadius: '6px',
-    boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.25), 0 8px 10px -6px rgba(0, 0, 0, 0.15)',
-    maxHeight: '400px',
+    border: '1.5px solid #0D5C4E',
+    borderRadius: '10px',
+    boxShadow: '0 16px 36px -4px rgba(15, 23, 42, 0.22), 0 4px 12px -2px rgba(15, 23, 42, 0.08)',
+    maxHeight: '440px',
     overflowY: 'auto',
     zIndex: 1000,
-    marginTop: '3px',
+    marginTop: '4px',
   },
   photoDropdownItem: {
-    padding: '7px 10px',
-    borderBottom: '1px solid #E2E8F0',
+    padding: '9px 12px',
+    borderBottom: '1px solid #F1F5F9',
     cursor: 'pointer',
   },
   dropdownCaseHistoryBox: {
-    marginTop: '4px',
-    padding: '4px 6px',
+    marginTop: '6px',
+    padding: '7px 10px',
     backgroundColor: '#F8FAFC',
-    borderRadius: '4px',
+    borderRadius: '8px',
     border: '1px solid #E2E8F0',
   },
   photoMiniBadge: {
-    fontSize: '9px',
+    fontSize: '10px',
     fontWeight: 700,
+    fontFamily: 'monospace',
     backgroundColor: '#EFF6FF',
-    color: '#2563EB',
-    padding: '1px 4px',
-    borderRadius: '3px',
+    color: '#1D4ED8',
+    border: '1px solid #BFDBFE',
+    padding: '1px 5px',
+    borderRadius: '4px',
   },
   photoHeadBadge: {
     fontSize: '9px',
-    fontWeight: 700,
+    fontWeight: 800,
     backgroundColor: '#DCFCE7',
-    color: '#166534',
-    padding: '1px 4px',
-    borderRadius: '3px',
+    color: '#15803D',
+    border: '1px solid #86EFAC',
+    padding: '1px 5px',
+    borderRadius: '4px',
+    letterSpacing: '0.4px',
   },
   photoInputAddRow: {
     display: 'flex',
