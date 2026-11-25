@@ -627,11 +627,12 @@ export const getRecentVisits = async (req, res) => {
         { patientId: regex },
         { complaint: regex },
         { reference: regex },
+        { investigation: regex },
       ];
     }
 
     const visits = await Visit.find(query)
-      .select('patientId familyId patientName visitDate createdAt complaint ipdDetails treatments prescriptions bp sugar other reference charge received due allergies')
+      .select('patientId familyId patientName visitDate createdAt complaint ipdDetails treatments prescriptions bp sugar other reference charge received due allergies investigation labReport labReportId')
       .sort({ createdAt: -1 })
       .limit(Math.min(250, Number(limit) || 100))
       .lean();

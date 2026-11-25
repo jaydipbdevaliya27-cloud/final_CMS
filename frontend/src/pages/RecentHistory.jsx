@@ -224,6 +224,23 @@ export const RecentHistory = ({
       return alerts;
     }
 
+    // IPD Details Highlight Alert
+    let ipdItemsForAlert = [];
+    if (Array.isArray(visit.ipdDetails)) {
+      ipdItemsForAlert = visit.ipdDetails
+        .map((i) => (typeof i === 'string' ? i.trim() : (i?.item || '').trim()))
+        .filter(Boolean);
+    } else if (typeof visit.ipdDetails === 'string' && visit.ipdDetails.trim()) {
+      ipdItemsForAlert = visit.ipdDetails.split(',').map((s) => s.trim()).filter(Boolean);
+    }
+    if (ipdItemsForAlert.length > 0) {
+      alerts.push({
+        type: 'ipd',
+        text: `🏥 IPD: ${ipdItemsForAlert.slice(0, 2).join(', ')}${ipdItemsForAlert.length > 2 ? ` (+${ipdItemsForAlert.length - 2})` : ''}`,
+        variant: 'orange',
+      });
+    }
+
     // BP Alert: Check range or contains '*'
     if (visit.bp && visit.bp.trim()) {
       const bpStr = visit.bp.trim();
@@ -273,28 +290,37 @@ export const RecentHistory = ({
       }
     }
 
-    // Investigations / Radiology (e.g. 'XRAY KNEE', 'CBC', 'USG')
+    // Lab Investigations & Radiology (e.g. 'CBC', 'WIDAL', 'URINE RM', 'X-RAY', 'USG')
     if (visit.investigation && visit.investigation.trim()) {
       const items = visit.investigation.split(',').map((i) => i.trim()).filter(Boolean);
       items.forEach((item) => {
-        const hasStar = item.includes('*');
+        const upper = item.toUpperCase();
+        const hasStar = upper.includes('*');
         if (hasStar) {
           alerts.push({
             type: 'lab',
-            text: `🚩 ${item.toUpperCase()}`,
+            text: `🚩 ${upper}`,
             variant: 'red',
           });
         } else if (
-          item.toUpperCase().includes('XRAY') ||
-          item.toUpperCase().includes('X-RAY') ||
-          item.toUpperCase().includes('USG') ||
-          item.toUpperCase().includes('CT') ||
-          item.toUpperCase().includes('MRI')
+          upper.includes('XRAY') ||
+          upper.includes('X-RAY') ||
+          upper.includes('USG') ||
+          upper.includes('CT') ||
+          upper.includes('MRI') ||
+          upper.includes('SONO') ||
+          upper.includes('ECG')
         ) {
           alerts.push({
             type: 'radiology',
-            text: item.toUpperCase(),
+            text: `📷 ${upper}`,
             variant: 'blue',
+          });
+        } else {
+          alerts.push({
+            type: 'lab',
+            text: `🧪 ${upper}`,
+            variant: 'purple',
           });
         }
       });
@@ -303,23 +329,27 @@ export const RecentHistory = ({
     // Attached Lab Report parameter checks
     const rep = visit.labReport;
     if (rep && typeof rep === 'object') {
+      let reportAlertTriggered = false;
       const h = rep.hematology || {};
       if (h.hb) {
         const num = parseFloat(h.hb);
         if (h.hb.includes('*') || (!isNaN(num) && (num < 11.5 || num > 16.5))) {
           alerts.push({ type: 'lab', text: `🚩 Hb: ${h.hb}`, variant: 'red' });
+          reportAlertTriggered = true;
         }
       }
       if (h.wbc) {
         const num = parseFloat(h.wbc);
         if (h.wbc.includes('*') || (!isNaN(num) && (num < 4000 || num > 11000))) {
           alerts.push({ type: 'lab', text: `🚩 WBC: ${h.wbc}`, variant: 'red' });
+          reportAlertTriggered = true;
         }
       }
       if (h.platelet) {
         const num = parseFloat(h.platelet);
         if (h.platelet.includes('*') || (!isNaN(num) && (num < 150000 || num > 450000))) {
           alerts.push({ type: 'lab', text: `🚩 Plat: ${h.platelet}`, variant: 'red' });
+          reportAlertTriggered = true;
         }
       }
       const g = rep.bloodGlucoseRenal || {};
@@ -327,12 +357,14 @@ export const RecentHistory = ({
         const num = parseFloat(g.screatinin);
         if (g.screatinin.includes('*') || (!isNaN(num) && (num > 1.2 || num < 0.6))) {
           alerts.push({ type: 'lab', text: `🚩 S.CREAT: ${g.screatinin}`, variant: 'red' });
+          reportAlertTriggered = true;
         }
       }
       if (g.rbs) {
         const num = parseFloat(g.rbs);
         if (g.rbs.includes('*') || (!isNaN(num) && num > 140)) {
           alerts.push({ type: 'lab', text: `🚩 RBS: ${g.rbs}`, variant: 'red' });
+          reportAlertTriggered = true;
         }
       }
       const t = rep.thyroid || {};
@@ -340,15 +372,32 @@ export const RecentHistory = ({
         const num = parseFloat(t.tsh);
         if (t.tsh.includes('*') || (!isNaN(num) && (num < 0.35 || num > 4.94))) {
           alerts.push({ type: 'lab', text: `🚩 TSH: ${t.tsh}`, variant: 'red' });
+          reportAlertTriggered = true;
         }
       }
       if (Array.isArray(rep.specialFindings)) {
         rep.specialFindings.forEach((sf) => {
           if (sf.notes && sf.notes.includes('*')) {
             alerts.push({ type: 'lab', text: `🚩 ${sf.title}: ${sf.notes}`, variant: 'red' });
+            reportAlertTriggered = true;
           }
         });
       }
+
+      if (!reportAlertTriggered) {
+        const repName = rep.title || rep.reportType || 'REPORT ATTACHED';
+        alerts.push({
+          type: 'labReport',
+          text: `📋 ${repName.toUpperCase()}`,
+          variant: 'purple',
+        });
+      }
+    } else if (visit.labReportId) {
+      alerts.push({
+        type: 'labReport',
+        text: '📋 LAB REPORT',
+        variant: 'purple',
+      });
     }
 
     return alerts;
@@ -568,16 +617,14 @@ export const RecentHistory = ({
                     : '-';
 
                   // Format IPD details
-                  let ipdText = '-';
+                  let ipdList = [];
                   if (!isDueCollection && visit.ipdDetails) {
-                    if (Array.isArray(visit.ipdDetails) && visit.ipdDetails.length > 0) {
-                      ipdText = visit.ipdDetails
-                        .map((i) => (typeof i === 'string' ? i : i?.item || ''))
-                        .filter(Boolean)
-                        .join(', ')
-                        .toUpperCase();
+                    if (Array.isArray(visit.ipdDetails)) {
+                      ipdList = visit.ipdDetails
+                        .map((i) => (typeof i === 'string' ? i.trim() : (i?.item || '').trim()))
+                        .filter(Boolean);
                     } else if (typeof visit.ipdDetails === 'string' && visit.ipdDetails.trim()) {
-                      ipdText = visit.ipdDetails.trim().toUpperCase();
+                      ipdList = visit.ipdDetails.split(',').map((s) => s.trim()).filter(Boolean);
                     }
                   }
 
@@ -668,10 +715,16 @@ export const RecentHistory = ({
 
                       {/* 4. IPD Detail */}
                       <td style={styles.tdIpd}>
-                        {ipdText === '-' ? (
+                        {ipdList.length === 0 ? (
                           <span style={styles.nilText}>-</span>
                         ) : (
-                          <span style={styles.ipdText}>{ipdText}</span>
+                          <div style={styles.ipdBadgesList}>
+                            {ipdList.map((item, ipdIdx) => (
+                              <span key={ipdIdx} style={styles.ipdBadge}>
+                                {item.toUpperCase()}
+                              </span>
+                            ))}
+                          </div>
                         )}
                       </td>
 
@@ -722,6 +775,7 @@ export const RecentHistory = ({
                               if (alt.variant === 'blue') badgeStyle = styles.badgeBlue;
                               if (alt.variant === 'green') badgeStyle = styles.badgeGreen;
                               if (alt.variant === 'orange') badgeStyle = styles.badgeOrange;
+                              if (alt.variant === 'purple') badgeStyle = styles.badgePurple;
 
                               return (
                                 <span key={aIdx} style={badgeStyle}>
@@ -1456,6 +1510,24 @@ const styles = {
     padding: '8px 10px',
     verticalAlign: 'top',
   },
+  ipdBadgesList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '3px',
+    alignItems: 'flex-start',
+  },
+  ipdBadge: {
+    display: 'inline-block',
+    backgroundColor: '#FEF3C7',
+    color: '#92400E',
+    border: '1px solid #FCD34D',
+    borderRadius: '4px',
+    padding: '2px 6px',
+    fontSize: '11px',
+    fontWeight: '700',
+    lineHeight: '1.25',
+    whiteSpace: 'nowrap',
+  },
   ipdText: {
     fontSize: '11.5px',
     color: '#0D5C4E',
@@ -1542,6 +1614,19 @@ const styles = {
     backgroundColor: '#FFEDD5',
     color: '#C2410C',
     border: '1px solid #FDBA74',
+    borderRadius: '4px',
+    padding: '2px 6px',
+    fontSize: '11px',
+    fontWeight: '700',
+    whiteSpace: 'nowrap',
+  },
+  badgePurple: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '3px',
+    backgroundColor: '#EDE9FE',
+    color: '#6D28D9',
+    border: '1px solid #C4B5FD',
     borderRadius: '4px',
     padding: '2px 6px',
     fontSize: '11px',
