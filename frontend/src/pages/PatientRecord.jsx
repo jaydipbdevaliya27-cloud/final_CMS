@@ -284,7 +284,7 @@ export const PatientRecord = ({
     setPrintLanguage(langKey);
     try {
       localStorage.setItem('cms_print_lang', langKey);
-    } catch (e) {}
+    } catch (e) { }
 
     const targetVisit = pendingPrintVisit || printVisit;
     if (targetVisit) {
@@ -525,7 +525,7 @@ export const PatientRecord = ({
           setDietaryMasterList(res.data);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   // Synchronous references to eliminate stale closures in keyboard shortcuts
@@ -601,14 +601,14 @@ export const PatientRecord = ({
       hasJustSavedRef.current = false;
       try {
         localStorage.removeItem(DRAFT_KEY);
-      } catch (e) {}
+      } catch (e) { }
       return;
     }
     // NEVER persist drafts without an active patient selected
     if (!currentPatient || !currentPatient.name) {
       try {
         localStorage.removeItem(DRAFT_KEY);
-      } catch (e) {}
+      } catch (e) { }
       return;
     }
 
@@ -625,7 +625,7 @@ export const PatientRecord = ({
     if (!hasData) {
       try {
         localStorage.removeItem(DRAFT_KEY);
-      } catch (e) {}
+      } catch (e) { }
       return;
     }
     try {
@@ -642,7 +642,7 @@ export const PatientRecord = ({
           patientArea,
         })
       );
-    } catch (e) {}
+    } catch (e) { }
   }, [currentPatient, visitForm, patientDob, patientAge, patientPhone, patientHouseNo, patientSociety, patientArea]);
 
   const handleSaveVisitRef = useRef();
@@ -933,7 +933,7 @@ export const PatientRecord = ({
 
   // --- 2. Live Instant In-Memory + Debounced Search for Patients ---
   useEffect(() => {
-    preloadPatients().catch(() => {});
+    preloadPatients().catch(() => { });
   }, []);
 
   const handlePatientSearchChange = (val) => {
@@ -1130,7 +1130,7 @@ export const PatientRecord = ({
     visitFormRef.current = cleanForm;
     try {
       localStorage.removeItem(DRAFT_KEY);
-    } catch (e) {}
+    } catch (e) { }
   };
 
   // --- Open Family Due Details Modal ---
@@ -1419,7 +1419,7 @@ export const PatientRecord = ({
       const list = masterDataCache['dietary'] || dietaryMasterList || [];
       let match = list.find(
         (i) => (i.shortcut && i.shortcut.trim().toUpperCase() === code) ||
-               (i.value && i.value.trim().toUpperCase() === code)
+          (i.value && i.value.trim().toUpperCase() === code)
       );
       if (!match) {
         try {
@@ -1427,10 +1427,10 @@ export const PatientRecord = ({
           if (res && res.success && Array.isArray(res.data) && res.data.length > 0) {
             match = res.data.find(
               (i) => (i.shortcut && i.shortcut.trim().toUpperCase() === code) ||
-                     (i.value && i.value.trim().toUpperCase() === code)
+                (i.value && i.value.trim().toUpperCase() === code)
             ) || res.data[0];
           }
-        } catch (e) {}
+        } catch (e) { }
       }
       if (match) {
         advice = match.value;
@@ -1677,10 +1677,10 @@ export const PatientRecord = ({
       : [];
     const invList = visit.investigation
       ? visit.investigation.split(',').map((i, idx) => ({
-          id: `${Date.now()}-${idx}`,
-          reportType: i.trim().toUpperCase(),
-          labName: 'CARE',
-        }))
+        id: `${Date.now()}-${idx}`,
+        reportType: i.trim().toUpperCase(),
+        labName: 'CARE',
+      }))
       : [];
     const ipdList = Array.isArray(visit.ipdDetails)
       ? visit.ipdDetails
@@ -1708,26 +1708,26 @@ export const PatientRecord = ({
       treatments:
         visit.treatments && visit.treatments.length > 0
           ? visit.treatments.map((t, idx) => ({
-              id: t._id || `${Date.now()}-${idx}`,
-              item: t.item,
-              qty: t.qty !== undefined && t.qty !== null ? String(t.qty) : '1',
-              morning: t.morning || '1',
-              noon: t.noon || '0',
-              evening: t.evening || '1',
-            }))
+            id: t._id || `${Date.now()}-${idx}`,
+            item: t.item,
+            qty: t.qty !== undefined && t.qty !== null ? String(t.qty) : '1',
+            morning: t.morning || '1',
+            noon: t.noon || '0',
+            evening: t.evening || '1',
+          }))
           : [],
       prescriptions:
         visit.prescriptions && visit.prescriptions.length > 0
           ? visit.prescriptions.map((p, idx) => ({
-              id: p._id || `${Date.now()}-${idx}`,
-              medicine: p.medicine,
-              qty: p.qty !== undefined && p.qty !== null ? String(p.qty) : '',
-              morning: p.morning || '1',
-              noon: p.noon || '0',
-              evening: p.evening || '1',
-              night: p.night || '0',
-              timing: p.timing || 'AF',
-            }))
+            id: p._id || `${Date.now()}-${idx}`,
+            medicine: p.medicine,
+            qty: p.qty !== undefined && p.qty !== null ? String(p.qty) : '',
+            morning: p.morning || '1',
+            noon: p.noon || '0',
+            evening: p.evening || '1',
+            night: p.night || '0',
+            timing: p.timing || 'AF',
+          }))
           : [],
       dietary: visit.dietary || '',
       charge: String(visit.charge || 0),
@@ -1864,7 +1864,7 @@ export const PatientRecord = ({
       if (res.success) {
         try {
           localStorage.removeItem(DRAFT_KEY);
-        } catch (e) {}
+        } catch (e) { }
 
         showToast(
           editingId
@@ -1881,12 +1881,12 @@ export const PatientRecord = ({
           allergies: cleanAllergies,
           family: prev?.family
             ? {
-                ...prev.family,
-                familyDue:
-                  res.familyDue !== undefined ? res.familyDue : prev.family.familyDue,
-                familyDeposit:
-                  res.familyDeposit !== undefined ? res.familyDeposit : (prev.family.familyDeposit || 0),
-              }
+              ...prev.family,
+              familyDue:
+                res.familyDue !== undefined ? res.familyDue : prev.family.familyDue,
+              familyDeposit:
+                res.familyDeposit !== undefined ? res.familyDeposit : (prev.family.familyDeposit || 0),
+            }
             : null,
         }));
 
@@ -1917,7 +1917,7 @@ export const PatientRecord = ({
         // Reset ALL form fields and clear active patient so next entry is completely clean
         try {
           localStorage.removeItem(DRAFT_KEY);
-        } catch (e) {}
+        } catch (e) { }
 
         hasJustSavedRef.current = true;
         setCurrentPatient(null);
@@ -2259,15 +2259,11 @@ export const PatientRecord = ({
                                 )}
                               </div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                                {Number(p.totalDue || 0) > 0 ? (
+                                {Number(p.totalDue || 0) > 0 && (
                                   <span style={{ fontSize: 11, fontWeight: 800, color: '#DC2626', backgroundColor: '#FEE2E2', padding: '2px 8px', borderRadius: 5, border: '1px solid #FECACA' }}>
                                     Due: ₹{p.totalDue}
                                   </span>
-                                ) : Number(p.deposit || 0) > 0 ? (
-                                  <span style={{ fontSize: 11, fontWeight: 800, color: '#16A34A', backgroundColor: '#DCFCE7', padding: '2px 8px', borderRadius: 5, border: '1px solid #BBF7D0' }}>
-                                    Deposit: ₹{p.deposit}
-                                  </span>
-                                ) : null}
+                                )}
                                 <span style={{ fontSize: 10, color: '#0D5C4E', fontWeight: 700, backgroundColor: '#E6F4F1', padding: '2px 8px', borderRadius: 5, border: '1px solid #B2DFDB' }}>
                                   {visits.length > 0 ? `${visits.length} Visit${visits.length > 1 ? 's' : ''}` : 'New Patient'}
                                 </span>
@@ -2321,8 +2317,8 @@ export const PatientRecord = ({
 
                                     const formattedDate = v.visitDate
                                       ? (v.visitDate.includes('-')
-                                          ? v.visitDate.split('-').reverse().join('-')
-                                          : new Date(v.visitDate).toLocaleDateString('en-GB'))
+                                        ? v.visitDate.split('-').reverse().join('-')
+                                        : new Date(v.visitDate).toLocaleDateString('en-GB'))
                                       : '-';
 
                                     return (
@@ -2402,14 +2398,12 @@ export const PatientRecord = ({
                         onClick={handleOpenFamilyDueModal}
                         style={{
                           ...styles.photoDueLink,
-                          color: (currentPatient.deposit || 0) > 0 ? '#10B981' : ((currentPatient.totalDue || 0) > 0 ? '#DC2626' : '#64748B'),
-                          fontWeight: (currentPatient.deposit || 0) > 0 || (currentPatient.totalDue || 0) > 0 ? 700 : 500,
+                          color: (currentPatient.totalDue || 0) > 0 ? '#DC2626' : '#64748B',
+                          fontWeight: (currentPatient.totalDue || 0) > 0 ? 700 : 500,
                         }}
-                        title="Click to view family due and deposit breakdown"
+                        title="Click to view family due breakdown"
                       >
-                        {(currentPatient.deposit || 0) > 0
-                          ? `🟢 DEPOSIT: ₹${currentPatient.deposit}`
-                          : `Total Due: ₹${currentPatient.totalDue || 0}`}
+                        Total Due: ₹{currentPatient.totalDue || 0}
                       </button>
                     )}
                   </div>
@@ -3298,8 +3292,8 @@ export const PatientRecord = ({
                               {rx.timing === 'SOS'
                                 ? `SOS${rx.sosInstruction ? ` (${rx.sosInstruction})` : ''}`
                                 : rx.timing === 'BF'
-                                ? 'Before Food'
-                                : 'After Food'}
+                                  ? 'Before Food'
+                                  : 'After Food'}
                             </td>
                             <td style={{ ...styles.photoTd, textAlign: 'center' }}>
                               <button
@@ -3566,16 +3560,14 @@ export const PatientRecord = ({
                     fontWeight: 700,
                     cursor: currentPatient && finalPatientDue > 0 ? 'pointer' : 'default',
                     border: '1px solid',
-                    backgroundColor: finalPatientDeposit > 0 ? '#DCFCE7' : (finalPatientDue > 0 ? '#FEE2E2' : '#F1F5F9'),
-                    borderColor: finalPatientDeposit > 0 ? '#86EFAC' : (finalPatientDue > 0 ? '#FCA5A5' : '#CBD5E1'),
-                    color: finalPatientDeposit > 0 ? '#15803D' : (finalPatientDue > 0 ? '#B91C1C' : '#475569'),
+                    backgroundColor: finalPatientDue > 0 ? '#FEE2E2' : '#F1F5F9',
+                    borderColor: finalPatientDue > 0 ? '#FCA5A5' : '#CBD5E1',
+                    color: finalPatientDue > 0 ? '#B91C1C' : '#475569',
                   }}
                   title={currentPatient && finalPatientDue > 0 ? "Click to view patient's pending visits" : ''}
                 >
                   <span>
-                    {finalPatientDeposit > 0
-                      ? `Patient Deposit: ₹${finalPatientDeposit}`
-                      : `Patient Due: ₹${currentPatient ? finalPatientDue : 0}`}
+                    Patient Due: ₹{currentPatient ? finalPatientDue : 0}
                   </span>
                 </button>
 
@@ -3593,16 +3585,14 @@ export const PatientRecord = ({
                     fontWeight: 700,
                     cursor: currentPatient ? 'pointer' : 'default',
                     border: '1px solid',
-                    backgroundColor: finalFamilyDeposit > 0 ? '#DCFCE7' : (finalFamilyDue > 0 ? '#FEF3C7' : '#F1F5F9'),
-                    borderColor: finalFamilyDeposit > 0 ? '#86EFAC' : (finalFamilyDue > 0 ? '#FCD34D' : '#CBD5E1'),
-                    color: finalFamilyDeposit > 0 ? '#15803D' : (finalFamilyDue > 0 ? '#92400E' : '#475569'),
+                    backgroundColor: finalFamilyDue > 0 ? '#FEF3C7' : '#F1F5F9',
+                    borderColor: finalFamilyDue > 0 ? '#FCD34D' : '#CBD5E1',
+                    color: finalFamilyDue > 0 ? '#92400E' : '#475569',
                   }}
                   title={currentPatient ? "Click to view full family breakdown across members" : ''}
                 >
                   <span>
-                    {finalFamilyDeposit > 0
-                      ? `Family Deposit: ₹${finalFamilyDeposit}`
-                      : `Family Due: ₹${currentPatient ? finalFamilyDue : 0}`}
+                    Family Due: ₹{currentPatient ? finalFamilyDue : 0}
                   </span>
                 </button>
               </div>
@@ -4584,7 +4574,7 @@ export const PatientRecord = ({
                           if (printVisit.createdAt) {
                             try {
                               tPart = new Date(printVisit.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
-                            } catch (e) {}
+                            } catch (e) { }
                           }
                           if (!tPart) {
                             tPart = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
