@@ -182,7 +182,7 @@ export const PatientRecord = ({
   const { doctor } = useAuth();
   // --- Search & Patient State ---
   const [patientSearch, setPatientSearch] = useState('');
-  const debouncedSearch = useDebounce(patientSearch, 250);
+  const debouncedSearch = useDebounce(patientSearch, 100);
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
@@ -236,16 +236,22 @@ export const PatientRecord = ({
   // Fetch Master Data Dietary suggestions when print modal opens
   useEffect(() => {
     if (showPrintModal) {
-      masterDataAPI
-        .getItems('dietary', '', 1, 50)
-        .then((res) => {
-          if (res && res.success && res.data) {
-            setMasterDietaryList(res.data);
-          }
-        })
-        .catch((err) => console.error('Error fetching dietary master items:', err));
+      if (dietaryMasterList && dietaryMasterList.length > 0) {
+        setMasterDietaryList(dietaryMasterList);
+      } else if (masterDataCache['dietary'] && masterDataCache['dietary'].length > 0) {
+        setMasterDietaryList(masterDataCache['dietary']);
+      } else {
+        masterDataAPI
+          .getItems('dietary', '', 1, 50)
+          .then((res) => {
+            if (res && res.success && res.data) {
+              setMasterDietaryList(res.data);
+            }
+          })
+          .catch((err) => console.error('Error fetching dietary master items:', err));
+      }
     }
-  }, [showPrintModal]);
+  }, [showPrintModal, dietaryMasterList]);
 
   const handleToggleDietaryChip = (chipValue) => {
     const currentTokens = (printDietary || '')
@@ -853,27 +859,26 @@ export const PatientRecord = ({
       return;
     }
     // Instant 0ms synchronous in-memory search from RAM
-    const instantMatches = searchPatientsInMemory(val);
-    if (instantMatches.length > 0) {
-      setSearchResults(instantMatches.slice(0, 30));
-      setPatientHighlightIndex(0);
-      setShowSearchDropdown(true);
-    }
+    const instantMatches = searchPatientsInMemory(val, 35);
+    setSearchResults(instantMatches);
+    setPatientHighlightIndex(0);
+    setShowSearchDropdown(instantMatches.length > 0);
   };
 
   useEffect(() => {
     let active = true;
     const searchPatients = async () => {
-      if (!debouncedSearch.trim()) {
+      const q = debouncedSearch.trim();
+      if (!q) {
         setSearchResults([]);
         setIsSearching(false);
         return;
       }
 
       // Check RAM cache first
-      const instantMatches = searchPatientsInMemory(debouncedSearch);
+      const instantMatches = searchPatientsInMemory(q, 35);
       if (instantMatches.length > 0) {
-        setSearchResults(instantMatches.slice(0, 30));
+        setSearchResults(instantMatches);
         setPatientHighlightIndex(0);
         setShowSearchDropdown(true);
         return;
@@ -881,7 +886,7 @@ export const PatientRecord = ({
 
       try {
         setIsSearching(true);
-        const res = await patientAPI.getAll(debouncedSearch);
+        const res = await patientAPI.getAll(q);
         if (active && res.success) {
           setSearchResults(res.data || []);
           setPatientHighlightIndex(0); // Automatically select first match
@@ -1723,6 +1728,15 @@ export const PatientRecord = ({
           setPrintDietary(form.dietary || '');
           setPrintLanguage('en');
           setShowPrintModal(true);
+
+          // Fast Auto-Print: Immediately pop open the browser print dialog
+          setTimeout(() => {
+            try {
+              window.print();
+            } catch (e) {
+              console.warn('Auto-print error:', e);
+            }
+          }, 80);
         }
 
         // Reset ALL form fields and clear active patient so next entry is completely clean
@@ -2322,16 +2336,21 @@ export const PatientRecord = ({
                                   <Edit3 size={12} color="#D97706" />
                                 </button>
 
-                                {/* Print */}
+                                {/* Print (Fast Instant Print) */}
                                 <button
                                   type="button"
                                   onClick={() => {
                                     setPrintVisit({ ...v, patient: currentPatient });
                                     setPrintDietary(v.dietary || '');
                                     setShowPrintModal(true);
+                                    setTimeout(() => {
+                                      try {
+                                        window.print();
+                                      } catch (e) {}
+                                    }, 80);
                                   }}
                                   style={styles.historyActBtn}
-                                  title="Print Prescription"
+                                  title="Print Prescription (Fast Print)"
                                 >
                                   <Printer size={12} color="#2563EB" />
                                 </button>

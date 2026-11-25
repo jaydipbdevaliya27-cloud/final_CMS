@@ -121,7 +121,7 @@ const escapeRegex = (str) => {
 // @access  Private
 export const getPatients = async (req, res) => {
   try {
-    const { familyId, search } = req.query;
+    const { familyId, search, limit: reqLimit } = req.query;
     const query = {};
 
     if (familyId) {
@@ -164,7 +164,7 @@ export const getPatients = async (req, res) => {
         },
         'familyId'
       )
-        .limit(10)
+        .limit(15)
         .lean();
       const matchingFamilyIds = matchingFamilies.map((f) => f.familyId);
       const allFamIdsToMatch = Array.from(new Set([...candidateFamIdArr, ...matchingFamilyIds]));
@@ -181,11 +181,20 @@ export const getPatients = async (req, res) => {
       ];
     }
 
-    const patients = await Patient.find(query).sort({ createdAt: -1 }).limit(30).lean();
+    // Fast selective limits: up to 10,000 for RAM preloading, 50 for live network search
+    const maxLimit = reqLimit ? parseInt(reqLimit, 10) : (search && search.trim() ? 50 : 10000);
+
+    const patients = await Patient.find(query)
+      .select('patientId familyId name age gender bloodGroup allergies society area phone relation isHead totalDue deposit createdAt')
+      .sort({ createdAt: -1 })
+      .limit(maxLimit)
+      .lean();
 
     // Enrich with family info (headName, familyDue, area, etc.)
-    const familyIds = [...new Set(patients.map((p) => p.familyId))];
-    const families = await Family.find({ familyId: { $in: familyIds } }).lean();
+    const familyIds = [...new Set(patients.map((p) => p.familyId).filter(Boolean))];
+    const families = await Family.find({ familyId: { $in: familyIds } })
+      .select('familyId headName society area phone familyDue familyDeposit')
+      .lean();
     const familyMap = {};
     families.forEach((f) => {
       familyMap[f.familyId] = f;

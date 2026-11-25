@@ -90,6 +90,15 @@ input:focus, select:focus, textarea:focus {
     size: A5 portrait;
   }
 
+  *, *::before, *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    animation: none !important;
+    transition: none !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
   html, body {
     margin: 0 !important;
     padding: 0 !important;
@@ -106,7 +115,10 @@ input:focus, select:focus, textarea:focus {
   }
 
   .no-print,
-  .no-print * {
+  .no-print *,
+  aside,
+  nav,
+  header {
     display: none !important;
   }
 
@@ -178,6 +190,7 @@ input:focus, select:focus, textarea:focus {
     z-index: 99999999 !important;
     box-sizing: border-box !important;
     font-size: 11px !important;
+    contain: content !important;
   }
 
   /* Support for Pre-printed Stationery Pad Feed */
