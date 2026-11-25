@@ -266,3 +266,108 @@ input:focus, select:focus, textarea:focus {
 .resizing-active {
   user-select: none !important;
 }
+
+/* =========================================================
+   PATIENT RECORD FULL RESPONSIVE 2-COLUMN CLINICAL WORKSPACE
+   ========================================================= */
+
+.patient-record-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  background-color: #F1F5F9;
+  box-sizing: border-box;
+}
+
+.patient-record-main {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  height: 100%;
+  flex: 1;
+  min-height: 0;
+  gap: 6px;
+  padding: 3px 5px;
+  box-sizing: border-box;
+  overflow: hidden;
+  background-color: #F1F5F9;
+}
+
+.patient-record-left-col {
+  flex: 1 1 50%;
+  width: 50%;
+  min-width: 360px;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+  padding-right: 2px;
+  box-sizing: border-box;
+}
+
+.patient-record-right-col {
+  flex: 1 1 50%;
+  width: 50%;
+  min-width: 380px;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+  padding-right: 2px;
+  box-sizing: border-box;
+}
+
+/* Card 1 & 2 in Right Column stretch to use full height */
+.patient-card-clinic-med {
+  flex: 1 1 140px;
+  min-height: 130px;
+  display: flex;
+  flex-direction: column;
+}
+
+.patient-card-prescription {
+  flex: 1.3 1 160px;
+  min-height: 150px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Card 5 in Left Column stretches to use full height */
+.patient-card-ipd {
+  flex: 1 1 100px;
+  min-height: 90px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Responsive breakpoint for laptops, tablets, and small viewports */
+@media screen and (max-width: 980px) {
+  .patient-record-main {
+    flex-direction: column !important;
+    overflow-y: auto !important;
+  }
+  .patient-record-left-col,
+  .patient-record-right-col {
+    width: 100% !important;
+    flex: none !important;
+    height: auto !important;
+    overflow-y: visible !important;
+    min-width: 0 !important;
+  }
+  .patient-card-clinic-med,
+  .patient-card-prescription,
+  .patient-card-ipd {
+    flex: none !important;
+    height: auto !important;
+    min-height: 140px !important;
+  }
+}
+

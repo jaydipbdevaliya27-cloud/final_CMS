@@ -1663,7 +1663,7 @@ export const PatientRecord = ({
   };
 
   return (
-    <div style={styles.container}>
+    <div className="patient-record-container" style={styles.container}>
       {/* Toast Notification */}
       {toastMessage.text && (
         <div
@@ -1682,10 +1682,10 @@ export const PatientRecord = ({
         </div>
       )}
 
-      {/* 2-COLUMN MAIN CLINICAL WORKSPACE (EXACT COPY OF PHOTO LAYOUT) */}
-      <div style={styles.photoLayoutMain}>
-        {/* LEFT COLUMN (~48% width) */}
-        <div style={styles.photoLeftCol}>
+      {/* 2-COLUMN MAIN CLINICAL WORKSPACE (FULL RESPONSIVE & FULL SPACE UTILIZATION) */}
+      <div className="patient-record-main" style={styles.photoLayoutMain}>
+        {/* LEFT COLUMN (~50% width on desktop, 100% on mobile/tablet) */}
+        <div className="patient-record-left-col" style={styles.photoLeftCol}>
           {/* CARD 1: Patient Details (Blue Theme) */}
           <div style={{ ...styles.photoCard, borderColor: '#93C5FD' }}>
             <div style={styles.photoHeaderBlue}>
@@ -2347,7 +2347,7 @@ export const PatientRecord = ({
           </div>
 
           {/* CARD 5: IPD Detail (Amber/Orange Theme) - Injections & IV Bottles */}
-          <div style={{ ...styles.photoCard, borderColor: '#FDBA74' }}>
+          <div className="patient-card-ipd" style={{ ...styles.photoCard, ...styles.photoCardIpd, borderColor: '#FDBA74' }}>
             <div style={styles.photoHeaderAmber}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Syringe size={14} color="#EA580C" />
@@ -2355,7 +2355,7 @@ export const PatientRecord = ({
               </div>
               <span style={{ fontSize: 10, color: '#9A3412', fontWeight: 600 }}>Injections, IV Bottles & Procedures</span>
             </div>
-            <div style={styles.photoCardBody}>
+            <div style={{ ...styles.photoCardBody, flex: 1, minHeight: 0 }}>
               <div style={styles.photoInputAddRow}>
                 <div style={{ flex: 1 }}>
                   <MasterDataInput
@@ -2376,10 +2376,10 @@ export const PatientRecord = ({
                 </button>
               </div>
 
-              {/* Pills row */}
-              <div style={styles.photoPillsContainer}>
+              {/* Pills row (Expands vertically to use full available space) */}
+              <div style={styles.photoIpdPillsContainer}>
                 {(visitForm.ipdDetails || []).length === 0 ? (
-                  <span style={styles.photoNoItemsText}>No IPD details/injections added</span>
+                  <span style={styles.photoNoItemsText}>No IPD details/injections added (Type above & click + Add)</span>
                 ) : (
                   (visitForm.ipdDetails || []).map((ipd, idx) => (
                     <span key={idx} style={styles.photoPillAmber}>
@@ -2400,17 +2400,17 @@ export const PatientRecord = ({
           </div>
         </div>
 
-        {/* RIGHT COLUMN (~52% width) */}
-        <div style={styles.photoRightCol}>
+        {/* RIGHT COLUMN (~50% width on desktop, 100% on mobile/tablet) */}
+        <div className="patient-record-right-col" style={styles.photoRightCol}>
           {/* CARD 1: 1. Clinic Medicine (Blue Theme) */}
-          <div style={{ ...styles.photoCard, borderColor: '#93C5FD' }}>
+          <div className="patient-card-clinic-med" style={{ ...styles.photoCard, ...styles.photoCardClinicMed, borderColor: '#93C5FD' }}>
             <div style={styles.photoHeaderBlue}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Pill size={14} color="#1E40AF" />
                 <span style={styles.photoHeaderTitle}>1. Clinic Medicine</span>
               </div>
             </div>
-            <div style={styles.photoCardBody}>
+            <div style={{ ...styles.photoCardBody, flex: 1, minHeight: 0 }}>
               <div style={styles.photoInputAddRow}>
                 <div style={{ flex: '1 1 200px' }}>
                   <MasterDataInput
@@ -2472,8 +2472,8 @@ export const PatientRecord = ({
                 </button>
               </div>
 
-              {/* Clinic Medicines Table */}
-              <div style={styles.photoTableWrap}>
+              {/* Clinic Medicines Table (Expands to fill available space) */}
+              <div style={styles.photoTableWrapFlex}>
                 <table style={styles.photoTable}>
                   <thead>
                     <tr style={styles.photoTableThTr}>
@@ -2486,8 +2486,8 @@ export const PatientRecord = ({
                   <tbody>
                     {(visitForm.treatments || []).length === 0 ? (
                       <tr>
-                        <td colSpan={4} style={styles.photoTableEmptyTd}>
-                          No clinic medicines added.
+                        <td colSpan={4} style={styles.photoTableEmptyTdFlex}>
+                          No clinic medicines added yet. Type medicine above and press Enter or +
                         </td>
                       </tr>
                     ) : (
@@ -2517,14 +2517,14 @@ export const PatientRecord = ({
           </div>
 
           {/* CARD 2: 2. Prescription (Blue Theme) */}
-          <div style={{ ...styles.photoCard, borderColor: '#93C5FD' }}>
+          <div className="patient-card-prescription" style={{ ...styles.photoCard, ...styles.photoCardPrescription, borderColor: '#93C5FD' }}>
             <div style={styles.photoHeaderBlue}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <FileText size={14} color="#1E40AF" />
                 <span style={styles.photoHeaderTitle}>2. Prescription</span>
               </div>
             </div>
-            <div style={styles.photoCardBody}>
+            <div style={{ ...styles.photoCardBody, flex: 1, minHeight: 0 }}>
               <div style={styles.photoInputAddRow}>
                 <div style={{ flex: '1 1 180px' }}>
                   <MasterDataInput
@@ -2632,8 +2632,8 @@ export const PatientRecord = ({
                 </button>
               </div>
 
-              {/* Prescription Table */}
-              <div style={styles.photoTableWrap}>
+              {/* Prescription Table (Expands to fill available space) */}
+              <div style={styles.photoTableWrapFlex}>
                 <table style={styles.photoTable}>
                   <thead>
                     <tr style={styles.photoTableThTr}>
@@ -2647,8 +2647,8 @@ export const PatientRecord = ({
                   <tbody>
                     {(visitForm.prescriptions || []).length === 0 ? (
                       <tr>
-                        <td colSpan={5} style={styles.photoTableEmptyTd}>
-                          No prescriptions added.
+                        <td colSpan={5} style={styles.photoTableEmptyTdFlex}>
+                          No prescriptions added yet. Type medicine above and press Enter or +
                         </td>
                       </tr>
                     ) : (
@@ -4277,46 +4277,52 @@ const styles = {
   container: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '6px',
     width: '100%',
     height: '100%',
     flex: 1,
     minHeight: 0,
     overflow: 'hidden',
+    backgroundColor: '#F1F5F9',
+    boxSizing: 'border-box',
+    gap: 0,
   },
 
-  // Photo Layout Styles (Matching user screenshot)
+  // Photo Layout Styles (Matching user screenshot - Full Space Responsive)
   photoLayoutMain: {
     display: 'flex',
+    flexDirection: 'row',
     width: '100%',
     height: '100%',
     flex: 1,
     minHeight: 0,
-    gap: '8px',
-    padding: '4px 6px',
+    gap: '6px',
+    padding: '3px 5px',
     boxSizing: 'border-box',
-    overflowY: 'auto',
-    flexWrap: 'wrap',
+    overflow: 'hidden',
     backgroundColor: '#F1F5F9',
   },
   photoLeftCol: {
-    flex: '1 1 480px',
-    minWidth: '340px',
-    maxWidth: '100%',
+    flex: '1 1 50%',
+    width: '50%',
+    minWidth: '360px',
+    height: '100%',
+    minHeight: 0,
     display: 'flex',
     flexDirection: 'column',
-    gap: '5px',
+    gap: '4px',
     overflowY: 'auto',
     paddingRight: '2px',
     boxSizing: 'border-box',
   },
   photoRightCol: {
-    flex: '1 1 500px',
-    minWidth: '340px',
-    maxWidth: '100%',
+    flex: '1 1 50%',
+    width: '50%',
+    minWidth: '380px',
+    height: '100%',
+    minHeight: 0,
     display: 'flex',
     flexDirection: 'column',
-    gap: '5px',
+    gap: '4px',
     overflowY: 'auto',
     paddingRight: '2px',
     boxSizing: 'border-box',
@@ -4822,6 +4828,56 @@ const styles = {
     overflow: 'hidden',
     maxHeight: '100px',
     overflowY: 'auto',
+  },
+  photoTableWrapFlex: {
+    border: '1px solid #CBD5E1',
+    borderRadius: '3px',
+    overflowY: 'auto',
+    flex: 1,
+    minHeight: '75px',
+    display: 'flex',
+    flexDirection: 'column',
+    backgroundColor: '#FFFFFF',
+  },
+  photoTableEmptyTdFlex: {
+    padding: '22px 10px',
+    textAlign: 'center',
+    color: '#94A3B8',
+    fontSize: '11px',
+    fontStyle: 'italic',
+    verticalAlign: 'middle',
+    backgroundColor: '#FAFBFD',
+  },
+  photoCardClinicMed: {
+    flex: '1 1 140px',
+    minHeight: '130px',
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  photoCardPrescription: {
+    flex: '1.3 1 160px',
+    minHeight: '150px',
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  photoCardIpd: {
+    flex: '1 1 100px',
+    minHeight: '90px',
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  photoIpdPillsContainer: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '4px',
+    minHeight: '38px',
+    alignItems: 'flex-start',
+    flex: 1,
+    overflowY: 'auto',
+    backgroundColor: '#FAFBFD',
+    border: '1px solid #E2E8F0',
+    borderRadius: '3px',
+    padding: '4px 6px',
   },
   photoTable: {
     width: '100%',

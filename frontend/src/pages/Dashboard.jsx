@@ -1497,6 +1497,7 @@ export const Dashboard = () => {
           style={{
             ...styles.mainContent,
             width: isSidebarCollapsed ? 'calc(100% - 28px)' : `calc(100% - ${sidebarWidth}px)`,
+            padding: activeTab === 'patient-record' ? '2px 4px' : '8px 12px',
           }}
         >
           {/* PatientRecord is ALWAYS kept alive in the DOM so clinical case entry 100% persists across tab switches */}
@@ -1508,6 +1509,7 @@ export const Dashboard = () => {
               width: '100%',
               flexDirection: 'column',
               padding: 0,
+              gap: 0,
             }}
           >
             <PatientRecord
