@@ -1443,7 +1443,7 @@ const styles = {
     boxShadow: 'var(--shadow-sm)',
     position: 'sticky',
     top: 0,
-    zIndex: 99999,
+    zIndex: 1000,
   },
   navBrand: {
     display: 'flex',
@@ -1529,7 +1529,7 @@ const styles = {
     maxWidth: '420px',
     minWidth: '160px',
     margin: '0 12px',
-    zIndex: 100000,
+    zIndex: 1100,
   },
   searchIcon: {
     position: 'absolute',
@@ -1584,7 +1584,7 @@ const styles = {
     border: '1.5px solid #146B5C',
     borderRadius: '10px',
     boxShadow: '0 20px 40px -4px rgba(0, 0, 0, 0.35), 0 8px 16px -4px rgba(0, 0, 0, 0.2)',
-    zIndex: 100001,
+    zIndex: 1200,
     display: 'flex',
     flexDirection: 'column',
   },

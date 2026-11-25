@@ -1084,7 +1084,7 @@ const styles = {
     right: 0,
     bottom: 0,
     backgroundColor: 'rgba(15, 23, 42, 0.65)',
-    zIndex: 9999,
+    zIndex: 1000005,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',

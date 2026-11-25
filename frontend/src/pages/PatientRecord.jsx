@@ -678,6 +678,13 @@ export const PatientRecord = ({
   // --- Global Keyboard Shortcuts: Alt+N/F3 for New Case, Ctrl+S for Save Case, Ctrl+Enter for Save & Print ---
   useEffect(() => {
     const handleGlobalShortcuts = (e) => {
+      // If print modal is open, let Escape close it
+      if (showPrintModal && e.key === 'Escape') {
+        e.preventDefault();
+        setShowPrintModal(false);
+        return;
+      }
+
       // Don't intercept if an overlay modal is open
       if (showAddReportModal || showTotalDueModal || showFamilyDueModal || showPrintModal) {
         return;
@@ -4248,8 +4255,8 @@ export const PatientRecord = ({
           .filter(Boolean);
 
         return (
-          <div style={styles.modalOverlay}>
-            <div style={styles.printModalCard}>
+          <div style={styles.modalOverlay} onClick={() => setShowPrintModal(false)}>
+            <div style={styles.printModalCard} onClick={(e) => e.stopPropagation()}>
               {/* MODAL TOP HEADER (NON-PRINTABLE) */}
               <div style={styles.printModalHeader} className="no-print">
                 <div style={styles.printClinicBadge}>
@@ -4270,7 +4277,7 @@ export const PatientRecord = ({
                     type="button"
                     onClick={() => setShowPrintModal(false)}
                     style={styles.closeModalBtn}
-                    title="Close"
+                    title="Close (Esc)"
                   >
                     <X size={16} />
                   </button>
@@ -4744,6 +4751,30 @@ export const PatientRecord = ({
                     {doctor?.medicalStore || 'Harsh Medical & General Stores'}
                   </span>
                   <span style={styles.photoPharmacyPlus}>+</span>
+                </div>
+              </div>
+
+              {/* MODAL BOTTOM ACTION BAR (NON-PRINTABLE) */}
+              <div style={styles.printModalFooter} className="no-print">
+                <span style={{ fontSize: '12px', color: '#64748B' }}>
+                  Press <kbd style={{ padding: '2px 6px', background: '#F1F5F9', border: '1px solid #CBD5E1', borderRadius: '4px', fontWeight: 700, fontSize: '11px', color: '#334155' }}>Ctrl+P</kbd> to print &bull; <kbd style={{ padding: '2px 6px', background: '#F1F5F9', border: '1px solid #CBD5E1', borderRadius: '4px', fontWeight: 700, fontSize: '11px', color: '#334155' }}>Esc</kbd> to close
+                </span>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowPrintModal(false)}
+                    style={styles.printFooterCloseBtn}
+                  >
+                    Close
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => window.print()}
+                    style={styles.printTriggerBtn}
+                  >
+                    <Printer size={14} />
+                    <span>Print Prescription</span>
+                  </button>
                 </div>
               </div>
             </div>
@@ -7506,12 +7537,14 @@ const styles = {
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 999,
-    padding: '14px',
+    zIndex: 1000005,
+    padding: '16px',
+    boxSizing: 'border-box',
+    backdropFilter: 'blur(2px)',
   },
   modalCard: {
     backgroundColor: '#FFFFFF',
@@ -7626,20 +7659,23 @@ const styles = {
   // Print Modal
   printModalCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: '8px',
+    borderRadius: '10px',
     width: '100%',
-    maxWidth: '840px',
-    maxHeight: '94vh',
+    maxWidth: '860px',
+    height: '92vh',
+    maxHeight: '92vh',
     display: 'flex',
     flexDirection: 'column',
-    boxShadow: 'var(--shadow-lg)',
+    boxShadow: '0 25px 60px -12px rgba(0, 0, 0, 0.45)',
     overflow: 'hidden',
+    position: 'relative',
+    margin: 'auto',
   },
   printModalHeader: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: '10px 14px',
+    padding: '10px 16px',
     backgroundColor: 'var(--surface-alt)',
     borderBottom: '1px solid var(--border)',
     flexShrink: 0,
@@ -7671,15 +7707,34 @@ const styles = {
     cursor: 'pointer',
     boxShadow: '0 2px 5px rgba(20, 107, 92, 0.25)',
   },
+  printModalFooter: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '10px 16px',
+    backgroundColor: 'var(--surface-alt)',
+    borderTop: '1px solid var(--border)',
+    flexShrink: 0,
+  },
+  printFooterCloseBtn: {
+    padding: '6px 14px',
+    borderRadius: '5px',
+    border: '1px solid var(--border)',
+    backgroundColor: '#FFFFFF',
+    color: '#475569',
+    fontSize: '12px',
+    fontWeight: 600,
+    cursor: 'pointer',
+  },
 
   // Print Modal Interactive Controls Bar
   printControlPanel: {
     backgroundColor: '#F8FAF9',
     borderBottom: '1px solid var(--border)',
-    padding: '10px 16px',
+    padding: '8px 16px',
     display: 'flex',
     flexDirection: 'column',
-    gap: '10px',
+    gap: '8px',
     flexShrink: 0,
   },
   printOptionRow: {

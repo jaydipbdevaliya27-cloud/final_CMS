@@ -1659,7 +1659,7 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 9999,
+    zIndex: 1000005,
     padding: '16px',
   },
   modalCard: {
