@@ -1,6 +1,6 @@
 import { patientAPI } from '../services/api';
 
-const LOCAL_STORAGE_CACHE_KEY = 'cms_patient_cache_v3';
+const LOCAL_STORAGE_CACHE_KEY = 'cms_patient_cache_v5';
 
 // Index patient for sub-millisecond prefix & multi-token search
 const indexPatient = (p) => {

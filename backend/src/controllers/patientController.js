@@ -205,7 +205,7 @@ export const getPatients = async (req, res) => {
     const visitsByPatient = {};
     if (patientIds.length > 0) {
       const recentVisits = await Visit.find({ patientId: { $in: patientIds } })
-        .select('patientId visitDate complaint treatments prescriptions bp sugar other charge received due createdAt')
+        .select('patientId visitDate complaint treatments prescriptions investigation labReport allergies bp sugar other charge received due createdAt')
         .sort({ visitDate: -1, createdAt: -1 })
         .lean();
 
@@ -220,6 +220,9 @@ export const getPatients = async (req, res) => {
             complaint: v.complaint || '',
             treatments: v.treatments || [],
             prescriptions: v.prescriptions || [],
+            investigation: v.investigation || '',
+            labReport: v.labReport ? (typeof v.labReport === 'string' ? v.labReport : (v.labReport.reportType || v.labReport.title || 'Lab Report')) : '',
+            allergies: Array.isArray(v.allergies) ? v.allergies : (v.allergies ? [v.allergies] : []),
             bp: v.bp || '',
             sugar: v.sugar || '',
             other: v.other || '',

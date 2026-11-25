@@ -2230,7 +2230,7 @@ export const PatientRecord = ({
                                   <span style={{ fontSize: 10, color: '#475569', fontWeight: 600 }}>({p.gender})</span>
                                 )}
                                 <span style={{ fontSize: 11, color: '#64748B' }}>
-                                  Age {p.age || '-'} &bull; 📱 {p.phone || '-'} &bull; 📍 {p.area || p.family?.area || p.society || ''}
+                                  Age {p.age || '-'} &bull; Phone: {p.phone || '-'} &bull; {p.area || p.family?.area || p.society || ''}
                                 </span>
                               </div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
@@ -2250,22 +2250,27 @@ export const PatientRecord = ({
                             </div>
 
                             {/* Allergies alert */}
-                            {Array.isArray(p.allergies) && p.allergies.length > 0 && (
-                              <div style={{ marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
-                                <span style={{ fontSize: 9, fontWeight: 700, color: '#DC2626', backgroundColor: '#FEE2E2', padding: '0 4px', borderRadius: 3 }}>
-                                  ⚠️ ALLERGY:
-                                </span>
-                                <span style={{ fontSize: 10, color: '#B91C1C', fontWeight: 600 }}>
-                                  {p.allergies.join(', ')}
-                                </span>
-                              </div>
-                            )}
+                            {(() => {
+                              const realAllergies = (Array.isArray(p.allergies) ? p.allergies : [])
+                                .filter((a) => a && typeof a === 'string' && a.trim() && !['NONE', 'NIL', 'NO', 'NO ALLERGIES', 'NA'].includes(a.trim().toUpperCase()));
+                              if (realAllergies.length === 0) return null;
+                              return (
+                                <div style={{ marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                  <span style={{ fontSize: 9, fontWeight: 700, color: '#DC2626', backgroundColor: '#FEE2E2', padding: '1px 5px', borderRadius: 3, border: '1px solid #FECACA' }}>
+                                    ALLERGY:
+                                  </span>
+                                  <span style={{ fontSize: 10, color: '#B91C1C', fontWeight: 700 }}>
+                                    {realAllergies.join(', ')}
+                                  </span>
+                                </div>
+                              );
+                            })()}
 
                             {/* Past 2 to 3 Case Records Preview */}
                             <div style={styles.dropdownCaseHistoryBox}>
                               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
-                                <span style={{ fontSize: 10, fontWeight: 700, color: '#1E40AF' }}>
-                                  📋 Past Records (Last {Math.min(visits.length || 3, 3)} Cases):
+                                <span style={{ fontSize: 10, fontWeight: 700, color: '#0F5C4E', letterSpacing: '0.2px' }}>
+                                  Past Records (Last {Math.min(visits.length || 3, 3)} Cases):
                                 </span>
                                 <span style={{ fontSize: 9, color: '#64748B' }}>
                                   {visits.length > 0 ? 'Click to select patient' : 'No past visits recorded'}
@@ -2279,9 +2284,11 @@ export const PatientRecord = ({
                               ) : (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                                   {visits.slice(0, 3).map((v, vIdx) => {
-                                    const clinicMedNames = (v.treatments || []).map((t) => t.medicine).filter(Boolean);
-                                    const rxMedNames = (v.prescriptions || []).map((rx) => rx.medicine).filter(Boolean);
-                                    const allMeds = [...new Set([...clinicMedNames, ...rxMedNames])];
+                                    const clinicMeds = (v.treatments || []).map((t) => t.medicine).filter(Boolean);
+                                    const rxMeds = (v.prescriptions || []).map((rx) => rx.medicine).filter(Boolean);
+                                    const visitAllergies = (Array.isArray(v.allergies) ? v.allergies : [])
+                                      .filter((a) => a && typeof a === 'string' && a.trim() && !['NONE', 'NIL', 'NO', 'NA'].includes(a.trim().toUpperCase()));
+                                    const labInfo = v.investigation || (typeof v.labReport === 'string' ? v.labReport : (v.labReport?.reportType || v.labReport?.title || ''));
 
                                     const formattedDate = v.visitDate
                                       ? (v.visitDate.includes('-')
@@ -2294,53 +2301,52 @@ export const PatientRecord = ({
                                         key={v._id || vIdx}
                                         style={{
                                           display: 'flex',
-                                          alignItems: 'center',
-                                          gap: 6,
+                                          flexDirection: 'column',
+                                          gap: 3,
                                           fontSize: 10,
                                           backgroundColor: isHighlighted ? '#FFFFFF' : '#F8FAFC',
-                                          padding: '3px 6px',
+                                          padding: '4px 8px',
                                           borderRadius: 4,
                                           border: '1px solid #E2E8F0',
-                                          flexWrap: 'wrap',
                                         }}
                                       >
-                                        <span style={{ fontWeight: 700, color: '#0F766E', backgroundColor: '#F0FDFA', padding: '1px 5px', borderRadius: 3, border: '1px solid #CCFBF1' }}>
-                                          📅 {formattedDate}
-                                        </span>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                          <span style={{ fontWeight: 700, color: '#0D5C4E', backgroundColor: '#E6F4F1', padding: '1px 6px', borderRadius: 3, border: '1px solid #B2DFDB' }}>
+                                            Date: {formattedDate}
+                                          </span>
 
-                                        {v.bp && (
-                                          <span style={{ fontWeight: 700, color: '#B91C1C', backgroundColor: '#FEF2F2', padding: '1px 5px', borderRadius: 3, border: '1px solid #FECACA' }}>
-                                            BP: {v.bp}
-                                          </span>
-                                        )}
+                                          {visitAllergies.length > 0 && (
+                                            <span style={{ fontWeight: 700, color: '#B91C1C', backgroundColor: '#FEF2F2', padding: '1px 6px', borderRadius: 3, border: '1px solid #FECACA' }}>
+                                              Allergy: {visitAllergies.join(', ')}
+                                            </span>
+                                          )}
 
-                                        {v.sugar && (
-                                          <span style={{ fontWeight: 600, color: '#C2410C', backgroundColor: '#FFF7ED', padding: '1px 5px', borderRadius: 3 }}>
-                                            Sugar: {v.sugar}
-                                          </span>
-                                        )}
+                                          {labInfo && (
+                                            <span style={{ fontWeight: 600, color: '#92400E', backgroundColor: '#FEF3C7', padding: '1px 6px', borderRadius: 3, border: '1px solid #FDE68A' }}>
+                                              Lab: {labInfo}
+                                            </span>
+                                          )}
+                                        </div>
 
-                                        {v.complaint && (
-                                          <span style={{ color: '#334155' }}>
-                                            <strong style={{ color: '#0F172A' }}>Complaint:</strong> {v.complaint}
-                                          </span>
-                                        )}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                          {clinicMeds.length > 0 && (
+                                            <span style={{ color: '#0F766E' }}>
+                                              <strong style={{ color: '#0D5C4E' }}>Clinic Medicine:</strong> {clinicMeds.join(', ')}
+                                            </span>
+                                          )}
 
-                                        {allMeds.length > 0 && (
-                                          <span style={{ color: '#1E40AF', marginLeft: 'auto' }}>
-                                            <strong style={{ color: '#1E3A8A' }}>Rx/Meds:</strong> {allMeds.slice(0, 3).join(', ')}{allMeds.length > 3 ? ` (+${allMeds.length - 3})` : ''}
-                                          </span>
-                                        )}
+                                          {rxMeds.length > 0 && (
+                                            <span style={{ color: '#1E40AF' }}>
+                                              <strong style={{ color: '#1E3A8A' }}>Prescription:</strong> {rxMeds.join(', ')}
+                                            </span>
+                                          )}
 
-                                        {Number(v.due || 0) > 0 ? (
-                                          <span style={{ color: '#DC2626', fontWeight: 700, marginLeft: 4 }}>
-                                            Due: ₹{v.due}
-                                          </span>
-                                        ) : (
-                                          <span style={{ color: '#16A34A', fontWeight: 600, marginLeft: 4 }}>
-                                            ✓ Paid
-                                          </span>
-                                        )}
+                                          {clinicMeds.length === 0 && rxMeds.length === 0 && !labInfo && (
+                                            <span style={{ color: '#64748B', fontStyle: 'italic' }}>
+                                              {v.complaint ? `Complaint: ${v.complaint}` : 'Consultation / Advice given'}
+                                            </span>
+                                          )}
+                                        </div>
                                       </div>
                                     );
                                   })}
