@@ -1197,6 +1197,13 @@ export const PatientRecord = ({
       : (currentPatient?.familyDeposit || familyData?.family?.familyDeposit || 0)
   )) : 0;
 
+  // Projected Family balance after this visit's charges/payments are applied:
+  const recordedFamilyBalance = familyDue - familyDeposit;
+  const baselineFamilyBalance = currentPatient ? (recordedFamilyBalance - origVisitNet) : 0;
+  const newNetFamilyBalance = currentPatient ? (baselineFamilyBalance + (chargeNum - receivedNum)) : 0;
+  const finalFamilyDue = currentPatient && newNetFamilyBalance > 0 ? newNetFamilyBalance : 0;
+  const finalFamilyDeposit = currentPatient && newNetFamilyBalance < 0 ? Math.abs(newNetFamilyBalance) : 0;
+
   // --- New Card Quick Handlers for Exact Photo Layout ---
   const handleAddAllergy = (valToAdd = null) => {
     const raw = (typeof valToAdd === 'string' && valToAdd.trim() ? valToAdd : tempAllergy).trim();
@@ -3554,7 +3561,7 @@ export const PatientRecord = ({
             </div>
 
             <div style={styles.photoCardBody}>
-              {/* Main Fields Row: Clean 3-column layout */}
+              {/* Main Fields Row: 4-column layout including Family Due */}
               <div style={styles.photoRow3Col}>
                 <div style={styles.photoFieldGroup}>
                   <label style={styles.photoLabel}>Charged Amount (₹):</label>
@@ -3604,6 +3611,55 @@ export const PatientRecord = ({
                   >
                     {currentPatient
                       ? (finalPatientDeposit > 0 ? `🟢 DEPOSIT: ₹${finalPatientDeposit}` : `₹${finalPatientDue}`)
+                      : '₹0'}
+                  </div>
+                </div>
+
+                <div style={styles.photoFieldGroup}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <label
+                      style={{
+                        ...styles.photoLabel,
+                        color: finalFamilyDeposit > 0 ? '#15803D' : (finalFamilyDue > 0 ? '#92400E' : '#475569'),
+                        fontWeight: 700,
+                      }}
+                    >
+                      {finalFamilyDeposit > 0 ? 'Family Deposit (₹):' : 'Family Total Due (₹):'}
+                    </label>
+                    {currentPatient && (finalFamilyDue > 0 || finalFamilyDeposit > 0) && (
+                      <button
+                        type="button"
+                        onClick={handleOpenFamilyDueModal}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          fontSize: '9px',
+                          color: '#2563EB',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          padding: 0,
+                          textDecoration: 'underline',
+                        }}
+                        title="Click to view breakdown across family members"
+                      >
+                        Breakdown ↗
+                      </button>
+                    )}
+                  </div>
+                  <div
+                    onClick={currentPatient ? handleOpenFamilyDueModal : undefined}
+                    style={{
+                      ...styles.photoDueDisplay,
+                      backgroundColor: finalFamilyDeposit > 0 ? '#DCFCE7' : (finalFamilyDue > 0 ? '#FEF3C7' : '#F1F5F9'),
+                      color: finalFamilyDeposit > 0 ? '#15803D' : (finalFamilyDue > 0 ? '#92400E' : '#475569'),
+                      borderColor: finalFamilyDeposit > 0 ? '#86EFAC' : (finalFamilyDue > 0 ? '#FCD34D' : '#CBD5E1'),
+                      fontWeight: 800,
+                      cursor: currentPatient ? 'pointer' : 'default',
+                    }}
+                    title={currentPatient ? 'Click to view breakdown of dues across family members' : ''}
+                  >
+                    {currentPatient
+                      ? (finalFamilyDeposit > 0 ? `🟢 DEPOSIT: ₹${finalFamilyDeposit}` : `₹${finalFamilyDue}`)
                       : '₹0'}
                   </div>
                 </div>
