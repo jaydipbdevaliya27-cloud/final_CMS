@@ -3227,72 +3227,40 @@ export const PatientRecord = ({
                     ✕ Cancel Edit (New Case)
                   </button>
                 )}
-                {personalDue > 0 && (
+                {personalDue > 0 ? (
                   <button
                     type="button"
                     onClick={() => setShowTotalDueModal(true)}
                     style={styles.photoBillingTagRed}
                     title="Click to view all past pending visits"
                   >
-                    <span>👤 Personal: ₹{personalDue}</span>
+                    <span>👤 Personal Due: ₹{personalDue}</span>
                   </button>
-                )}
-                {familyDue > 0 && (
+                ) : personalDeposit > 0 ? (
+                  <span style={styles.photoBillingTagGreen}>
+                    🟢 Personal Deposit: ₹{personalDeposit}
+                  </span>
+                ) : null}
+
+                {familyDue > 0 ? (
                   <button
                     type="button"
                     onClick={handleOpenFamilyDueModal}
                     style={styles.photoBillingTagAmber}
-                    title="Click to view full family due breakdown"
+                    title="Click to view full family due breakdown across members"
                   >
-                    <span>👥 Family: ₹{familyDue}</span>
+                    <span>👥 Family Due: ₹{familyDue}</span>
                   </button>
-                )}
+                ) : familyDeposit > 0 ? (
+                  <span style={styles.photoBillingTagGreen}>
+                    🟢 Family Deposit: ₹{familyDeposit}
+                  </span>
+                ) : null}
               </div>
             </div>
 
             <div style={styles.photoCardBody}>
-              {/* Dues Status Notice Bar (Shown if Personal Due or Family Due exists, or in Edit mode) */}
-              {(personalDue > 0 || familyDue > 0 || personalDeposit > 0 || familyDeposit > 0 || activeEditingVisit) && (
-                <div style={styles.photoBillingDueBar}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                    {personalDue > 0 ? (
-                      <span
-                        onClick={() => setShowTotalDueModal(true)}
-                        style={styles.photoBillingTagRed}
-                        title="Click to view personal visit dues"
-                      >
-                        <span>👤 Personal Due: ₹{personalDue}</span>
-                      </span>
-                    ) : personalDeposit > 0 ? (
-                      <span style={styles.photoBillingTagGreen}>
-                        🟢 Personal Deposit: ₹{personalDeposit}
-                      </span>
-                    ) : null}
-
-                    {familyDue > 0 ? (
-                      <span
-                        onClick={handleOpenFamilyDueModal}
-                        style={styles.photoBillingTagAmber}
-                        title="Click to view family due breakdown across members"
-                      >
-                        <span>👥 Family Due: ₹{familyDue}</span>
-                      </span>
-                    ) : familyDeposit > 0 ? (
-                      <span style={styles.photoBillingTagGreen}>
-                        🟢 Family Deposit: ₹{familyDeposit}
-                      </span>
-                    ) : null}
-                  </div>
-
-                  {activeEditingVisit && (
-                    <span style={{ fontSize: '10px', color: '#92400E', marginLeft: 'auto', fontWeight: 600 }}>
-                      *Editing: original visit net (₹{origVisitNet > 0 ? origVisitNet : 0}) is not double-counted
-                    </span>
-                  )}
-                </div>
-              )}
-
-              {/* Main Fields Row */}
+              {/* Main Fields Row: Clean 3-column layout */}
               <div style={styles.photoRow3Col}>
                 <div style={styles.photoFieldGroup}>
                   <label style={styles.photoLabel}>Charged Amount (₹):</label>
@@ -3315,58 +3283,6 @@ export const PatientRecord = ({
                     style={styles.photoInput}
                   />
                 </div>
-
-                {/* Show Personal Due field if personalDue > 0 */}
-                {personalDue > 0 && (
-                  <div style={styles.photoFieldGroup}>
-                    <label style={{ ...styles.photoLabel, color: '#B91C1C', fontWeight: 700 }}>
-                      Personal Due (₹):
-                    </label>
-                    <div
-                      onClick={() => setShowTotalDueModal(true)}
-                      style={{
-                        ...styles.photoDueDisplay,
-                        backgroundColor: '#FEE2E2',
-                        color: '#B91C1C',
-                        borderColor: '#FCA5A5',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                      }}
-                      title="Click to view all past pending visits"
-                    >
-                      <span>₹{personalDue}</span>
-                      <span style={{ fontSize: '9px', fontWeight: 700, color: '#DC2626' }}>View ↗</span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Show Family Due field if familyDue > 0 */}
-                {familyDue > 0 && (
-                  <div style={styles.photoFieldGroup}>
-                    <label style={{ ...styles.photoLabel, color: '#92400E', fontWeight: 700 }}>
-                      Family Due (₹):
-                    </label>
-                    <div
-                      onClick={handleOpenFamilyDueModal}
-                      style={{
-                        ...styles.photoDueDisplay,
-                        backgroundColor: '#FEF3C7',
-                        color: '#92400E',
-                        borderColor: '#FCD34D',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                      }}
-                      title="Click to view family due breakdown across all members"
-                    >
-                      <span>₹{familyDue}</span>
-                      <span style={{ fontSize: '9px', fontWeight: 700, color: '#B45309' }}>View ↗</span>
-                    </div>
-                  </div>
-                )}
 
                 <div style={styles.photoFieldGroup}>
                   <label
