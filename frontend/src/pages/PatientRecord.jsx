@@ -235,6 +235,17 @@ export const PatientRecord = ({
   const [printDietary, setPrintDietary] = useState('');
   const [masterDietaryList, setMasterDietaryList] = useState([]);
 
+  // Dietary state
+  const [dietaryCodeInput, setDietaryCodeInput] = useState('');
+  const [dietaryTextInput, setDietaryTextInput] = useState('');
+  const [dietaryMasterList, setDietaryMasterList] = useState([]);
+  const [dietarySuggestions, setDietarySuggestions] = useState([]);
+  const [showDietaryDropdown, setShowDietaryDropdown] = useState(false);
+  const [dietaryHighlightIndex, setDietaryHighlightIndex] = useState(0);
+  const dietaryCodeWrapRef = useRef(null);
+  const dietaryCodeInputRef = useRef(null);
+  const dietaryAdviceInputRef = useRef(null);
+
   // Fetch Master Data Dietary suggestions when print modal opens
   useEffect(() => {
     if (showPrintModal) {
@@ -389,15 +400,6 @@ export const PatientRecord = ({
     timing: 'AF',
     sosInstruction: '',
   });
-  const [dietaryCodeInput, setDietaryCodeInput] = useState('');
-  const [dietaryTextInput, setDietaryTextInput] = useState('');
-  const [dietaryMasterList, setDietaryMasterList] = useState([]);
-  const [dietarySuggestions, setDietarySuggestions] = useState([]);
-  const [showDietaryDropdown, setShowDietaryDropdown] = useState(false);
-  const [dietaryHighlightIndex, setDietaryHighlightIndex] = useState(0);
-  const dietaryCodeWrapRef = useRef(null);
-  const dietaryCodeInputRef = useRef(null);
-  const dietaryAdviceInputRef = useRef(null);
 
   // --- New Visit Entry Form State (Matching Image) ---
   const getTodayDateStr = () => {
