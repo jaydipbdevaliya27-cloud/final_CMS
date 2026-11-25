@@ -49,6 +49,10 @@ const certificateSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    joiningDate: {
+      type: String,
+      default: '',
+    },
     restDays: {
       type: Number,
       default: 1,
