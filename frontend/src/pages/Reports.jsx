@@ -22,6 +22,37 @@ import {
   ChevronUp,
 } from 'lucide-react';
 
+const KpiCard = ({ title, value, subtitle, icon: Icon, colorTheme = 'blue', isAlert = false }) => {
+  const themes = {
+    blue: { border: '#3B82F6', iconBg: '#EFF6FF', iconColor: '#1D4ED8', valColor: '#1E3A8A' },
+    emerald: { border: '#10B981', iconBg: '#ECFDF5', iconColor: '#059669', valColor: '#065F46' },
+    rose: { border: '#F43F5E', iconBg: '#FFF1F2', iconColor: '#E11D48', valColor: '#9F1239' },
+    amber: { border: '#F59E0B', iconBg: '#FFFBEB', iconColor: '#D97706', valColor: '#92400E' },
+    purple: { border: '#A855F7', iconBg: '#FAF5FF', iconColor: '#7E22CE', valColor: '#6B21A8' },
+    teal: { border: '#14B8A6', iconBg: '#F0FDFA', iconColor: '#0D9488', valColor: '#115E59' },
+  };
+  const theme = themes[colorTheme] || themes.blue;
+
+  return (
+    <div
+      style={{
+        ...styles.kpiCard,
+        borderTop: `3px solid ${theme.border}`,
+        backgroundColor: isAlert ? '#FEF2F2' : '#FFFFFF',
+      }}
+    >
+      <div style={styles.kpiTopRow}>
+        <div style={{ ...styles.kpiIconWrap, backgroundColor: theme.iconBg, color: theme.iconColor }}>
+          {Icon && <Icon size={16} />}
+        </div>
+        <span style={styles.kpiLabel}>{title}</span>
+      </div>
+      <div style={{ ...styles.kpiVal, color: theme.valColor }}>{value}</div>
+      {subtitle && <div style={styles.kpiSub}>{subtitle}</div>}
+    </div>
+  );
+};
+
 export const Reports = ({ onNavigateToPatient }) => {
   const { doctor } = useAuth();
 
@@ -332,11 +363,16 @@ export const Reports = ({ onNavigateToPatient }) => {
                 }}
               >
                 <Icon
-                  size={16}
-                  color={isActive ? '#FFFFFF' : '#146B5C'}
+                  size={15}
+                  color={isActive ? '#FFFFFF' : '#0D5C4E'}
                   style={{ marginRight: 6 }}
                 />
                 <span>{tab.label}</span>
+                {tab.id === 'dues' && (summary.patientsWithDueCount > 0 || (summary.totalOutstandingDue || 0) > 0) && (
+                  <span style={isActive ? styles.dueBadgeActive : styles.dueBadgeInactive}>
+                    {summary.patientsWithDueCount || '!'}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -344,22 +380,13 @@ export const Reports = ({ onNavigateToPatient }) => {
 
         {/* Action Buttons: Print & CSV Export */}
         <div style={styles.tabActions}>
-          {/* <button
-            onClick={() => setShowLabModal(true)}
-            title="Open Diagnostic Laboratory & Investigation Report Form"
-            style={styles.labReportBtn}
-          >
-            <span style={{ fontSize: '13px' }}>🩸</span>
-            <span style={{ marginLeft: 5, fontWeight: '700' }}>+ Lab Report</span>
-          </button> */}
-
           <button
             onClick={fetchReport}
             title="Refresh Data"
             style={styles.refreshBtn}
             disabled={loading}
           >
-            <RefreshCw size={14} className={loading ? 'spin' : ''} />
+            <RefreshCw size={13} className={loading ? 'spin' : ''} />
             <span style={{ marginLeft: 5 }}>Refresh</span>
           </button>
 
@@ -368,7 +395,7 @@ export const Reports = ({ onNavigateToPatient }) => {
             title="Download CSV Spreadsheet"
             style={styles.exportBtn}
           >
-            <Download size={14} />
+            <Download size={13} />
             <span style={{ marginLeft: 5 }}>Export CSV</span>
           </button>
 
@@ -377,8 +404,8 @@ export const Reports = ({ onNavigateToPatient }) => {
             title="Print Report (Clean Printable Format)"
             style={styles.printBtn}
           >
-            <Printer size={15} />
-            <span style={{ marginLeft: 6, fontWeight: '600' }}>Print Report</span>
+            <Printer size={14} />
+            <span style={{ marginLeft: 6, fontWeight: '700' }}>Print Report</span>
           </button>
         </div>
       </div>
@@ -630,183 +657,240 @@ export const Reports = ({ onNavigateToPatient }) => {
       <div style={styles.summaryGrid} className="no-print">
         {activeTab === 'area-wise' && (
           <>
-            <div style={styles.summaryCard}>
-              <span style={styles.summaryLabel}>Total Areas</span>
-              <span style={styles.summaryVal}>{summary.totalAreas || 0}</span>
-            </div>
-            <div style={styles.summaryCard}>
-              <span style={styles.summaryLabel}>Total Registered Patients</span>
-              <span style={styles.summaryVal}>{summary.totalPatients || 0}</span>
-            </div>
-            <div style={styles.summaryCard}>
-              <span style={styles.summaryLabel}>Total OPD Visits</span>
-              <span style={styles.summaryVal}>{summary.totalVisits || 0}</span>
-            </div>
-            <div style={styles.summaryCard}>
-              <span style={styles.summaryLabel}>Total Billed</span>
-              <span style={{ ...styles.summaryVal, color: 'var(--primary)' }}>
-                ₹{(summary.totalCharge || 0).toLocaleString('en-IN')}
-              </span>
-            </div>
-            <div style={styles.summaryCard}>
-              <span style={styles.summaryLabel}>Total Received</span>
-              <span style={{ ...styles.summaryVal, color: '#0d9488' }}>
-                ₹{(summary.totalReceived || 0).toLocaleString('en-IN')}
-              </span>
-            </div>
-            <div style={{ ...styles.summaryCard, borderColor: 'var(--danger-soft)' }}>
-              <span style={styles.summaryLabel}>Outstanding Dues</span>
-              <span style={{ ...styles.summaryVal, color: 'var(--danger)' }}>
-                ₹{(summary.totalDue || 0).toLocaleString('en-IN')}
-              </span>
-            </div>
+            <KpiCard
+              title="Total Areas"
+              value={summary.totalAreas || 0}
+              subtitle="Registered localities"
+              icon={MapPin}
+              colorTheme="blue"
+            />
+            <KpiCard
+              title="Patients Count"
+              value={summary.totalPatients || 0}
+              subtitle="Registered patient base"
+              icon={Users}
+              colorTheme="purple"
+            />
+            <KpiCard
+              title="OPD Visits"
+              value={summary.totalVisits || 0}
+              subtitle="Total consultations"
+              icon={TrendingUp}
+              colorTheme="teal"
+            />
+            <KpiCard
+              title="Total Billed"
+              value={`₹${(summary.totalCharge || 0).toLocaleString('en-IN')}`}
+              subtitle="Gross OPD charges"
+              icon={IndianRupee}
+              colorTheme="amber"
+            />
+            <KpiCard
+              title="Total Received"
+              value={`₹${(summary.totalReceived || 0).toLocaleString('en-IN')}`}
+              subtitle="Net amount collected"
+              icon={CheckCircle2}
+              colorTheme="emerald"
+            />
+            <KpiCard
+              title="Outstanding Dues"
+              value={`₹${(summary.totalDue || 0).toLocaleString('en-IN')}`}
+              subtitle="Pending recovery"
+              icon={AlertCircle}
+              colorTheme="rose"
+              isAlert={(summary.totalDue || 0) > 0}
+            />
           </>
         )}
 
         {activeTab === 'ref-doctor' && (
           <>
-            <div style={styles.summaryCard}>
-              <span style={styles.summaryLabel}>Ref. Doctors / Sources</span>
-              <span style={styles.summaryVal}>{summary.totalDoctors || 0}</span>
-            </div>
-            <div style={styles.summaryCard}>
-              <span style={styles.summaryLabel}>Total Referred Visits</span>
-              <span style={styles.summaryVal}>{summary.totalVisits || 0}</span>
-            </div>
-            <div style={styles.summaryCard}>
-              <span style={styles.summaryLabel}>Total Charges Billed</span>
-              <span style={{ ...styles.summaryVal, color: 'var(--primary)' }}>
-                ₹{(summary.totalCharge || 0).toLocaleString('en-IN')}
-              </span>
-            </div>
-            <div style={styles.summaryCard}>
-              <span style={styles.summaryLabel}>Total Amount Collected</span>
-              <span style={{ ...styles.summaryVal, color: '#0d9488' }}>
-                ₹{(summary.totalReceived || 0).toLocaleString('en-IN')}
-              </span>
-            </div>
-            <div style={{ ...styles.summaryCard, borderColor: 'var(--danger-soft)' }}>
-              <span style={styles.summaryLabel}>Pending Receivables</span>
-              <span style={{ ...styles.summaryVal, color: 'var(--danger)' }}>
-                ₹{(summary.totalDue || 0).toLocaleString('en-IN')}
-              </span>
-            </div>
+            <KpiCard
+              title="Referring Sources"
+              value={summary.totalDoctors || 0}
+              subtitle="Doctors & referral partners"
+              icon={UserCheck}
+              colorTheme="purple"
+            />
+            <KpiCard
+              title="Referred Visits"
+              value={summary.totalVisits || 0}
+              subtitle="Total referred patient cases"
+              icon={TrendingUp}
+              colorTheme="blue"
+            />
+            <KpiCard
+              title="Total Billed"
+              value={`₹${(summary.totalCharge || 0).toLocaleString('en-IN')}`}
+              subtitle="Gross revenue from referrals"
+              icon={IndianRupee}
+              colorTheme="amber"
+            />
+            <KpiCard
+              title="Amount Collected"
+              value={`₹${(summary.totalReceived || 0).toLocaleString('en-IN')}`}
+              subtitle="Collected payments"
+              icon={CheckCircle2}
+              colorTheme="emerald"
+            />
+            <KpiCard
+              title="Pending Receivables"
+              value={`₹${(summary.totalDue || 0).toLocaleString('en-IN')}`}
+              subtitle="Outstanding dues"
+              icon={AlertCircle}
+              colorTheme="rose"
+              isAlert={(summary.totalDue || 0) > 0}
+            />
           </>
         )}
 
         {activeTab === 'patient-history' && (
           <>
-            <div style={styles.summaryCard}>
-              <span style={styles.summaryLabel}>Visits Found</span>
-              <span style={styles.summaryVal}>{summary.totalVisits || 0}</span>
-            </div>
-            <div style={styles.summaryCard}>
-              <span style={styles.summaryLabel}>Unique Patients</span>
-              <span style={styles.summaryVal}>{summary.uniquePatients || 0}</span>
-            </div>
-            <div style={styles.summaryCard}>
-              <span style={styles.summaryLabel}>Total Charges</span>
-              <span style={{ ...styles.summaryVal, color: 'var(--primary)' }}>
-                ₹{(summary.totalCharge || 0).toLocaleString('en-IN')}
-              </span>
-            </div>
-            <div style={styles.summaryCard}>
-              <span style={styles.summaryLabel}>Total Collections</span>
-              <span style={{ ...styles.summaryVal, color: '#0d9488' }}>
-                ₹{(summary.totalReceived || 0).toLocaleString('en-IN')}
-              </span>
-            </div>
-            <div style={{ ...styles.summaryCard, borderColor: 'var(--danger-soft)' }}>
-              <span style={styles.summaryLabel}>Pending Dues</span>
-              <span style={{ ...styles.summaryVal, color: 'var(--danger)' }}>
-                ₹{(summary.totalDue || 0).toLocaleString('en-IN')}
-              </span>
-            </div>
+            <KpiCard
+              title="Clinical Visits"
+              value={summary.totalVisits || 0}
+              subtitle="Filtered patient visits"
+              icon={History}
+              colorTheme="blue"
+            />
+            <KpiCard
+              title="Unique Patients"
+              value={summary.uniquePatients || 0}
+              subtitle="Distinct patients seen"
+              icon={Users}
+              colorTheme="purple"
+            />
+            <KpiCard
+              title="Total Charges"
+              value={`₹${(summary.totalCharge || 0).toLocaleString('en-IN')}`}
+              subtitle="Gross billed amount"
+              icon={IndianRupee}
+              colorTheme="amber"
+            />
+            <KpiCard
+              title="Total Collections"
+              value={`₹${(summary.totalReceived || 0).toLocaleString('en-IN')}`}
+              subtitle="Total received cash/UPI"
+              icon={CheckCircle2}
+              colorTheme="emerald"
+            />
+            <KpiCard
+              title="Pending Dues"
+              value={`₹${(summary.totalDue || 0).toLocaleString('en-IN')}`}
+              subtitle="Uncollected visit balance"
+              icon={AlertCircle}
+              colorTheme="rose"
+              isAlert={(summary.totalDue || 0) > 0}
+            />
           </>
         )}
 
         {activeTab === 'daily-collections' && (
           <>
-            <div style={styles.summaryCard}>
-              <span style={styles.summaryLabel}>Transactions</span>
-              <span style={styles.summaryVal}>{summary.totalTransactions || 0}</span>
-            </div>
-            <div style={styles.summaryCard}>
-              <span style={styles.summaryLabel}>Total Charges</span>
-              <span style={{ ...styles.summaryVal, color: 'var(--primary)' }}>
-                ₹{(summary.totalCharge || 0).toLocaleString('en-IN')}
-              </span>
-            </div>
-            <div style={styles.summaryCard}>
-              <span style={styles.summaryLabel}>Cash / Online Received</span>
-              <span style={{ ...styles.summaryVal, color: '#0d9488' }}>
-                ₹{(summary.totalReceived || 0).toLocaleString('en-IN')}
-              </span>
-            </div>
-            <div style={{ ...styles.summaryCard, borderColor: 'var(--danger-soft)' }}>
-              <span style={styles.summaryLabel}>Unpaid / Dues</span>
-              <span style={{ ...styles.summaryVal, color: 'var(--danger)' }}>
-                ₹{(summary.totalDue || 0).toLocaleString('en-IN')}
-              </span>
-            </div>
-            <div style={styles.summaryCard}>
-              <span style={styles.summaryLabel}>Collection Rate</span>
-              <span style={{ ...styles.summaryVal, color: 'var(--primary)' }}>
-                {summary.collectionRate || 100}%
-              </span>
-            </div>
+            <KpiCard
+              title="Transactions"
+              value={summary.totalTransactions || 0}
+              subtitle="OPD receipts recorded"
+              icon={History}
+              colorTheme="blue"
+            />
+            <KpiCard
+              title="Total Billed"
+              value={`₹${(summary.totalCharge || 0).toLocaleString('en-IN')}`}
+              subtitle="Daily consultation charges"
+              icon={IndianRupee}
+              colorTheme="amber"
+            />
+            <KpiCard
+              title="Cash & Online Received"
+              value={`₹${(summary.totalReceived || 0).toLocaleString('en-IN')}`}
+              subtitle="Collected across counters"
+              icon={CheckCircle2}
+              colorTheme="emerald"
+            />
+            <KpiCard
+              title="Unpaid Dues"
+              value={`₹${(summary.totalDue || 0).toLocaleString('en-IN')}`}
+              subtitle="Credit / pending balance"
+              icon={AlertCircle}
+              colorTheme="rose"
+              isAlert={(summary.totalDue || 0) > 0}
+            />
+            <KpiCard
+              title="Collection Rate"
+              value={`${summary.collectionRate || 100}%`}
+              subtitle="Settlement efficiency"
+              icon={TrendingUp}
+              colorTheme="teal"
+            />
           </>
         )}
 
         {activeTab === 'monthly-income' && (
           <>
-            <div style={styles.summaryCard}>
-              <span style={styles.summaryLabel}>Annual Total Visits ({selectedYear})</span>
-              <span style={styles.summaryVal}>{summary.totalVisits || 0}</span>
-            </div>
-            <div style={styles.summaryCard}>
-              <span style={styles.summaryLabel}>Annual Total Billed</span>
-              <span style={{ ...styles.summaryVal, color: 'var(--primary)' }}>
-                ₹{(summary.totalCharge || 0).toLocaleString('en-IN')}
-              </span>
-            </div>
-            <div style={styles.summaryCard}>
-              <span style={styles.summaryLabel}>Annual Collections</span>
-              <span style={{ ...styles.summaryVal, color: '#0d9488' }}>
-                ₹{(summary.totalReceived || 0).toLocaleString('en-IN')}
-              </span>
-            </div>
-            <div style={{ ...styles.summaryCard, borderColor: 'var(--danger-soft)' }}>
-              <span style={styles.summaryLabel}>Annual Dues</span>
-              <span style={{ ...styles.summaryVal, color: 'var(--danger)' }}>
-                ₹{(summary.totalDue || 0).toLocaleString('en-IN')}
-              </span>
-            </div>
-            <div style={styles.summaryCard}>
-              <span style={styles.summaryLabel}>Monthly Average Collection</span>
-              <span style={{ ...styles.summaryVal, color: 'var(--primary)' }}>
-                ₹{(summary.averagePerMonth || 0).toLocaleString('en-IN')}
-              </span>
-            </div>
+            <KpiCard
+              title={`Annual Visits (${selectedYear})`}
+              value={summary.totalVisits || 0}
+              subtitle="Yearly OPD patient footfall"
+              icon={Calendar}
+              colorTheme="blue"
+            />
+            <KpiCard
+              title="Annual Billed"
+              value={`₹${(summary.totalCharge || 0).toLocaleString('en-IN')}`}
+              subtitle="Gross annual invoices"
+              icon={IndianRupee}
+              colorTheme="amber"
+            />
+            <KpiCard
+              title="Annual Collections"
+              value={`₹${(summary.totalReceived || 0).toLocaleString('en-IN')}`}
+              subtitle="Net annual cash flow"
+              icon={CheckCircle2}
+              colorTheme="emerald"
+            />
+            <KpiCard
+              title="Annual Dues"
+              value={`₹${(summary.totalDue || 0).toLocaleString('en-IN')}`}
+              subtitle="Yearly uncollected dues"
+              icon={AlertCircle}
+              colorTheme="rose"
+              isAlert={(summary.totalDue || 0) > 0}
+            />
+            <KpiCard
+              title="Monthly Average"
+              value={`₹${(summary.averagePerMonth || 0).toLocaleString('en-IN')}`}
+              subtitle="Average monthly revenue"
+              icon={TrendingUp}
+              colorTheme="teal"
+            />
           </>
         )}
 
         {activeTab === 'dues' && (
           <>
-            <div style={{ ...styles.summaryCard, borderColor: 'var(--danger-soft)', background: 'var(--danger-soft)' }}>
-              <span style={{ ...styles.summaryLabel, color: 'var(--danger)' }}>Total Outstanding Dues</span>
-              <span style={{ ...styles.summaryVal, color: 'var(--danger)', fontSize: '20px' }}>
-                ₹{(summary.totalOutstandingDue || 0).toLocaleString('en-IN')}
-              </span>
-            </div>
-            <div style={styles.summaryCard}>
-              <span style={styles.summaryLabel}>Patients with Dues</span>
-              <span style={styles.summaryVal}>{summary.patientsWithDueCount || 0}</span>
-            </div>
-            <div style={styles.summaryCard}>
-              <span style={styles.summaryLabel}>Affected Families</span>
-              <span style={styles.summaryVal}>{summary.familiesWithDueCount || 0}</span>
-            </div>
+            <KpiCard
+              title="Total Outstanding Dues"
+              value={`₹${(summary.totalOutstandingDue || 0).toLocaleString('en-IN')}`}
+              subtitle="Cumulative clinic receivable"
+              icon={AlertCircle}
+              colorTheme="rose"
+              isAlert={(summary.totalOutstandingDue || 0) > 0}
+            />
+            <KpiCard
+              title="Patients with Dues"
+              value={summary.patientsWithDueCount || 0}
+              subtitle="Individual pending accounts"
+              icon={Users}
+              colorTheme="amber"
+            />
+            <KpiCard
+              title="Affected Families"
+              value={summary.familiesWithDueCount || 0}
+              subtitle="Family cards with dues"
+              icon={Users}
+              colorTheme="purple"
+            />
           </>
         )}
       </div>
@@ -861,23 +945,26 @@ export const Reports = ({ onNavigateToPatient }) => {
                               <span>{row.area || 'Unknown Area'}</span>
                             </div>
                           </td>
-                          <td style={{ ...styles.td, textAlign: 'center' }}>{row.patientsCount}</td>
-                          <td style={{ ...styles.td, textAlign: 'center' }}>{row.visitCount}</td>
-                          <td style={{ ...styles.td, textAlign: 'right', fontWeight: '500' }}>
-                            ₹{(row.totalCharge || 0).toLocaleString('en-IN')}
+                          <td style={{ ...styles.td, textAlign: 'center' }}>
+                            <span style={styles.badgeCountBlue}>{row.patientsCount}</span>
                           </td>
-                          <td style={{ ...styles.td, textAlign: 'right', color: '#0d9488', fontWeight: '500' }}>
-                            ₹{(row.totalReceived || 0).toLocaleString('en-IN')}
+                          <td style={{ ...styles.td, textAlign: 'center' }}>
+                            <span style={styles.badgeCountTeal}>{row.visitCount}</span>
                           </td>
-                          <td
-                            style={{
-                              ...styles.td,
-                              textAlign: 'right',
-                              fontWeight: '600',
-                              color: row.totalDue > 0 ? 'var(--danger)' : 'var(--text-muted)',
-                            }}
-                          >
-                            ₹{(row.totalDue || 0).toLocaleString('en-IN')}
+                          <td style={{ ...styles.td, textAlign: 'right' }}>
+                            <span style={styles.numBilled}>₹{(row.totalCharge || 0).toLocaleString('en-IN')}</span>
+                          </td>
+                          <td style={{ ...styles.td, textAlign: 'right' }}>
+                            <span style={styles.numReceived}>₹{(row.totalReceived || 0).toLocaleString('en-IN')}</span>
+                          </td>
+                          <td style={{ ...styles.td, textAlign: 'right' }}>
+                            {row.totalDue > 0 ? (
+                              <span style={{ ...styles.dueValBadge, backgroundColor: '#FEE2E2', color: '#DC2626' }}>
+                                ₹{(row.totalDue || 0).toLocaleString('en-IN')}
+                              </span>
+                            ) : (
+                              <span style={{ color: '#94A3B8', fontWeight: '500' }}>₹0</span>
+                            )}
                           </td>
                           <td style={{ ...styles.td, textAlign: 'center' }}>
                             {row.visits && row.visits.length > 0 ? (
@@ -987,23 +1074,26 @@ export const Reports = ({ onNavigateToPatient }) => {
                           <span>{row.refDoctor || 'Direct / Self'}</span>
                         </div>
                       </td>
-                      <td style={{ ...styles.td, textAlign: 'center' }}>{row.patientsCount}</td>
-                      <td style={{ ...styles.td, textAlign: 'center' }}>{row.visitCount}</td>
-                      <td style={{ ...styles.td, textAlign: 'right', fontWeight: '500' }}>
-                        ₹{(row.totalCharge || 0).toLocaleString('en-IN')}
+                      <td style={{ ...styles.td, textAlign: 'center' }}>
+                        <span style={styles.badgeCountBlue}>{row.patientsCount}</span>
                       </td>
-                      <td style={{ ...styles.td, textAlign: 'right', color: '#0d9488', fontWeight: '500' }}>
-                        ₹{(row.totalReceived || 0).toLocaleString('en-IN')}
+                      <td style={{ ...styles.td, textAlign: 'center' }}>
+                        <span style={styles.badgeCountTeal}>{row.visitCount}</span>
                       </td>
-                      <td
-                        style={{
-                          ...styles.td,
-                          textAlign: 'right',
-                          fontWeight: '600',
-                          color: row.totalDue > 0 ? 'var(--danger)' : 'var(--text-muted)',
-                        }}
-                      >
-                        ₹{(row.totalDue || 0).toLocaleString('en-IN')}
+                      <td style={{ ...styles.td, textAlign: 'right' }}>
+                        <span style={styles.numBilled}>₹{(row.totalCharge || 0).toLocaleString('en-IN')}</span>
+                      </td>
+                      <td style={{ ...styles.td, textAlign: 'right' }}>
+                        <span style={styles.numReceived}>₹{(row.totalReceived || 0).toLocaleString('en-IN')}</span>
+                      </td>
+                      <td style={{ ...styles.td, textAlign: 'right' }}>
+                        {row.totalDue > 0 ? (
+                          <span style={{ ...styles.dueValBadge, backgroundColor: '#FEE2E2', color: '#DC2626' }}>
+                            ₹{(row.totalDue || 0).toLocaleString('en-IN')}
+                          </span>
+                        ) : (
+                          <span style={{ color: '#94A3B8', fontWeight: '500' }}>₹0</span>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -1067,17 +1157,20 @@ export const Reports = ({ onNavigateToPatient }) => {
                         {row.complaint || '-'}
                       </td>
                       <td style={{ ...styles.td, color: 'var(--text-muted)' }}>{row.reference || 'Self'}</td>
-                      <td style={{ ...styles.td, textAlign: 'right' }}>₹{row.charge || 0}</td>
-                      <td style={{ ...styles.td, textAlign: 'right', color: '#0d9488' }}>₹{row.received || 0}</td>
-                      <td
-                        style={{
-                          ...styles.td,
-                          textAlign: 'right',
-                          fontWeight: '600',
-                          color: row.due > 0 ? 'var(--danger)' : 'var(--text-muted)',
-                        }}
-                      >
-                        ₹{row.due || 0}
+                      <td style={{ ...styles.td, textAlign: 'right' }}>
+                        <span style={styles.numBilled}>₹{(row.charge || 0).toLocaleString('en-IN')}</span>
+                      </td>
+                      <td style={{ ...styles.td, textAlign: 'right' }}>
+                        <span style={styles.numReceived}>₹{(row.received || 0).toLocaleString('en-IN')}</span>
+                      </td>
+                      <td style={{ ...styles.td, textAlign: 'right' }}>
+                        {row.due > 0 ? (
+                          <span style={{ ...styles.dueValBadge, backgroundColor: '#FEE2E2', color: '#DC2626' }}>
+                            ₹{(row.due || 0).toLocaleString('en-IN')}
+                          </span>
+                        ) : (
+                          <span style={{ color: '#94A3B8', fontWeight: '500' }}>₹0</span>
+                        )}
                       </td>
                       <td style={{ ...styles.td, textAlign: 'center' }}>
                         {onNavigateToPatient && (
@@ -1143,25 +1236,26 @@ export const Reports = ({ onNavigateToPatient }) => {
                       <td style={{ ...styles.td, fontWeight: '600' }}>{row.patientName}</td>
                       <td style={{ ...styles.td, color: 'var(--text-muted)' }}>{row.reference || 'Direct'}</td>
                       <td style={{ ...styles.td, color: 'var(--text-muted)' }}>{row.complaint || '-'}</td>
-                      <td style={{ ...styles.td, textAlign: 'right' }}>₹{row.charge || 0}</td>
-                      <td style={{ ...styles.td, textAlign: 'right', color: '#0d9488', fontWeight: '600' }}>
-                        ₹{row.received || 0}
+                      <td style={{ ...styles.td, textAlign: 'right' }}>
+                        <span style={styles.numBilled}>₹{(row.charge || 0).toLocaleString('en-IN')}</span>
                       </td>
-                      <td
-                        style={{
-                          ...styles.td,
-                          textAlign: 'right',
-                          fontWeight: '600',
-                          color: row.due > 0 ? 'var(--danger)' : 'var(--text-muted)',
-                        }}
-                      >
-                        ₹{row.due || 0}
+                      <td style={{ ...styles.td, textAlign: 'right' }}>
+                        <span style={styles.numReceived}>₹{(row.received || 0).toLocaleString('en-IN')}</span>
+                      </td>
+                      <td style={{ ...styles.td, textAlign: 'right' }}>
+                        {row.due > 0 ? (
+                          <span style={{ ...styles.dueValBadge, backgroundColor: '#FEE2E2', color: '#DC2626' }}>
+                            ₹{(row.due || 0).toLocaleString('en-IN')}
+                          </span>
+                        ) : (
+                          <span style={{ color: '#94A3B8', fontWeight: '500' }}>₹0</span>
+                        )}
                       </td>
                       <td style={{ ...styles.td, textAlign: 'center' }}>
                         {row.due === 0 ? (
-                          <span style={styles.statusPaidBadge}>PAID</span>
+                          <span style={styles.statusPaidBadge}>✓ PAID</span>
                         ) : (
-                          <span style={styles.statusDueBadge}>DUE ₹{row.due}</span>
+                          <span style={styles.statusDueBadge}>⚠️ DUE ₹{(row.due || 0).toLocaleString('en-IN')}</span>
                         )}
                       </td>
                       <td style={{ ...styles.td, textAlign: 'center' }}>
@@ -1222,29 +1316,31 @@ export const Reports = ({ onNavigateToPatient }) => {
                         <td style={styles.tdNum}>{idx + 1}</td>
                         <td style={{ ...styles.td, fontWeight: '600' }}>{row.monthName}</td>
                         <td style={{ ...styles.td, textAlign: 'center', color: 'var(--text-muted)' }}>{row.year}</td>
-                        <td style={{ ...styles.td, textAlign: 'center' }}>{row.visitsCount}</td>
-                        <td style={{ ...styles.td, textAlign: 'right', fontWeight: '500' }}>
-                          ₹{(row.totalCharge || 0).toLocaleString('en-IN')}
+                        <td style={{ ...styles.td, textAlign: 'center' }}>
+                          <span style={styles.badgeCountBlue}>{row.visitsCount}</span>
                         </td>
-                        <td style={{ ...styles.td, textAlign: 'right', color: '#0d9488', fontWeight: '600' }}>
-                          ₹{(row.totalReceived || 0).toLocaleString('en-IN')}
+                        <td style={{ ...styles.td, textAlign: 'right' }}>
+                          <span style={styles.numBilled}>₹{(row.totalCharge || 0).toLocaleString('en-IN')}</span>
                         </td>
-                        <td
-                          style={{
-                            ...styles.td,
-                            textAlign: 'right',
-                            fontWeight: '600',
-                            color: row.totalDue > 0 ? 'var(--danger)' : 'var(--text-muted)',
-                          }}
-                        >
-                          ₹{(row.totalDue || 0).toLocaleString('en-IN')}
+                        <td style={{ ...styles.td, textAlign: 'right' }}>
+                          <span style={styles.numReceived}>₹{(row.totalReceived || 0).toLocaleString('en-IN')}</span>
+                        </td>
+                        <td style={{ ...styles.td, textAlign: 'right' }}>
+                          {row.totalDue > 0 ? (
+                            <span style={{ ...styles.dueValBadge, backgroundColor: '#FEE2E2', color: '#DC2626' }}>
+                              ₹{(row.totalDue || 0).toLocaleString('en-IN')}
+                            </span>
+                          ) : (
+                            <span style={{ color: '#94A3B8', fontWeight: '500' }}>₹0</span>
+                          )}
                         </td>
                         <td style={{ ...styles.td, textAlign: 'center' }}>
                           <span
                             style={{
                               ...styles.rateBadge,
-                              backgroundColor: colRate >= 90 ? 'var(--primary-soft)' : 'var(--danger-soft)',
-                              color: colRate >= 90 ? 'var(--primary-dark)' : 'var(--danger)',
+                              backgroundColor: colRate >= 90 ? '#DCFCE7' : colRate >= 70 ? '#FEF3C7' : '#FEE2E2',
+                              color: colRate >= 90 ? '#15803D' : colRate >= 70 ? '#B45309' : '#DC2626',
+                              fontWeight: '700',
                             }}
                           >
                             {colRate}%
@@ -1308,24 +1404,28 @@ export const Reports = ({ onNavigateToPatient }) => {
                       <td style={{ ...styles.td, whiteSpace: 'nowrap' }}>{row.lastVisitDate}</td>
                       <td style={{ ...styles.td, textAlign: 'right', fontWeight: '700' }}>
                         {(row.deposit || 0) > 0 ? (
-                          <span style={{ color: '#16A34A', fontWeight: '800' }}>
+                          <span style={{ color: '#16A34A', fontWeight: '800', backgroundColor: '#DCFCE7', padding: '2px 8px', borderRadius: '6px' }}>
                             🟢 Deposit: ₹{(row.deposit || 0).toLocaleString('en-IN')}
                           </span>
-                        ) : (
-                          <span style={{ color: (row.totalDue || 0) > 0 ? 'var(--danger)' : '#64748B' }}>
+                        ) : (row.totalDue || 0) > 0 ? (
+                          <span style={{ ...styles.dueValBadge, backgroundColor: '#FEE2E2', color: '#DC2626' }}>
                             ₹{(row.totalDue || 0).toLocaleString('en-IN')}
                           </span>
+                        ) : (
+                          <span style={{ color: '#94A3B8', fontWeight: '500' }}>₹0</span>
                         )}
                       </td>
                       <td style={{ ...styles.td, textAlign: 'right', fontWeight: '600' }}>
                         {(row.familyDeposit || 0) > 0 ? (
-                          <span style={{ color: '#16A34A', fontWeight: '800' }}>
+                          <span style={{ color: '#16A34A', fontWeight: '800', backgroundColor: '#DCFCE7', padding: '2px 8px', borderRadius: '6px' }}>
                             🟢 Deposit: ₹{(row.familyDeposit || 0).toLocaleString('en-IN')}
                           </span>
-                        ) : (
-                          <span style={{ color: (row.familyDue || 0) > 0 ? '#b91c1c' : '#64748B' }}>
+                        ) : (row.familyDue || 0) > 0 ? (
+                          <span style={{ ...styles.dueValBadge, backgroundColor: '#FEE2E2', color: '#991B1B' }}>
                             ₹{(row.familyDue || 0).toLocaleString('en-IN')}
                           </span>
+                        ) : (
+                          <span style={{ color: '#94A3B8', fontWeight: '500' }}>₹0</span>
                         )}
                       </td>
                       <td style={{ ...styles.td, textAlign: 'center' }}>
@@ -2005,10 +2105,71 @@ const styles = {
     color: 'var(--text)',
     cursor: 'pointer',
   },
+  dueBadgeActive: {
+    backgroundColor: '#DC2626',
+    color: '#FFFFFF',
+    fontSize: '10px',
+    fontWeight: '800',
+    padding: '1px 6px',
+    borderRadius: '10px',
+    marginLeft: '6px',
+  },
+  dueBadgeInactive: {
+    backgroundColor: '#FEE2E2',
+    color: '#DC2626',
+    fontSize: '10px',
+    fontWeight: '800',
+    padding: '1px 6px',
+    borderRadius: '10px',
+    marginLeft: '6px',
+  },
   summaryGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+    gap: '10px',
+  },
+  kpiCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: '10px',
+    padding: '12px 14px',
+    display: 'flex',
+    flexDirection: 'column',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+    border: '1px solid #E2E8F0',
+    transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+  },
+  kpiTopRow: {
+    display: 'flex',
+    alignItems: 'center',
     gap: '8px',
+    marginBottom: '6px',
+  },
+  kpiIconWrap: {
+    width: '28px',
+    height: '28px',
+    borderRadius: '8px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  kpiLabel: {
+    fontSize: '11px',
+    fontWeight: '700',
+    color: '#64748B',
+    textTransform: 'uppercase',
+    letterSpacing: '0.4px',
+  },
+  kpiVal: {
+    fontSize: '20px',
+    fontWeight: '800',
+    letterSpacing: '-0.3px',
+    lineHeight: '1.2',
+  },
+  kpiSub: {
+    fontSize: '11px',
+    color: '#94A3B8',
+    marginTop: '3px',
   },
   summaryCard: {
     backgroundColor: '#FFFFFF',
@@ -2120,6 +2281,47 @@ const styles = {
     borderRadius: '10px',
     fontSize: '11px',
     fontWeight: '600',
+  },
+  badgeCountBlue: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: '24px',
+    padding: '2px 8px',
+    borderRadius: '12px',
+    fontSize: '11px',
+    fontWeight: '700',
+    backgroundColor: '#EFF6FF',
+    color: '#1D4ED8',
+    border: '1px solid #BFDBFE',
+  },
+  badgeCountTeal: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: '24px',
+    padding: '2px 8px',
+    borderRadius: '12px',
+    fontSize: '11px',
+    fontWeight: '700',
+    backgroundColor: '#F0FDFA',
+    color: '#0D9488',
+    border: '1px solid #99F6E4',
+  },
+  numBilled: {
+    fontWeight: '700',
+    color: '#0284C7',
+  },
+  numReceived: {
+    fontWeight: '700',
+    color: '#15803D',
+  },
+  dueValBadge: {
+    display: 'inline-block',
+    padding: '2px 8px',
+    borderRadius: '6px',
+    fontWeight: '700',
+    fontSize: '11.5px',
   },
   openCaseBtn: {
     display: 'inline-flex',
