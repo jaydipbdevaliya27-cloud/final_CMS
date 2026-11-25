@@ -3513,11 +3513,11 @@ export const PatientRecord = ({
                 <span style={{ ...styles.photoHeaderTitle, color: '#854D0E' }}>Billing Details</span>
                 {activeEditingVisit && (
                   <span style={styles.photoEditingBadge}>
-                    ✏️ EDITING CASE ({activeEditingVisit.visitDate || 'RECORD'})
+                    EDITING CASE ({activeEditingVisit.visitDate || 'RECORD'})
                   </span>
                 )}
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                 {activeEditingVisit && (
                   <button
                     type="button"
@@ -3528,41 +3528,66 @@ export const PatientRecord = ({
                     ✕ Cancel Edit (New Case)
                   </button>
                 )}
-                {personalDue > 0 ? (
-                  <button
-                    type="button"
-                    onClick={() => setShowTotalDueModal(true)}
-                    style={styles.photoBillingTagRed}
-                    title="Click to view all past pending visits"
-                  >
-                    <span>👤 Personal Due: ₹{personalDue}</span>
-                  </button>
-                ) : personalDeposit > 0 ? (
-                  <span style={styles.photoBillingTagGreen}>
-                    🟢 Personal Deposit: ₹{personalDeposit}
-                  </span>
-                ) : null}
 
-                {familyDue > 0 ? (
-                  <button
-                    type="button"
-                    onClick={handleOpenFamilyDueModal}
-                    style={styles.photoBillingTagAmber}
-                    title="Click to view full family due breakdown across members"
-                  >
-                    <span>👥 Family Due: ₹{familyDue}</span>
-                  </button>
-                ) : familyDeposit > 0 ? (
-                  <span style={styles.photoBillingTagGreen}>
-                    🟢 Family Deposit: ₹{familyDeposit}
+                {/* Patient Due Badge in Billing Details Row */}
+                <button
+                  type="button"
+                  onClick={currentPatient && finalPatientDue > 0 ? () => setShowTotalDueModal(true) : undefined}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    padding: '2px 8px',
+                    borderRadius: 4,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    cursor: currentPatient && finalPatientDue > 0 ? 'pointer' : 'default',
+                    border: '1px solid',
+                    backgroundColor: finalPatientDeposit > 0 ? '#DCFCE7' : (finalPatientDue > 0 ? '#FEE2E2' : '#F1F5F9'),
+                    borderColor: finalPatientDeposit > 0 ? '#86EFAC' : (finalPatientDue > 0 ? '#FCA5A5' : '#CBD5E1'),
+                    color: finalPatientDeposit > 0 ? '#15803D' : (finalPatientDue > 0 ? '#B91C1C' : '#475569'),
+                  }}
+                  title={currentPatient && finalPatientDue > 0 ? "Click to view patient's pending visits" : ''}
+                >
+                  <span>
+                    {finalPatientDeposit > 0
+                      ? `Patient Deposit: ₹${finalPatientDeposit}`
+                      : `Patient Due: ₹${currentPatient ? finalPatientDue : 0}`}
                   </span>
-                ) : null}
+                </button>
+
+                {/* Family Due Badge in Billing Details Row */}
+                <button
+                  type="button"
+                  onClick={currentPatient ? handleOpenFamilyDueModal : undefined}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    padding: '2px 8px',
+                    borderRadius: 4,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    cursor: currentPatient ? 'pointer' : 'default',
+                    border: '1px solid',
+                    backgroundColor: finalFamilyDeposit > 0 ? '#DCFCE7' : (finalFamilyDue > 0 ? '#FEF3C7' : '#F1F5F9'),
+                    borderColor: finalFamilyDeposit > 0 ? '#86EFAC' : (finalFamilyDue > 0 ? '#FCD34D' : '#CBD5E1'),
+                    color: finalFamilyDeposit > 0 ? '#15803D' : (finalFamilyDue > 0 ? '#92400E' : '#475569'),
+                  }}
+                  title={currentPatient ? "Click to view full family breakdown across members" : ''}
+                >
+                  <span>
+                    {finalFamilyDeposit > 0
+                      ? `Family Deposit: ₹${finalFamilyDeposit}`
+                      : `Family Due: ₹${currentPatient ? finalFamilyDue : 0}`}
+                  </span>
+                </button>
               </div>
             </div>
 
             <div style={styles.photoCardBody}>
-              {/* Main Fields Row: 4-column layout including Family Due */}
-              <div style={styles.photoRow3Col}>
+              {/* Charge Field Row: Only Charged Amount and Received Amount */}
+              <div style={styles.photoRow2Col}>
                 <div style={styles.photoFieldGroup}>
                   <label style={styles.photoLabel}>Charged Amount (₹):</label>
                   <input
@@ -3588,80 +3613,6 @@ export const PatientRecord = ({
                     disabled={!currentPatient}
                     placeholder="0"
                   />
-                </div>
-
-                <div style={styles.photoFieldGroup}>
-                  <label
-                    style={{
-                      ...styles.photoLabel,
-                      color: finalPatientDeposit > 0 ? '#15803D' : (finalPatientDue > 0 ? '#B91C1C' : '#475569'),
-                      fontWeight: 700,
-                    }}
-                  >
-                    {finalPatientDeposit > 0 ? 'Patient Deposit (₹):' : 'Patient Total Due (₹):'}
-                  </label>
-                  <div
-                    style={{
-                      ...styles.photoDueDisplay,
-                      backgroundColor: finalPatientDeposit > 0 ? '#DCFCE7' : (finalPatientDue > 0 ? '#FEE2E2' : '#F1F5F9'),
-                      color: finalPatientDeposit > 0 ? '#15803D' : (finalPatientDue > 0 ? '#B91C1C' : '#475569'),
-                      borderColor: finalPatientDeposit > 0 ? '#86EFAC' : (finalPatientDue > 0 ? '#FCA5A5' : '#CBD5E1'),
-                      fontWeight: 800,
-                    }}
-                  >
-                    {currentPatient
-                      ? (finalPatientDeposit > 0 ? `🟢 DEPOSIT: ₹${finalPatientDeposit}` : `₹${finalPatientDue}`)
-                      : '₹0'}
-                  </div>
-                </div>
-
-                <div style={styles.photoFieldGroup}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <label
-                      style={{
-                        ...styles.photoLabel,
-                        color: finalFamilyDeposit > 0 ? '#15803D' : (finalFamilyDue > 0 ? '#92400E' : '#475569'),
-                        fontWeight: 700,
-                      }}
-                    >
-                      {finalFamilyDeposit > 0 ? 'Family Deposit (₹):' : 'Family Total Due (₹):'}
-                    </label>
-                    {currentPatient && (finalFamilyDue > 0 || finalFamilyDeposit > 0) && (
-                      <button
-                        type="button"
-                        onClick={handleOpenFamilyDueModal}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          fontSize: '9px',
-                          color: '#2563EB',
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                          padding: 0,
-                          textDecoration: 'underline',
-                        }}
-                        title="Click to view breakdown across family members"
-                      >
-                        Breakdown ↗
-                      </button>
-                    )}
-                  </div>
-                  <div
-                    onClick={currentPatient ? handleOpenFamilyDueModal : undefined}
-                    style={{
-                      ...styles.photoDueDisplay,
-                      backgroundColor: finalFamilyDeposit > 0 ? '#DCFCE7' : (finalFamilyDue > 0 ? '#FEF3C7' : '#F1F5F9'),
-                      color: finalFamilyDeposit > 0 ? '#15803D' : (finalFamilyDue > 0 ? '#92400E' : '#475569'),
-                      borderColor: finalFamilyDeposit > 0 ? '#86EFAC' : (finalFamilyDue > 0 ? '#FCD34D' : '#CBD5E1'),
-                      fontWeight: 800,
-                      cursor: currentPatient ? 'pointer' : 'default',
-                    }}
-                    title={currentPatient ? 'Click to view breakdown of dues across family members' : ''}
-                  >
-                    {currentPatient
-                      ? (finalFamilyDeposit > 0 ? `🟢 DEPOSIT: ₹${finalFamilyDeposit}` : `₹${finalFamilyDue}`)
-                      : '₹0'}
-                  </div>
                 </div>
               </div>
             </div>
