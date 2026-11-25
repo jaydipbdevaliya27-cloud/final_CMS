@@ -1088,8 +1088,17 @@ export const Dashboard = () => {
                 setSelectedPatientId(visit.patientId || '');
                 setActiveTab('patient-record');
               }}
-              onNavigateToAddPatient={() => {
-                setActiveTab('family-head');
+              onNavigateToAddPatient={(prefilledName = '') => {
+                setPatientForNewCase({
+                  name: prefilledName || '',
+                  patientId: 'NEW',
+                  familyId: 'NEW',
+                  isNewPatient: true,
+                  totalDue: 0,
+                  deposit: 0,
+                });
+                setSelectedPatientId('');
+                setActiveTab('patient-record');
               }}
             />
           </div>

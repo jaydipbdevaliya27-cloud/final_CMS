@@ -617,18 +617,23 @@ export const PatientRecord = ({
   useEffect(() => {
     const initPatient = async () => {
       try {
+        if (initialPatientForNewCase || initialVisitToEdit) {
+          return; // Managed by dedicated navigation effects
+        }
         if (selectedPatientId) {
           const res = await patientAPI.getById(selectedPatientId);
-          if (res.success && res.patient) {
+          if (res?.success && res.patient) {
             handleSelectPatient(res.patient, true);
             return;
           }
         }
         // Do NOT auto-load any patient by default!
         // Start in search mode so doctor can search by patient name first.
-        setCurrentPatient(null);
-        setShowNewCaseForm(false);
-        showNewCaseFormRef.current = false;
+        if (!currentPatientRef.current) {
+          setCurrentPatient(null);
+          setShowNewCaseForm(false);
+          showNewCaseFormRef.current = false;
+        }
       } catch (err) {
         console.error('Error loading initial patient:', err);
       }
@@ -638,9 +643,28 @@ export const PatientRecord = ({
 
   useEffect(() => {
     if (initialPatientForNewCase) {
-      handleSelectPatient(initialPatientForNewCase, true);
-      handleStartNewCase(initialPatientForNewCase);
-      if (onClearNavigationCase) onClearNavigationCase();
+      const startCase = async () => {
+        try {
+          let pat = initialPatientForNewCase;
+          if (pat.patientId && pat.patientId !== 'NEW' && (!pat.age || !pat.family)) {
+            try {
+              const res = await patientAPI.getById(pat.patientId);
+              if (res?.success && res.patient) {
+                pat = res.patient;
+              }
+            } catch (e) {
+              console.warn('Could not fetch full patient for new case:', e);
+            }
+          }
+          handleSelectPatient(pat, true);
+          handleOpenNewCase(pat);
+        } catch (err) {
+          console.error('Error handling new case navigation:', err);
+        } finally {
+          if (onClearNavigationCase) onClearNavigationCase();
+        }
+      };
+      startCase();
     }
   }, [initialPatientForNewCase]);
 
@@ -1284,6 +1308,11 @@ export const PatientRecord = ({
     setVisitForm(freshForm);
     setShowNewCaseForm(true);
     showNewCaseFormRef.current = true;
+  };
+
+  // --- Start New Case (Alias for handleOpenNewCase) ---
+  const handleStartNewCase = (targetPatient = null) => {
+    handleOpenNewCase(targetPatient);
   };
 
   // --- Start Edit on an Existing Past Visit ---

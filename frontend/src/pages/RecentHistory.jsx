@@ -476,17 +476,33 @@ export const RecentHistory = ({
             <span>Refresh</span>
           </button>
 
-          {onNavigateToAddPatient && (
-            <button
-              type="button"
-              onClick={onNavigateToAddPatient}
-              style={styles.addPatientBtn}
-              title="Register new patient (Enter)"
-            >
-              <Plus size={15} />
-              <span>ADD PATIENT (Enter)</span>
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => {
+              const q = searchQuery.trim().toUpperCase();
+              if (q) {
+                if (onNavigateToNewCase) {
+                  onNavigateToNewCase({
+                    name: q,
+                    patientId: 'NEW',
+                    familyId: 'NEW',
+                    isNewPatient: true,
+                    totalDue: 0,
+                    deposit: 0,
+                  });
+                } else if (onNavigateToAddPatient) {
+                  onNavigateToAddPatient(q);
+                }
+              } else if (onNavigateToAddPatient) {
+                onNavigateToAddPatient();
+              }
+            }}
+            style={styles.addPatientBtn}
+            title="Register new patient / Open Case Entry (Enter)"
+          >
+            <Plus size={15} />
+            <span>ADD PATIENT (Enter)</span>
+          </button>
         </div>
       </div>
 
