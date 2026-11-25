@@ -8,6 +8,7 @@ import {
   verifySecurityAnswer,
   resetPassword,
   logoutDoctor,
+  verifyDoctorPassword,
 } from '../controllers/authController.js';
 import { protectDoctor } from '../middleware/authMiddleware.js';
 
@@ -17,6 +18,7 @@ const router = express.Router();
 router.post('/login', loginDoctor);
 router.get('/me', protectDoctor, getDoctorProfile);
 router.post('/logout', protectDoctor, logoutDoctor);
+router.post('/verify-password', protectDoctor, verifyDoctorPassword);
 
 // Profile and Credentials management
 router.put('/profile', protectDoctor, updateDoctorProfile);

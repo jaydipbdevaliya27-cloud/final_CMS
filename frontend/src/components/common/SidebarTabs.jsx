@@ -12,6 +12,7 @@ import {
   History,
   Percent,
   Wallet,
+  Lock,
 } from 'lucide-react';
 
 export const SIDEBAR_TABS = [
@@ -83,7 +84,7 @@ export const SIDEBAR_TABS = [
   },
 ];
 
-export const SidebarTabs = ({ activeTab, onSelectTab, onSearchFocus, width = 210 }) => {
+export const SidebarTabs = ({ activeTab, onSelectTab, onSearchFocus, width = 210, isFinanceLocked = true }) => {
   const isCompact = width < 140;
 
   const [navShortcuts, setNavShortcuts] = useState({
@@ -247,9 +248,20 @@ export const SidebarTabs = ({ activeTab, onSelectTab, onSearchFocus, width = 210
                       ...styles.tabLabel,
                       color: isActive ? '#FFFFFF' : 'var(--text)',
                       fontWeight: isActive ? 600 : 500,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '5px',
                     }}
                   >
-                    {tab.label}
+                    <span>{tab.label}</span>
+                    {isFinanceLocked && ['dashboard', 'cut-master', 'expense-master'].includes(tab.id) && (
+                      <Lock
+                        size={11}
+                        color={isActive ? '#FEF08A' : '#D97706'}
+                        strokeWidth={2.4}
+                        title="Protected with doctor password"
+                      />
+                    )}
                   </span>
                 )}
               </div>

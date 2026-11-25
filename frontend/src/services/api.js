@@ -55,6 +55,10 @@ export const authAPI = {
     const response = await api.post('/auth/logout');
     return response.data;
   },
+  verifyPassword: async (password) => {
+    const response = await api.post('/auth/verify-password', { password });
+    return response.data;
+  },
 };
 
 export const universalSearchAPI = {

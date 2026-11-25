@@ -15,6 +15,7 @@ import { DoctorProfile } from './DoctorProfile';
 import { RecentHistory } from './RecentHistory';
 import { ExpenseMaster } from './ExpenseMaster';
 import { CutMaster } from './CutMaster';
+import { ProtectedTabLock } from '../components/common/ProtectedTabLock';
 import {
   Stethoscope,
   LogOut,
@@ -54,11 +55,13 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Menu,
+  Lock,
 } from 'lucide-react';
 
 export const Dashboard = () => {
   const { doctor, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [isFinanceUnlocked, setIsFinanceUnlocked] = useState(false);
   const [selectedFamilyId, setSelectedFamilyId] = useState('');
   const [selectedPatientId, setSelectedPatientId] = useState('');
   const [patientForNewCase, setPatientForNewCase] = useState(null);
@@ -184,10 +187,10 @@ export const Dashboard = () => {
   };
 
   useEffect(() => {
-    if (activeTab === 'dashboard') {
+    if (activeTab === 'dashboard' && isFinanceUnlocked) {
       fetchDashboardData();
     }
-  }, [activeTab]);
+  }, [activeTab, isFinanceUnlocked]);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -347,6 +350,17 @@ export const Dashboard = () => {
   const renderTabContent = () => {
     switch (activeTab) {
       case 'dashboard': {
+        if (!isFinanceUnlocked) {
+          return (
+            <div style={styles.tabContentContainer}>
+              <ProtectedTabLock
+                tabName="Dashboard"
+                onUnlock={() => setIsFinanceUnlocked(true)}
+                onCancel={() => setActiveTab('patient-record')}
+              />
+            </div>
+          );
+        }
         const stats = dashboardData?.stats || {
           totalPatients: 0,
           totalFamilies: 0,
@@ -477,6 +491,15 @@ export const Dashboard = () => {
               </div>
 
               <div style={styles.dashHeroRight}>
+                <button
+                  type="button"
+                  onClick={() => setIsFinanceUnlocked(false)}
+                  style={styles.dashLockHeroBtn}
+                  title="Lock Dashboard & sensitive financial data (Doctor password required to re-open)"
+                >
+                  <Lock size={13} color="#F59E0B" />
+                  <span>Lock Dashboard</span>
+                </button>
                 <button
                   type="button"
                   onClick={fetchDashboardData}
@@ -1073,16 +1096,44 @@ export const Dashboard = () => {
         );
 
       case 'cut-master':
+        if (!isFinanceUnlocked) {
+          return (
+            <div style={styles.tabContentContainer}>
+              <ProtectedTabLock
+                tabName="Cut Master"
+                onUnlock={() => setIsFinanceUnlocked(true)}
+                onCancel={() => setActiveTab('patient-record')}
+              />
+            </div>
+          );
+        }
         return (
           <div style={styles.tabContentContainer}>
-            <CutMaster />
+            <CutMaster
+              onLock={() => setIsFinanceUnlocked(false)}
+              onNavigateToDashboard={() => setActiveTab('patient-record')}
+            />
           </div>
         );
 
       case 'expense-master':
+        if (!isFinanceUnlocked) {
+          return (
+            <div style={styles.tabContentContainer}>
+              <ProtectedTabLock
+                tabName="Expense Master"
+                onUnlock={() => setIsFinanceUnlocked(true)}
+                onCancel={() => setActiveTab('patient-record')}
+              />
+            </div>
+          );
+        }
         return (
           <div style={styles.tabContentContainer}>
-            <ExpenseMaster onNavigateToDashboard={() => setActiveTab('patient-record')} />
+            <ExpenseMaster
+              onLock={() => setIsFinanceUnlocked(false)}
+              onNavigateToDashboard={() => setActiveTab('patient-record')}
+            />
           </div>
         );
 
@@ -1354,6 +1405,27 @@ export const Dashboard = () => {
             </button>
           )}
 
+          {/* Quick Lock / Unlock Status Toggle for Financial Data */}
+          {isFinanceUnlocked ? (
+            <button
+              type="button"
+              onClick={() => setIsFinanceUnlocked(false)}
+              style={styles.navLockActionBtn}
+              title="Lock sensitive financial tabs (Expense Master, Cut Master, Dashboard)"
+            >
+              <Lock size={12} color="#F59E0B" />
+              <span>Lock Financial Tabs</span>
+            </button>
+          ) : (
+            <div
+              style={styles.navLockedIndicator}
+              title="Confidential financial & practice data is currently locked with doctor password"
+            >
+              <Lock size={12} color="#92400E" />
+              <span>Financial Locked</span>
+            </div>
+          )}
+
           <div
             style={{ ...styles.doctorBadge, cursor: 'pointer' }}
             onClick={() => setActiveTab('doctor-profile')}
@@ -1390,6 +1462,7 @@ export const Dashboard = () => {
               }}
               onSearchFocus={handleSearchFocus}
               width={sidebarWidth}
+              isFinanceLocked={!isFinanceUnlocked}
             />
 
             {/* DRAGGER AT BORDER: Resize Sidebar */}
@@ -2101,6 +2174,47 @@ const styles = {
     color: 'var(--text)',
     cursor: 'pointer',
     transition: 'all 0.15s ease',
+  },
+  dashLockHeroBtn: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '6px',
+    padding: '6px 12px',
+    backgroundColor: '#0F172A',
+    border: '1px solid #1E293B',
+    borderRadius: '6px',
+    fontSize: '0.74rem',
+    fontWeight: 700,
+    color: '#FFFFFF',
+    cursor: 'pointer',
+    transition: 'all 0.15s ease',
+    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.15)',
+  },
+  navLockActionBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    padding: '5px 10px',
+    backgroundColor: '#0F172A',
+    border: '1px solid #1E293B',
+    borderRadius: '6px',
+    fontSize: '0.73rem',
+    fontWeight: 700,
+    color: '#FFFFFF',
+    cursor: 'pointer',
+    transition: 'all 0.15s ease',
+  },
+  navLockedIndicator: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '5px',
+    padding: '4px 9px',
+    backgroundColor: '#FEF3C7',
+    border: '1px solid #FDE68A',
+    borderRadius: '6px',
+    fontSize: '0.72rem',
+    fontWeight: 700,
+    color: '#92400E',
   },
 
   // 5 Top KPI Cards Grid

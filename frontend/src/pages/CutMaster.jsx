@@ -14,9 +14,10 @@ import {
   FileText,
   DollarSign,
   TrendingUp,
+  Lock,
 } from 'lucide-react';
 
-export const CutMaster = ({ onNavigateToDashboard }) => {
+export const CutMaster = ({ onNavigateToDashboard, onLock }) => {
   // Cuts data & summary
   const [cuts, setCuts] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -383,14 +384,27 @@ export const CutMaster = ({ onNavigateToDashboard }) => {
             Cut Master (Press F5 or Esc to close)
           </span>
         </div>
-        <button
-          type="button"
-          onClick={onNavigateToDashboard || (() => {})}
-          style={styles.headerCloseBtn}
-          title="Close (Esc / F5)"
-        >
-          <X size={18} color="#FFFFFF" />
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {onLock && (
+            <button
+              type="button"
+              onClick={onLock}
+              style={styles.headerLockBtn}
+              title="Lock Cut Master (Doctor password required to re-open)"
+            >
+              <Lock size={12} color="#F59E0B" />
+              <span>Lock Tab</span>
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onNavigateToDashboard || (() => {})}
+            style={styles.headerCloseBtn}
+            title="Close (Esc / F5)"
+          >
+            <X size={18} color="#FFFFFF" />
+          </button>
+        </div>
       </div>
 
       {/* ============================================================== */}
@@ -868,6 +882,20 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  headerLockBtn: {
+    backgroundColor: '#1E293B',
+    border: '1px solid #334155',
+    color: '#F8FAFC',
+    borderRadius: '4px',
+    padding: '3px 9px',
+    fontSize: '11.5px',
+    fontWeight: 700,
+    display: 'flex',
+    alignItems: 'center',
+    gap: '5px',
+    cursor: 'pointer',
+    transition: 'all 0.15s ease',
   },
 
   // 2. Add New Cut Entry Strip

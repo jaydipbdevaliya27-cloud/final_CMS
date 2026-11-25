@@ -423,3 +423,50 @@ export const logoutDoctor = (req, res) => {
     message: 'Logged out successfully.',
   });
 };
+
+// @desc    Verify Doctor Password (for locking/unlocking restricted tabs & sensitive data)
+// @route   POST /api/auth/verify-password
+// @access  Private (protectDoctor) or Fallback to checking against Doctor DB
+export const verifyDoctorPassword = async (req, res) => {
+  try {
+    const { password } = req.body || {};
+    if (!password || typeof password !== 'string' || !password.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Doctor password is required to unlock this restricted area.',
+      });
+    }
+
+    // Try finding by logged-in doctor ID first, or default to primary doctor account
+    const doctorId = req.doctor?._id;
+    const doctor = doctorId ? await Doctor.findById(doctorId) : await Doctor.findOne();
+
+    if (!doctor) {
+      return res.status(401).json({
+        success: false,
+        message: 'Doctor account not found or unauthorized.',
+      });
+    }
+
+    const isMatch = await doctor.matchPassword(password.trim());
+    if (!isMatch) {
+      return res.status(401).json({
+        success: false,
+        message: 'Incorrect doctor password. Access denied.',
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Doctor password verified successfully. Access granted.',
+    });
+  } catch (error) {
+    console.error('Password verification error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to verify doctor password',
+      error: error.message,
+    });
+  }
+};
+
