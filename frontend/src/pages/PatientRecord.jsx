@@ -205,12 +205,14 @@ export const PatientRecord = ({
   const caseFormPaneRef = useRef(null);
 
   // Refs for keyboard navigation: Clinic Medicine
+  const clinicMedInputRef = useRef(null);
   const clinicMedQtyRef = useRef(null);
   const clinicMedMorningRef = useRef(null);
   const clinicMedNoonRef = useRef(null);
   const clinicMedEveningRef = useRef(null);
 
   // Refs for keyboard navigation: Prescription
+  const rxMedInputRef = useRef(null);
   const rxQtyRef = useRef(null);
   const rxMorningRef = useRef(null);
   const rxNoonRef = useRef(null);
@@ -1166,6 +1168,9 @@ export const PatientRecord = ({
       return updated;
     });
     setClinicMedForm({ medicine: '', qty: '1', morning: '1', noon: '0', evening: '1' });
+    setTimeout(() => {
+      clinicMedInputRef.current?.focus();
+    }, 40);
   };
 
   const handleAddPrescriptionItem = () => {
@@ -1191,6 +1196,9 @@ export const PatientRecord = ({
       return updated;
     });
     setRxForm({ medicine: '', qty: '10', morning: '1', noon: '0', evening: '1', night: '0', timing: 'AF', sosInstruction: '' });
+    setTimeout(() => {
+      rxMedInputRef.current?.focus();
+    }, 40);
   };
 
   const handleDietaryCodeChange = (rawVal) => {
@@ -1342,13 +1350,18 @@ export const PatientRecord = ({
     });
   };
 
-  const handleRemoveTreatment = (id) => {
+  const handleRemoveTreatment = (id, index) => {
     setVisitForm((prev) => {
       const current = prev || visitFormRef.current || visitForm;
-      const filtered = (current.treatments || []).filter((t) => t.id !== id);
+      const list = current.treatments || [];
+      const filtered = list.filter((t, idx) => {
+        if (id !== undefined && id !== null && (t.id === id || t._id === id)) return false;
+        if (index !== undefined && index !== null && idx === index) return false;
+        return true;
+      });
       const res = {
         ...current,
-        treatments: filtered.length > 0 ? filtered : [{ id: Date.now() + '-t1', item: '', qty: '1' }],
+        treatments: filtered,
       };
       visitFormRef.current = res;
       return res;
@@ -1410,27 +1423,18 @@ export const PatientRecord = ({
     });
   };
 
-  const handleRemovePrescription = (id) => {
+  const handleRemovePrescription = (id, index) => {
     setVisitForm((prev) => {
       const current = prev || visitFormRef.current || visitForm;
-      const filtered = (current.prescriptions || []).filter((p) => p.id !== id);
+      const list = current.prescriptions || [];
+      const filtered = list.filter((p, idx) => {
+        if (id !== undefined && id !== null && (p.id === id || p._id === id)) return false;
+        if (index !== undefined && index !== null && idx === index) return false;
+        return true;
+      });
       const res = {
         ...current,
-        prescriptions:
-          filtered.length > 0
-            ? filtered
-            : [
-              {
-                id: Date.now() + '-p1',
-                medicine: '',
-                qty: '',
-                morning: '1',
-                noon: '0',
-                evening: '1',
-                night: '0',
-                timing: 'AF',
-              },
-            ],
+        prescriptions: filtered,
       };
       visitFormRef.current = res;
       return res;
@@ -2638,18 +2642,23 @@ export const PatientRecord = ({
               <div style={{ ...styles.photoInputAddRow, position: 'relative' }}>
                 <div style={{ flex: '1 1 200px' }}>
                   <MasterDataInput
+                    ref={clinicMedInputRef}
+                    inputRef={clinicMedInputRef}
                     type="medicine"
                     value={clinicMedForm.medicine}
                     onChange={(val) => setClinicMedForm((prev) => ({ ...prev, medicine: val }))}
+                    onTabEmptyNext={() => {
+                      rxMedInputRef.current?.focus();
+                    }}
                     onEnterNext={(chosen) => {
                       const med = chosen || clinicMedForm.medicine;
-                      if (med) {
+                      if (med && med.trim()) {
                         setClinicMedForm((prev) => ({ ...prev, medicine: med }));
+                        setTimeout(() => {
+                          clinicMedQtyRef.current?.focus();
+                          clinicMedQtyRef.current?.select();
+                        }, 30);
                       }
-                      setTimeout(() => {
-                        clinicMedQtyRef.current?.focus();
-                        clinicMedQtyRef.current?.select();
-                      }, 30);
                     }}
                     onSelectCallback={(chosen) => {
                       if (chosen) {
@@ -2729,6 +2738,11 @@ export const PatientRecord = ({
                       if (e.key === 'Enter') {
                         e.preventDefault();
                         handleAddClinicMedicine();
+                      } else if (e.key === 'Tab' && !e.shiftKey) {
+                        if (clinicMedForm.medicine && clinicMedForm.medicine.trim()) {
+                          e.preventDefault();
+                          handleAddClinicMedicine();
+                        }
                       }
                     }}
                     placeholder="E"
@@ -2739,7 +2753,18 @@ export const PatientRecord = ({
                 <button
                   type="button"
                   onClick={handleAddClinicMedicine}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Tab' && !e.shiftKey) {
+                      e.preventDefault();
+                      if (clinicMedForm.medicine && clinicMedForm.medicine.trim()) {
+                        handleAddClinicMedicine();
+                      } else {
+                        clinicMedInputRef.current?.focus();
+                      }
+                    }
+                  }}
                   style={styles.photoAddBtnBlue}
+                  title="Add clinic medicine (Enter / Tab)"
                 >
                   +
                 </button>
@@ -2757,31 +2782,35 @@ export const PatientRecord = ({
                     </tr>
                   </thead>
                   <tbody>
-                    {(visitForm.treatments || []).length === 0 ? (
+                    {(visitForm.treatments || []).filter((tr) => tr && tr.item && tr.item.trim()).length === 0 ? (
                       <tr>
                         <td colSpan={4} style={styles.photoTableEmptyTdFlex}>
                           No clinic medicines added yet. Type medicine above and press Enter or +
                         </td>
                       </tr>
                     ) : (
-                      (visitForm.treatments || []).map((tr) => (
-                        <tr key={tr.id} style={styles.photoTableTr}>
-                          <td style={styles.photoTdBold}>{tr.item}</td>
-                          <td style={{ ...styles.photoTd, textAlign: 'center' }}>{tr.qty || '1'}</td>
-                          <td style={{ ...styles.photoTd, textAlign: 'center' }}>
-                            {tr.morning || '1'}-{tr.noon || '0'}-{tr.evening || '1'}
-                          </td>
-                          <td style={{ ...styles.photoTd, textAlign: 'center' }}>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveTreatment(tr.id)}
-                              style={styles.photoRowDeleteBtn}
-                            >
-                              <X size={12} color="#DC2626" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))
+                      (visitForm.treatments || [])
+                        .filter((tr) => tr && tr.item && tr.item.trim())
+                        .map((tr, idx) => (
+                          <tr key={tr.id || idx} style={styles.photoTableTr}>
+                            <td style={styles.photoTdBold}>{tr.item}</td>
+                            <td style={{ ...styles.photoTd, textAlign: 'center' }}>{tr.qty || '1'}</td>
+                            <td style={{ ...styles.photoTd, textAlign: 'center' }}>
+                              {tr.morning || '1'}-{tr.noon || '0'}-{tr.evening || '1'}
+                            </td>
+                            <td style={{ ...styles.photoTd, textAlign: 'center' }}>
+                              <button
+                                type="button"
+                                tabIndex={-1}
+                                onClick={() => handleRemoveTreatment(tr.id, idx)}
+                                style={styles.photoRowDeleteBtn}
+                                title="Remove medicine"
+                              >
+                                <X size={12} color="#DC2626" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))
                     )}
                   </tbody>
                 </table>
@@ -2801,18 +2830,23 @@ export const PatientRecord = ({
               <div style={{ ...styles.photoInputAddRow, position: 'relative' }}>
                 <div style={{ flex: '1 1 180px' }}>
                   <MasterDataInput
+                    ref={rxMedInputRef}
+                    inputRef={rxMedInputRef}
                     type="medicine"
                     value={rxForm.medicine}
                     onChange={(val) => setRxForm((prev) => ({ ...prev, medicine: val }))}
+                    onTabEmptyNext={() => {
+                      dietaryCodeInputRef.current?.focus();
+                    }}
                     onEnterNext={(chosen) => {
                       const med = chosen || rxForm.medicine;
-                      if (med) {
+                      if (med && med.trim()) {
                         setRxForm((prev) => ({ ...prev, medicine: med }));
+                        setTimeout(() => {
+                          rxQtyRef.current?.focus();
+                          rxQtyRef.current?.select();
+                        }, 30);
                       }
-                      setTimeout(() => {
-                        rxQtyRef.current?.focus();
-                        rxQtyRef.current?.select();
-                      }, 30);
                     }}
                     onSelectCallback={(chosen) => {
                       if (chosen) {
@@ -2927,6 +2961,11 @@ export const PatientRecord = ({
                       if (e.key === 'Enter' && rxForm.timing !== 'SOS') {
                         e.preventDefault();
                         handleAddPrescriptionItem();
+                      } else if (e.key === 'Tab' && !e.shiftKey && rxForm.timing !== 'SOS') {
+                        if (rxForm.medicine && rxForm.medicine.trim()) {
+                          e.preventDefault();
+                          handleAddPrescriptionItem();
+                        }
                       }
                     }}
                     style={styles.photoSelect}
@@ -2949,6 +2988,11 @@ export const PatientRecord = ({
                         if (e.key === 'Enter') {
                           e.preventDefault();
                           handleAddPrescriptionItem();
+                        } else if (e.key === 'Tab' && !e.shiftKey) {
+                          if (rxForm.medicine && rxForm.medicine.trim()) {
+                            e.preventDefault();
+                            handleAddPrescriptionItem();
+                          }
                         }
                       }}
                       placeholder="Custom SOS (e.g. In severe pain)..."
@@ -2969,7 +3013,18 @@ export const PatientRecord = ({
                 <button
                   type="button"
                   onClick={handleAddPrescriptionItem}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Tab' && !e.shiftKey) {
+                      e.preventDefault();
+                      if (rxForm.medicine && rxForm.medicine.trim()) {
+                        handleAddPrescriptionItem();
+                      } else {
+                        rxMedInputRef.current?.focus();
+                      }
+                    }
+                  }}
                   style={styles.photoAddBtnBlue}
+                  title="Add prescription item (Enter / Tab)"
                 >
                   +
                 </button>
@@ -2988,38 +3043,42 @@ export const PatientRecord = ({
                     </tr>
                   </thead>
                   <tbody>
-                    {(visitForm.prescriptions || []).length === 0 ? (
+                    {(visitForm.prescriptions || []).filter((rx) => rx && rx.medicine && rx.medicine.trim()).length === 0 ? (
                       <tr>
                         <td colSpan={5} style={styles.photoTableEmptyTdFlex}>
                           No prescriptions added yet. Type medicine above and press Enter or +
                         </td>
                       </tr>
                     ) : (
-                      (visitForm.prescriptions || []).map((rx) => (
-                        <tr key={rx.id} style={styles.photoTableTr}>
-                          <td style={styles.photoTdBold}>{rx.medicine}</td>
-                          <td style={{ ...styles.photoTd, textAlign: 'center' }}>{rx.qty || '-'}</td>
-                          <td style={{ ...styles.photoTd, textAlign: 'center' }}>
-                            {rx.morning || '1'}-{rx.noon || '0'}-{rx.evening || '1'}-{rx.night || '0'}
-                          </td>
-                          <td style={{ ...styles.photoTd, textAlign: 'center' }}>
-                            {rx.timing === 'SOS'
-                              ? `SOS${rx.sosInstruction ? ` (${rx.sosInstruction})` : ''}`
-                              : rx.timing === 'BF'
-                              ? 'Before Food'
-                              : 'After Food'}
-                          </td>
-                          <td style={{ ...styles.photoTd, textAlign: 'center' }}>
-                            <button
-                              type="button"
-                              onClick={() => handleRemovePrescription(rx.id)}
-                              style={styles.photoRowDeleteBtn}
-                            >
-                              <X size={12} color="#DC2626" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))
+                      (visitForm.prescriptions || [])
+                        .filter((rx) => rx && rx.medicine && rx.medicine.trim())
+                        .map((rx, idx) => (
+                          <tr key={rx.id || idx} style={styles.photoTableTr}>
+                            <td style={styles.photoTdBold}>{rx.medicine}</td>
+                            <td style={{ ...styles.photoTd, textAlign: 'center' }}>{rx.qty || '-'}</td>
+                            <td style={{ ...styles.photoTd, textAlign: 'center' }}>
+                              {rx.morning || '1'}-{rx.noon || '0'}-{rx.evening || '1'}-{rx.night || '0'}
+                            </td>
+                            <td style={{ ...styles.photoTd, textAlign: 'center' }}>
+                              {rx.timing === 'SOS'
+                                ? `SOS${rx.sosInstruction ? ` (${rx.sosInstruction})` : ''}`
+                                : rx.timing === 'BF'
+                                ? 'Before Food'
+                                : 'After Food'}
+                            </td>
+                            <td style={{ ...styles.photoTd, textAlign: 'center' }}>
+                              <button
+                                type="button"
+                                tabIndex={-1}
+                                onClick={() => handleRemovePrescription(rx.id, idx)}
+                                style={styles.photoRowDeleteBtn}
+                                title="Remove prescription"
+                              >
+                                <X size={12} color="#DC2626" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))
                     )}
                   </tbody>
                 </table>

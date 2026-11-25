@@ -96,7 +96,7 @@ export const filterMasterItems = (rawToken, itemsList = []) => {
   return [...exactShortcut, ...startShortcut, ...startValue, ...others].slice(0, 30);
 };
 
-export const MasterDataInput = ({
+export const MasterDataInput = React.forwardRef(({
   id,
   type, // 'society' | 'area' | 'allergy' | 'complaint' | 'medicine' | 'investigation'
   value,
@@ -107,14 +107,28 @@ export const MasterDataInput = ({
   inputStyle = {},
   onSelectCallback,
   onEnterNext, // Optional callback when Enter is pressed to navigate to next input
+  onTabEmptyNext, // Optional callback when Tab is pressed on empty input to navigate to next section
   allowMultiple = false, // When true, supports comma-separated list and space-to-comma
-}) => {
+  inputRef: propInputRef,
+}, ref) => {
   const [suggestions, setSuggestions] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const wrapperRef = useRef(null);
-  const inputRef = useRef(null);
+  const internalInputRef = useRef(null);
   const listRef = useRef(null);
+
+  const setInputRef = (el) => {
+    internalInputRef.current = el;
+    if (typeof ref === 'function') {
+      ref(el);
+    } else if (ref && typeof ref === 'object') {
+      ref.current = el;
+    }
+    if (propInputRef && typeof propInputRef === 'object') {
+      propInputRef.current = el;
+    }
+  };
 
   // Preload master data cache on mount
   useEffect(() => {
@@ -283,9 +297,9 @@ export const MasterDataInput = ({
 
       // Keep focus in input and cursor at end to immediately select the next item
       setTimeout(() => {
-        if (inputRef.current) {
-          inputRef.current.focus();
-          inputRef.current.setSelectionRange(newVal.length, newVal.length);
+        if (internalInputRef.current) {
+          internalInputRef.current.focus();
+          internalInputRef.current.setSelectionRange(newVal.length, newVal.length);
         }
       }, 0);
 
@@ -309,7 +323,7 @@ export const MasterDataInput = ({
 
     if (isSaveShortcut) {
       // If there is an active token, auto-commit the matching shortcut or first suggestion before save triggers
-      const currentVal = inputRef.current ? inputRef.current.value : (value || '');
+      const currentVal = internalInputRef.current ? internalInputRef.current.value : (value || '');
       const token = getActiveToken(currentVal).trim().toUpperCase();
       if (token) {
         const cached = masterDataCache[type] || [];
@@ -329,7 +343,7 @@ export const MasterDataInput = ({
     // If Space is pressed and allowMultiple is true:
     if (allowMultiple && e.key === ' ') {
       const val = value || '';
-      const input = inputRef.current;
+      const input = internalInputRef.current;
       const cursorPos = input ? input.selectionStart : val.length;
       const beforeCursor = val.slice(0, cursorPos);
       const afterCursor = val.slice(cursorPos);
@@ -340,9 +354,9 @@ export const MasterDataInput = ({
         const newVal = trimmedBefore + ', ' + afterCursor.trimStart();
         onChange(newVal);
         setTimeout(() => {
-          if (inputRef.current) {
+          if (internalInputRef.current) {
             const nextPos = trimmedBefore.length + 2;
-            inputRef.current.setSelectionRange(nextPos, nextPos);
+            internalInputRef.current.setSelectionRange(nextPos, nextPos);
           }
         }, 0);
         setIsOpen(true);
@@ -353,7 +367,7 @@ export const MasterDataInput = ({
     // If Comma is pressed and allowMultiple is true:
     if (allowMultiple && e.key === ',') {
       const val = value || '';
-      const input = inputRef.current;
+      const input = internalInputRef.current;
       const cursorPos = input ? input.selectionStart : val.length;
       const beforeCursor = val.slice(0, cursorPos);
       const afterCursor = val.slice(cursorPos);
@@ -364,9 +378,9 @@ export const MasterDataInput = ({
         const newVal = trimmedBefore + ', ' + afterCursor.trimStart();
         onChange(newVal);
         setTimeout(() => {
-          if (inputRef.current) {
+          if (internalInputRef.current) {
             const nextPos = trimmedBefore.length + 2;
-            inputRef.current.setSelectionRange(nextPos, nextPos);
+            internalInputRef.current.setSelectionRange(nextPos, nextPos);
           }
         }, 0);
         setIsOpen(true);
@@ -374,29 +388,41 @@ export const MasterDataInput = ({
       }
     }
 
-    // Tab key: auto-resolve exact shortcut or top match if token is present
-    if (e.key === 'Tab') {
-      const currentVal = inputRef.current ? inputRef.current.value : (value || '');
+    // Tab key: auto-resolve exact shortcut or top match if token is present; jump to next section if empty
+    if (e.key === 'Tab' && !e.shiftKey) {
+      const currentVal = internalInputRef.current ? internalInputRef.current.value : (value || '');
       const token = getActiveToken(currentVal).trim().toUpperCase();
-      if (token) {
-        const cached = masterDataCache[type] || [];
-        const shortcutMatch = cached.find(
-          (i) => i.shortcut && i.shortcut.trim().toUpperCase() === token
-        );
-        let itemToUse = null;
-        if (isOpen && suggestions.length > 0 && highlightedIndex >= 0 && highlightedIndex < suggestions.length) {
-          itemToUse = suggestions[highlightedIndex];
-        } else if (shortcutMatch) {
-          itemToUse = shortcutMatch;
-        } else if (suggestions.length > 0) {
-          itemToUse = suggestions[0];
-        }
 
-        if (itemToUse) {
-          selectItem(itemToUse);
-        } else if (currentVal !== value) {
-          onChange(currentVal);
+      // If medicine / input is empty and caller provided onTabEmptyNext: jump directly to the next section!
+      if (!token) {
+        if (typeof onTabEmptyNext === 'function') {
+          e.preventDefault();
+          e.stopPropagation();
+          setIsOpen(false);
+          onTabEmptyNext();
+          return;
         }
+        setIsOpen(false);
+        return;
+      }
+
+      const cached = masterDataCache[type] || [];
+      const shortcutMatch = cached.find(
+        (i) => i.shortcut && i.shortcut.trim().toUpperCase() === token
+      );
+      let itemToUse = null;
+      if (isOpen && suggestions.length > 0 && highlightedIndex >= 0 && highlightedIndex < suggestions.length) {
+        itemToUse = suggestions[highlightedIndex];
+      } else if (shortcutMatch) {
+        itemToUse = shortcutMatch;
+      } else if (suggestions.length > 0) {
+        itemToUse = suggestions[0];
+      }
+
+      if (itemToUse) {
+        selectItem(itemToUse);
+      } else if (currentVal !== value) {
+        onChange(currentVal);
       }
       setIsOpen(false);
       return;
@@ -404,7 +430,7 @@ export const MasterDataInput = ({
 
     // Enter key: auto-resolve shortcut/suggestion and optionally advance to next input
     if (e.key === 'Enter') {
-      const currentVal = inputRef.current ? inputRef.current.value : (value || '');
+      const currentVal = internalInputRef.current ? internalInputRef.current.value : (value || '');
       const token = getActiveToken(currentVal).trim().toUpperCase();
       const cached = masterDataCache[type] || [];
       const shortcutMatch = token
@@ -473,7 +499,7 @@ export const MasterDataInput = ({
 
   const handleBlur = () => {
     // Auto-resolve shortcut if user clicked away or moved focus
-    const currentVal = inputRef.current ? inputRef.current.value : (value || '');
+    const currentVal = internalInputRef.current ? internalInputRef.current.value : (value || '');
     const token = getActiveToken(currentVal).trim().toUpperCase();
     if (token) {
       const cached = masterDataCache[type] || [];
@@ -500,7 +526,7 @@ export const MasterDataInput = ({
       }}
     >
       <input
-        ref={inputRef}
+        ref={setInputRef}
         type="text"
         value={value}
         onChange={handleInputChange}
@@ -573,7 +599,9 @@ export const MasterDataInput = ({
       )}
     </div>
   );
-};
+});
+
+MasterDataInput.displayName = 'MasterDataInput';
 
 const styles = {
   dropdown: {
