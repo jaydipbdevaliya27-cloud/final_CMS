@@ -1068,6 +1068,40 @@ export const MedicalCertificate = () => {
                     </p>
                   </div>
 
+                  {/* Period & Joining Dates Details Box */}
+                  <div style={{
+                    margin: '12px 0 16px',
+                    padding: '8px 12px',
+                    backgroundColor: '#F8FAFC',
+                    border: '1px solid #CBD5E1',
+                    borderRadius: '6px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '8px',
+                    fontSize: '11px',
+                  }}>
+                    <div>
+                      <span style={{ fontSize: '9px', color: '#64748B', fontWeight: 600, display: 'block', textTransform: 'uppercase' }}>From Date</span>
+                      <strong style={{ color: '#0F172A', fontSize: '11px' }}>{fromDate || todayStr}</strong>
+                    </div>
+                    <div style={{ width: '1px', height: '22px', backgroundColor: '#CBD5E1' }} />
+                    <div>
+                      <span style={{ fontSize: '9px', color: '#64748B', fontWeight: 600, display: 'block', textTransform: 'uppercase' }}>To Date</span>
+                      <strong style={{ color: '#0F172A', fontSize: '11px' }}>{toDate || todayStr}</strong>
+                    </div>
+                    <div style={{ width: '1px', height: '22px', backgroundColor: '#CBD5E1' }} />
+                    <div>
+                      <span style={{ fontSize: '9px', color: '#64748B', fontWeight: 600, display: 'block', textTransform: 'uppercase' }}>Rest Period</span>
+                      <strong style={{ color: '#0F172A', fontSize: '11px' }}>{restDays || 1} Day(s)</strong>
+                    </div>
+                    <div style={{ width: '1px', height: '22px', backgroundColor: '#CBD5E1' }} />
+                    <div style={{ backgroundColor: '#F0FDF4', padding: '3px 8px', borderRadius: '4px', border: '1px solid #86EFAC' }}>
+                      <span style={{ fontSize: '9px', color: '#166534', fontWeight: 700, display: 'block', textTransform: 'uppercase' }}>Joining Date</span>
+                      <strong style={{ color: '#15803D', fontSize: '11px', fontWeight: 800 }}>{joiningDate || todayStr}</strong>
+                    </div>
+                  </div>
+
                   {/* Bottom Meta & Doctor Sign Off */}
                   <div style={styles.a4Footer}>
                     <div style={styles.a4FooterLeft}>
@@ -1257,6 +1291,40 @@ export const MedicalCertificate = () => {
             {/* Body Paragraph */}
             <div style={styles.printBodyText}>
               {activePrintCert.bodyText}
+            </div>
+
+            {/* Period & Joining Dates Details Box */}
+            <div style={{
+              margin: '12px 0 16px',
+              padding: '8px 12px',
+              backgroundColor: '#F8FAFC',
+              border: '1px solid #CBD5E1',
+              borderRadius: '6px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '8px',
+              fontSize: '11px',
+            }}>
+              <div>
+                <span style={{ fontSize: '9px', color: '#64748B', fontWeight: 600, display: 'block', textTransform: 'uppercase' }}>From Date</span>
+                <strong style={{ color: '#0F172A', fontSize: '11px' }}>{activePrintCert.fromDate || todayStr}</strong>
+              </div>
+              <div style={{ width: '1px', height: '22px', backgroundColor: '#CBD5E1' }} />
+              <div>
+                <span style={{ fontSize: '9px', color: '#64748B', fontWeight: 600, display: 'block', textTransform: 'uppercase' }}>To Date</span>
+                <strong style={{ color: '#0F172A', fontSize: '11px' }}>{activePrintCert.toDate || todayStr}</strong>
+              </div>
+              <div style={{ width: '1px', height: '22px', backgroundColor: '#CBD5E1' }} />
+              <div>
+                <span style={{ fontSize: '9px', color: '#64748B', fontWeight: 600, display: 'block', textTransform: 'uppercase' }}>Rest Period</span>
+                <strong style={{ color: '#0F172A', fontSize: '11px' }}>{activePrintCert.restDays || 1} Day(s)</strong>
+              </div>
+              <div style={{ width: '1px', height: '22px', backgroundColor: '#CBD5E1' }} />
+              <div style={{ backgroundColor: '#F0FDF4', padding: '3px 8px', borderRadius: '4px', border: '1px solid #86EFAC' }}>
+                <span style={{ fontSize: '9px', color: '#166534', fontWeight: 700, display: 'block', textTransform: 'uppercase' }}>Joining Date</span>
+                <strong style={{ color: '#15803D', fontSize: '11px', fontWeight: 800 }}>{activePrintCert.joiningDate || todayStr}</strong>
+              </div>
             </div>
 
             {/* Signatures & Footer */}

@@ -11,36 +11,39 @@ const DEFAULT_TEMPLATES = [
     name: 'Medical Fitness Certificate',
     category: 'Fitness',
     defaultBodyText:
-      'This is to certify that {PATIENT_NAME}, aged {AGE}, has been examined by me. The patient has clinically recovered from {DIAGNOSIS} and is now found medically fit in all respects to resume normal daily duties.',
+      'This is to certify that {PATIENT_NAME}, aged {AGE}, has been under medical care for {DIAGNOSIS} and was advised leave of absence from {FROM_DATE} to {TO_DATE} ({REST_DAYS} days). The patient is now clinically examined, found fully recovered, and declared medically fit to resume and join duties on {JOINING_DATE}.',
   },
   {
     templateKey: 'leave_rest',
     name: 'Medical Leave & Rest Certificate',
     category: 'Leave',
     defaultBodyText:
-      'This is to certify that {PATIENT_NAME}, aged {AGE}, is under my medical care and treatment for {DIAGNOSIS}. The patient is advised complete physical rest and leave of absence from {FROM_DATE} to {TO_DATE} ({REST_DAYS} days) for proper recovery.',
+      'This is to certify that {PATIENT_NAME}, aged {AGE}, is under my medical treatment for {DIAGNOSIS}. The patient is advised complete physical rest and leave of absence from {FROM_DATE} to {TO_DATE} ({REST_DAYS} days) for proper recovery and is advised to join duties on {JOINING_DATE}.',
   },
   {
     templateKey: 'illness_recovery',
     name: 'Illness & Recovery Certificate',
     category: 'Recovery',
     defaultBodyText:
-      'This is to certify that {PATIENT_NAME}, aged {AGE}, was suffering from {DIAGNOSIS} and was advised medical rest from {FROM_DATE} to {TO_DATE}. On re-examination today, the patient is asymptomatic, fully recovered, and fit to resume duties.',
+      'This is to certify that {PATIENT_NAME}, aged {AGE}, was suffering from {DIAGNOSIS} and was advised medical rest from {FROM_DATE} to {TO_DATE} ({REST_DAYS} days). On re-examination, the patient has clinically recovered and is declared fit to resume and join duties with effect from {JOINING_DATE}.',
   },
   {
     templateKey: 'general_fitness',
     name: 'General Health & Travel Fitness Certificate',
     category: 'General',
     defaultBodyText:
-      'This is to certify that I have clinically examined {PATIENT_NAME}, aged {AGE}. The patient is found to be in good physical and mental health, free from any contagious illness or disability, and is declared fit for routine travel and physical activity.',
+      'This is to certify that I have clinically examined {PATIENT_NAME}, aged {AGE}, for the period from {FROM_DATE} to {TO_DATE}. The patient is found to be in good physical and mental health, free from any contagious illness, and is declared fit to join duties on {JOINING_DATE}.',
   },
 ];
 
-// Helper: Seed default templates if database collection is empty
+// Helper: Seed or update default templates so From Date, To Date and Joining Date are always present
 const ensureDefaultTemplates = async () => {
-  const count = await CertificateTemplate.countDocuments();
-  if (count === 0) {
-    await CertificateTemplate.insertMany(DEFAULT_TEMPLATES);
+  for (const tmpl of DEFAULT_TEMPLATES) {
+    await CertificateTemplate.findOneAndUpdate(
+      { templateKey: tmpl.templateKey },
+      { $set: { defaultBodyText: tmpl.defaultBodyText, name: tmpl.name, category: tmpl.category } },
+      { upsert: true }
+    );
   }
 };
 
