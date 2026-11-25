@@ -396,7 +396,7 @@ export const updateVisit = async (req, res) => {
     await visit.save();
 
     // Recalculate dues
-    const { patientDue, famDue } = await recalculateDues(visit.patientId, visit.familyId);
+    const { patientDue, patientDeposit, famDue, famDeposit } = await recalculateDues(visit.patientId, visit.familyId);
 
     // Auto-save individual terms to Master Data for autocomplete:
     // Split comma-separated items and only save new individual terms if not already existing
@@ -528,13 +528,15 @@ export const deleteVisit = async (req, res) => {
     await Visit.findByIdAndDelete(req.params.id);
 
     // Recalculate dues after deletion
-    const { patientDue, famDue } = await recalculateDues(visit.patientId, visit.familyId);
+    const { patientDue, patientDeposit, famDue, famDeposit } = await recalculateDues(visit.patientId, visit.familyId);
 
     return res.status(200).json({
       success: true,
       message: 'Visit record deleted successfully',
       totalDue: patientDue,
+      deposit: patientDeposit,
       familyDue: famDue,
+      familyDeposit: famDeposit,
     });
   } catch (error) {
     return res.status(500).json({
@@ -684,10 +686,10 @@ export const getRecentVisits = async (req, res) => {
       .limit(Math.min(300, Number(limit) || 150))
       .lean();
 
-    // Attach patient details (phone, mobile, area, society, current due, deposit)
+    // Attach patient details (phone, mobile, area, society)
     const patientIds = [...new Set(visits.map((v) => v.patientId).filter(Boolean))];
     const patients = await Patient.find({ patientId: { $in: patientIds } })
-      .select('patientId name phone mobile area society totalDue deposit familyId gender age')
+      .select('patientId name phone mobile area society gender age')
       .lean();
     const patMap = {};
     patients.forEach((p) => {
@@ -702,8 +704,6 @@ export const getRecentVisits = async (req, res) => {
         area: pat?.area || pat?.society || '',
         gender: pat?.gender || '',
         age: pat?.age || '',
-        currentPatientDue: pat?.totalDue !== undefined ? pat.totalDue : (v.due || 0),
-        currentPatientDeposit: pat?.deposit || 0,
       };
     });
 

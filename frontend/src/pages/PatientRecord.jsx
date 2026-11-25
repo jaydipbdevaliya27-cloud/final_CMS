@@ -958,7 +958,7 @@ export const PatientRecord = ({
     setPatientHouseNo(patient.houseNo || patient.family?.houseNo || '');
     setPatientSociety(patient.society || patient.family?.society || '');
     setPatientArea(patient.area || patient.family?.area || '');
-    setShowInlineHistory(true); // Automatically show case history just below
+    setShowInlineHistory(false);
     setShowSearchDropdown(false);
     setPatientSearch('');
     if (autoStartCase) {
@@ -1963,11 +1963,11 @@ export const PatientRecord = ({
                     {currentPatient && (
                       <button
                         type="button"
-                        onClick={() => setShowInlineHistory((prev) => !prev)}
+                        onClick={() => setShowHistoryModal(true)}
                         style={styles.photoHistoryLinkBtn}
-                        title="Click to toggle full past visits & case history"
+                        title="Click to view full past visits & case history in modal"
                       >
-                        *(History {patientVisits.length > 0 ? `(${patientVisits.length})` : ''} {showInlineHistory ? '▲' : '▼'})*
+                        *(History {patientVisits.length > 0 ? `(${patientVisits.length})` : ''})*
                       </button>
                     )}
                   </div>
@@ -2206,181 +2206,6 @@ export const PatientRecord = ({
               </div>
             </div>
           </div>
-
-          {/* CASE HISTORY TABLE (MATCHING PHOTO: SCROLLABLE, DISAPPEARS ON TAB SWITCH, TOGGLES ON CLICK) */}
-          {showInlineHistory && currentPatient && (
-            <div style={styles.photoHistoryContainer}>
-              <div style={styles.photoHistoryHeader}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <Clock size={13} color="#1E40AF" />
-                  <span style={styles.photoHistoryTitle}>
-                    Case History: {currentPatient.name} ({patientVisits.length} Records)
-                  </span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <button
-                    type="button"
-                    onClick={() => setShowInlineHistory(false)}
-                    style={styles.photoHistoryCloseBtn}
-                    title="Hide Case History (Click *(History)* to show again)"
-                  >
-                    <span>Hide History ▲</span>
-                  </button>
-                </div>
-              </div>
-
-              <div style={styles.photoHistoryScrollArea}>
-                {loadingVisits ? (
-                  <div style={styles.photoHistoryLoading}>Loading patient visits...</div>
-                ) : patientVisits.length === 0 ? (
-                  <div style={styles.photoHistoryEmpty}>No prior visits recorded for this patient.</div>
-                ) : (
-                  <table style={styles.photoHistoryTable}>
-                    <thead>
-                      <tr>
-                        <th style={{ ...styles.photoHistoryTh, width: '105px' }}>Date & Time</th>
-                        <th style={{ ...styles.photoHistoryTh, width: '130px' }}>Patient Name</th>
-                        <th style={styles.photoHistoryTh}>Complaints</th>
-                        <th style={{ ...styles.photoHistoryTh, width: '85px' }}>IPD Detail</th>
-                        <th style={styles.photoHistoryTh}>Clinic Med</th>
-                        <th style={styles.photoHistoryTh}>Prescription</th>
-                        <th style={{ ...styles.photoHistoryTh, width: '100px' }}>Lab Alerts</th>
-                        <th style={{ ...styles.photoHistoryTh, width: '65px', textAlign: 'right' }}>Charged (₹)</th>
-                        <th style={{ ...styles.photoHistoryTh, width: '55px', textAlign: 'right' }}>Due (₹)</th>
-                        <th style={{ ...styles.photoHistoryTh, width: '85px', textAlign: 'center' }}>Act</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {patientVisits.map((v) => {
-                        const formattedDate = v.visitDate || (v.createdAt ? v.createdAt.split('T')[0] : '');
-                        const formattedTime = v.createdAt
-                          ? new Date(v.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
-                          : '';
-                        const ipdList = Array.isArray(v.ipdDetails) ? v.ipdDetails : (v.ipdDetails ? [v.ipdDetails] : []);
-                        
-                        return (
-                          <tr key={v._id} style={styles.photoHistoryTr}>
-                            <td style={styles.photoHistoryTd}>
-                              <div style={{ fontWeight: 700, color: '#1E293B', fontSize: 10 }}>{formattedDate}</div>
-                              <div style={{ fontSize: 9, color: '#2563EB', fontWeight: 600 }}>{formattedTime}</div>
-                            </td>
-                            <td style={styles.photoHistoryTdBold}>{v.patientName || currentPatient.name}</td>
-                            <td style={styles.photoHistoryTd}>
-                              {v.complaint || '-'}
-                            </td>
-                            <td style={styles.photoHistoryTd}>
-                              {ipdList.length > 0
-                                ? ipdList.map((ipd, idx) => (
-                                    <div key={idx} style={{ fontSize: 10, color: '#9A3412', fontWeight: 600 }}>
-                                      {typeof ipd === 'string' ? ipd : ipd?.item}
-                                    </div>
-                                  ))
-                                : '-'}
-                            </td>
-                            <td style={styles.photoHistoryTd}>
-                              {v.treatments && v.treatments.length > 0 ? (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                                  {v.treatments.map((t, idx) => (
-                                    <span key={idx} style={{ fontSize: 10, color: '#334155' }}>
-                                      &bull; {t.item} ({t.qty || 1})
-                                    </span>
-                                  ))}
-                                </div>
-                              ) : '-'}
-                            </td>
-                            <td style={styles.photoHistoryTd}>
-                              {v.prescriptions && v.prescriptions.length > 0 ? (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                                  {v.prescriptions.map((p, idx) => (
-                                    <span key={idx} style={{ fontSize: 10, color: '#1E40AF' }}>
-                                      &bull; {p.medicine} ({p.qty || '-'}) {p.timing === 'SOS' ? `[SOS${p.sosInstruction ? `: ${p.sosInstruction}` : ''}]` : `[${p.timing}]`}
-                                    </span>
-                                  ))}
-                                </div>
-                              ) : '-'}
-                            </td>
-                            <td style={styles.photoHistoryTd}>
-                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-                                {v.bp && <span style={styles.historyAlertBp}>BP: {v.bp}</span>}
-                                {v.sugar && <span style={styles.historyAlertSugar}>SUG: {v.sugar}</span>}
-                                {v.other && <span style={styles.historyAlertOther}>{v.other}</span>}
-                                {v.investigation && (
-                                  <span style={styles.historyAlertLab}>{v.investigation}</span>
-                                )}
-                                {!v.bp && !v.sugar && !v.other && !v.investigation && <span style={{ color: '#94A3B8' }}>-</span>}
-                              </div>
-                            </td>
-                            <td style={{ ...styles.photoHistoryTd, textAlign: 'right', fontWeight: 800, color: '#EA580C' }}>
-                              ₹{v.charge || 0}
-                            </td>
-                            <td style={{ ...styles.photoHistoryTd, textAlign: 'right', fontWeight: 700, color: (v.due || 0) > 0 ? '#DC2626' : '#166534' }}>
-                              ₹{v.due || 0}
-                            </td>
-                            <td style={{ ...styles.photoHistoryTd, textAlign: 'center' }}>
-                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
-                                {/* View Chit */}
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setPrintVisit({ ...v, patient: currentPatient });
-                                    setPrintDietary(v.dietary || '');
-                                    setShowPrintModal(true);
-                                  }}
-                                  style={styles.historyActBtn}
-                                  title="View Medical Chit / Prescription"
-                                >
-                                  <FileText size={12} color="#0284C7" />
-                                </button>
-
-                                {/* Edit Visit */}
-                                <button
-                                  type="button"
-                                  onClick={() => handleStartEditVisit(v)}
-                                  style={styles.historyActBtn}
-                                  title="Edit / Reload Case into Form"
-                                >
-                                  <Edit3 size={12} color="#D97706" />
-                                </button>
-
-                                {/* Print (Fast Instant Print) */}
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setPrintVisit({ ...v, patient: currentPatient });
-                                    setPrintDietary(v.dietary || '');
-                                    setShowPrintModal(true);
-                                    setTimeout(() => {
-                                      try {
-                                        window.print();
-                                      } catch (e) {}
-                                    }, 80);
-                                  }}
-                                  style={styles.historyActBtn}
-                                  title="Print Prescription (Fast Print)"
-                                >
-                                  <Printer size={12} color="#2563EB" />
-                                </button>
-
-                                {/* Delete */}
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteVisit(v._id)}
-                                  style={styles.historyActBtn}
-                                  title="Delete Visit Record"
-                                >
-                                  <Trash2 size={12} color="#DC2626" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            </div>
-          )}
 
           {/* CARD 2: Allergy (Red Theme) */}
           <div style={{ ...styles.photoCard, borderColor: '#FCA5A5', position: 'relative', zIndex: 40, overflow: 'visible' }}>

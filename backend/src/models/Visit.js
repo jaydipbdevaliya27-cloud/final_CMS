@@ -123,6 +123,12 @@ const visitSchema = new mongoose.Schema(
   }
 );
 
+// Performance indexes for rapid search, sort, and history loading
+visitSchema.index({ createdAt: -1 });
+visitSchema.index({ visitDate: -1, createdAt: -1 });
+visitSchema.index({ patientName: 1 });
+visitSchema.index({ patientId: 1, createdAt: -1 });
+
 const Visit = mongoose.model('Visit', visitSchema);
 
 export default Visit;

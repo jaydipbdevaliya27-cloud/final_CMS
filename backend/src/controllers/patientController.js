@@ -283,6 +283,10 @@ export const updatePatient = async (req, res) => {
       });
     }
 
+    // Strip immutable fields
+    delete updateData._id;
+    delete updateData.patientId;
+
     // Process allergies if provided
     if (updateData.allergies) {
       if (typeof updateData.allergies === 'string') {
@@ -293,8 +297,18 @@ export const updatePatient = async (req, res) => {
       }
     }
 
+    const oldName = patient.name;
     Object.assign(patient, updateData);
     await patient.save();
+
+    // If patient name changed, sync across visit records and family
+    if (updateData.name && updateData.name.trim() !== oldName) {
+      const newName = updateData.name.trim();
+      await Visit.updateMany({ patientId: patient.patientId }, { patientName: newName });
+      if (patient.isHead) {
+        await Family.findOneAndUpdate({ familyId: patient.familyId }, { headName: newName });
+      }
+    }
 
     // Auto-save updated Master Data
     if (patient.society) await autoSaveMasterItem('society', patient.society);

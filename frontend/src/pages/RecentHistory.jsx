@@ -22,16 +22,19 @@ import {
   Filter,
 } from 'lucide-react';
 
+// In-memory cache for ultra-fast instant tab switching
+let recentVisitsCache = null;
+
 export const RecentHistory = ({
   onNavigateToNewCase,
   onNavigateToEditCase,
   onNavigateToAddPatient,
 }) => {
   const { doctor } = useAuth();
-  const [visits, setVisits] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [visits, setVisits] = useState(() => recentVisitsCache || []);
+  const [loading, setLoading] = useState(() => !recentVisitsCache);
   const [searchQuery, setSearchQuery] = useState('');
-  const debouncedSearch = useDebounce(searchQuery, 300);
+  const debouncedSearch = useDebounce(searchQuery, 120);
   const [selectedPeriod, setSelectedPeriod] = useState('all'); // 'today' | 'yesterday' | 'all' | 'custom'
   const [selectedDate, setSelectedDate] = useState(() => {
     const now = new Date();
@@ -58,10 +61,12 @@ export const RecentHistory = ({
   const [printModalOpen, setPrintModalOpen] = useState(false);
   const [visitToPrint, setVisitToPrint] = useState(null);
 
-  // Fetch recent visits
+  // Fetch recent visits (instant cache + background sync)
   const fetchRecentVisits = async () => {
     try {
-      setLoading(true);
+      if (!recentVisitsCache) {
+        setLoading(true);
+      }
       const params = {
         search: debouncedSearch.trim(),
         period: selectedPeriod,
@@ -72,7 +77,11 @@ export const RecentHistory = ({
       }
       const res = await visitAPI.getRecent(params);
       if (res?.success) {
-        setVisits(res.visits || []);
+        const fetched = res.visits || [];
+        setVisits(fetched);
+        if (selectedPeriod === 'all' && !debouncedSearch.trim()) {
+          recentVisitsCache = fetched;
+        }
       }
     } catch (err) {
       console.error('Error fetching recent visits:', err);
@@ -587,15 +596,11 @@ export const RecentHistory = ({
                   // Lab Alerts
                   const alerts = getLabAlerts(visit);
 
-                  // Current due and deposit
-                  const displayDue =
-                    visit.currentPatientDue !== undefined
-                      ? visit.currentPatientDue
-                      : Math.max(0, (visit.charge || 0) - (visit.received || 0));
-                  const displayDeposit =
-                    visit.currentPatientDeposit !== undefined
-                      ? visit.currentPatientDeposit
-                      : ((visit.received || 0) > (visit.charge || 0) ? (visit.received || 0) - (visit.charge || 0) : 0);
+                  // Case-specific charge, received, due, deposit for this particular case/visit ONLY
+                  const caseCharge = Number(visit.charge) || 0;
+                  const caseReceived = Number(visit.received) || 0;
+                  const caseDue = Math.max(0, caseCharge - caseReceived);
+                  const caseDeposit = Math.max(0, caseReceived - caseCharge);
 
                   const isEven = idx % 2 === 0;
 
@@ -712,9 +717,9 @@ export const RecentHistory = ({
                         <span style={styles.chargedText}>₹{visit.charge || 0}</span>
                       </td>
 
-                      {/* 9. Due (₹) / Deposit */}
+                      {/* 9. Due (₹) / Deposit - Strictly for this particular case record */}
                       <td style={styles.tdDue}>
-                        {displayDeposit > 0 ? (
+                        {caseDeposit > 0 ? (
                           <span
                             style={{
                               display: 'inline-flex',
@@ -730,17 +735,21 @@ export const RecentHistory = ({
                               whiteSpace: 'nowrap',
                             }}
                           >
-                            🟢 DEPOSIT: ₹{displayDeposit}
+                            🟢 DEPOSIT: ₹{caseDeposit}
                           </span>
-                        ) : (
+                        ) : caseDue > 0 ? (
                           <span
                             style={{
                               ...styles.dueText,
-                              color: displayDue > 0 ? '#DC2626' : '#475569',
-                              fontWeight: displayDue > 0 ? '700' : '500',
+                              color: '#DC2626',
+                              fontWeight: '700',
                             }}
                           >
-                            ₹{displayDue}
+                            ₹{caseDue}
+                          </span>
+                        ) : (
+                          <span style={{ color: '#94A3B8', fontSize: '12px', fontWeight: '500' }}>
+                            ₹0
                           </span>
                         )}
                       </td>
