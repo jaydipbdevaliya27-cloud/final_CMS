@@ -383,6 +383,13 @@ export const PatientRecord = ({
   });
   const [dietaryCodeInput, setDietaryCodeInput] = useState('');
   const [dietaryTextInput, setDietaryTextInput] = useState('');
+  const [dietaryMasterList, setDietaryMasterList] = useState([]);
+  const [dietarySuggestions, setDietarySuggestions] = useState([]);
+  const [showDietaryDropdown, setShowDietaryDropdown] = useState(false);
+  const [dietaryHighlightIndex, setDietaryHighlightIndex] = useState(0);
+  const dietaryCodeWrapRef = useRef(null);
+  const dietaryCodeInputRef = useRef(null);
+  const dietaryAdviceInputRef = useRef(null);
 
   // --- New Visit Entry Form State (Matching Image) ---
   const getTodayDateStr = () => {
@@ -424,7 +431,21 @@ export const PatientRecord = ({
     preloadMasterData('ipd');
     preloadMasterData('area');
     preloadMasterData('society');
-    preloadMasterData('dietary');
+    preloadMasterData('dietary').then((items) => {
+      if (Array.isArray(items) && items.length > 0) {
+        setDietaryMasterList(items);
+      }
+    });
+
+    // Also fetch fresh dietary items directly from API to guarantee latest codes
+    masterDataAPI
+      .getItems('dietary', '', 1, 200)
+      .then((res) => {
+        if (res && res.success && Array.isArray(res.data) && res.data.length > 0) {
+          setDietaryMasterList(res.data);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   // Synchronous references to eliminate stale closures in keyboard shortcuts
@@ -886,6 +907,9 @@ export const PatientRecord = ({
       if (searchWrapRef.current && !searchWrapRef.current.contains(e.target)) {
         setShowSearchDropdown(false);
       }
+      if (dietaryCodeWrapRef.current && !dietaryCodeWrapRef.current.contains(e.target)) {
+        setShowDietaryDropdown(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -1164,20 +1188,112 @@ export const PatientRecord = ({
     setRxForm({ medicine: '', qty: '10', morning: '1', noon: '0', evening: '1', night: '0', timing: 'AF', sosInstruction: '' });
   };
 
-  const handleApplyDietary = () => {
-    let advice = (dietaryTextInput || '').trim();
-    if (dietaryCodeInput.trim()) {
-      const resolved = resolveMasterShortcut('dietary', dietaryCodeInput.trim());
-      if (resolved && resolved !== dietaryCodeInput.trim()) {
-        advice = advice ? `${advice}, ${resolved}` : resolved;
-      }
+  const handleDietaryCodeChange = (rawVal) => {
+    const code = rawVal.toUpperCase();
+    setDietaryCodeInput(code);
+    const token = code.trim();
+    if (!token) {
+      setDietarySuggestions([]);
+      setShowDietaryDropdown(false);
+      return;
     }
+    const list = masterDataCache['dietary'] || dietaryMasterList || [];
+    const matches = list.filter((item) => {
+      const short = (item.shortcut || '').toUpperCase();
+      const val = (item.value || '').toUpperCase();
+      return short.startsWith(token) || short.includes(token) || val.includes(token);
+    });
+    setDietarySuggestions(matches);
+    setDietaryHighlightIndex(0);
+    setShowDietaryDropdown(matches.length > 0);
+
+    // Auto-fill advice text if exact shortcut matches!
+    const exactMatch = list.find((i) => i.shortcut && i.shortcut.trim().toUpperCase() === token);
+    if (exactMatch) {
+      setDietaryTextInput(exactMatch.value);
+    }
+  };
+
+  const handleSelectDietarySuggestion = (item) => {
+    setDietaryCodeInput(item.shortcut || '');
+    setDietaryTextInput(item.value || '');
+    setShowDietaryDropdown(false);
+    handleApplyDietaryItem(item.value);
+  };
+
+  const handleApplyDietary = async () => {
+    let advice = (dietaryTextInput || '').trim();
+    const code = (dietaryCodeInput || '').trim().toUpperCase();
+
+    // If advice is empty but code is given, resolve code from Master Data
+    if (!advice && code) {
+      const list = masterDataCache['dietary'] || dietaryMasterList || [];
+      let match = list.find(
+        (i) => (i.shortcut && i.shortcut.trim().toUpperCase() === code) ||
+               (i.value && i.value.trim().toUpperCase() === code)
+      );
+      if (!match) {
+        try {
+          const res = await masterDataAPI.getItems('dietary', code, 1, 10);
+          if (res && res.success && Array.isArray(res.data) && res.data.length > 0) {
+            match = res.data.find(
+              (i) => (i.shortcut && i.shortcut.trim().toUpperCase() === code) ||
+                     (i.value && i.value.trim().toUpperCase() === code)
+            ) || res.data[0];
+          }
+        } catch (e) {}
+      }
+      if (match) {
+        advice = match.value;
+      } else {
+        advice = code;
+      }
+    } else if (code && !advice) {
+      const list = masterDataCache['dietary'] || dietaryMasterList || [];
+      const match = list.find((i) => i.shortcut && i.shortcut.trim().toUpperCase() === code);
+      if (match) advice = match.value;
+    }
+
     if (!advice) return;
-    const currentDiet = visitFormRef.current?.dietary || visitForm.dietary || '';
-    const updated = currentDiet ? `${currentDiet}, ${advice}` : advice;
-    updateFormField('dietary', updated);
-    setDietaryTextInput('');
+    handleApplyDietaryItem(advice);
+  };
+
+  const handleApplyDietaryItem = (adviceText) => {
+    if (!adviceText || !adviceText.trim()) return;
+    const clean = adviceText.trim();
+    setVisitForm((prev) => {
+      const current = prev || visitFormRef.current || visitForm;
+      const currentList = (current.dietary || '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+      if (!currentList.includes(clean)) {
+        const updatedList = [...currentList, clean];
+        const updatedStr = updatedList.join(', ');
+        const updated = { ...current, dietary: updatedStr };
+        visitFormRef.current = updated;
+        return updated;
+      }
+      return current;
+    });
     setDietaryCodeInput('');
+    setDietaryTextInput('');
+    setShowDietaryDropdown(false);
+  };
+
+  const handleRemoveDietaryItem = (itemToRemove) => {
+    setVisitForm((prev) => {
+      const current = prev || visitFormRef.current || visitForm;
+      const currentList = (current.dietary || '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const updatedList = currentList.filter((i) => i !== itemToRemove);
+      const updatedStr = updatedList.join(', ');
+      const updated = { ...current, dietary: updatedStr };
+      visitFormRef.current = updated;
+      return updated;
+    });
   };
 
   // --- Treatment Row Handlers (with Auto-Add on typing) ---
@@ -2901,43 +3017,189 @@ export const PatientRecord = ({
                   3. Advice / Diet / Food Instructions
                 </span>
               </div>
+              {dietaryMasterList.length > 0 && (
+                <span style={{ fontSize: '10px', color: '#166534', fontWeight: 600 }}>
+                  {dietaryMasterList.length} Master Codes
+                </span>
+              )}
             </div>
             <div style={{ ...styles.photoCardBody, overflow: 'visible' }}>
-              <div style={{ ...styles.photoInputAddRow, position: 'relative' }}>
-                <div style={{ width: '130px', flexShrink: 0 }}>
+              <div style={{ ...styles.photoInputAddRow, position: 'relative', zIndex: 60 }}>
+                {/* Dietary Code Input with Suggestions Dropdown */}
+                <div style={{ width: '135px', flexShrink: 0, position: 'relative' }} ref={dietaryCodeWrapRef}>
                   <input
+                    ref={dietaryCodeInputRef}
                     type="text"
                     value={dietaryCodeInput}
-                    onChange={(e) => setDietaryCodeInput(e.target.value.toUpperCase())}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleApplyDietary();
+                    onChange={(e) => handleDietaryCodeChange(e.target.value)}
+                    onFocus={() => {
+                      const list = masterDataCache['dietary'] || dietaryMasterList || [];
+                      if (list.length > 0) {
+                        if (dietaryCodeInput.trim()) {
+                          const token = dietaryCodeInput.trim().toUpperCase();
+                          setDietarySuggestions(list.filter((i) => (i.shortcut || '').toUpperCase().includes(token) || (i.value || '').toUpperCase().includes(token)));
+                        } else {
+                          setDietarySuggestions(list.slice(0, 10));
+                        }
+                        setShowDietaryDropdown(true);
+                      }
                     }}
-                    placeholder="CODE (E.G. ADG)"
+                    onKeyDown={(e) => {
+                      if (e.key === 'ArrowDown') {
+                        if (dietarySuggestions.length > 0) {
+                          e.preventDefault();
+                          if (!showDietaryDropdown) setShowDietaryDropdown(true);
+                          setDietaryHighlightIndex((prev) => (prev < dietarySuggestions.length - 1 ? prev + 1 : 0));
+                        }
+                      } else if (e.key === 'ArrowUp') {
+                        if (dietarySuggestions.length > 0) {
+                          e.preventDefault();
+                          setDietaryHighlightIndex((prev) => (prev > 0 ? prev - 1 : dietarySuggestions.length - 1));
+                        }
+                      } else if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (showDietaryDropdown && dietarySuggestions.length > 0 && dietaryHighlightIndex >= 0) {
+                          handleSelectDietarySuggestion(dietarySuggestions[dietaryHighlightIndex]);
+                        } else {
+                          handleApplyDietary();
+                        }
+                      } else if (e.key === 'Tab') {
+                        if (showDietaryDropdown && dietarySuggestions.length > 0 && dietaryHighlightIndex >= 0) {
+                          const item = dietarySuggestions[dietaryHighlightIndex];
+                          setDietaryCodeInput(item.shortcut || '');
+                          setDietaryTextInput(item.value || '');
+                          setShowDietaryDropdown(false);
+                        }
+                      } else if (e.key === 'Escape') {
+                        setShowDietaryDropdown(false);
+                      }
+                    }}
+                    placeholder="CODE (E.G. DIAB, LSD)"
                     style={styles.photoInput}
+                    title="Type dietary shortcut code from Master Data"
                   />
+
+                  {/* Dropdown suggestions list for dietary codes */}
+                  {showDietaryDropdown && dietarySuggestions.length > 0 && (
+                    <ul style={styles.photoDietaryDropdown}>
+                      {dietarySuggestions.map((item, idx) => {
+                        const isHighlighted = idx === dietaryHighlightIndex;
+                        return (
+                          <li
+                            key={item._id || idx}
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              handleSelectDietarySuggestion(item);
+                            }}
+                            onMouseEnter={() => setDietaryHighlightIndex(idx)}
+                            style={{
+                              ...styles.photoDietaryDropdownItem,
+                              backgroundColor: isHighlighted ? '#DCFCE7' : '#FFFFFF',
+                              color: isHighlighted ? '#14532D' : '#0F172A',
+                              fontWeight: isHighlighted ? 700 : 400,
+                              borderLeft: isHighlighted ? '3px solid #16A34A' : '3px solid transparent',
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', width: '100%' }}>
+                              <span style={{ fontWeight: 800, color: '#166534', backgroundColor: '#F0FDF4', padding: '1px 5px', borderRadius: '3px', border: '1px solid #BBF7D0', fontSize: '10.5px' }}>
+                                {item.shortcut || 'CODE'}
+                              </span>
+                              <span style={{ flex: 1, fontSize: '11px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'left' }}>
+                                {item.value}
+                              </span>
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
                 </div>
-                <div style={{ flex: 1 }}>
+
+                {/* Specific Food Advice Input */}
+                <div style={{ flex: 1, position: 'relative' }}>
                   <input
+                    ref={dietaryAdviceInputRef}
                     type="text"
-                    value={dietaryTextInput || visitForm.dietary || ''}
-                    onChange={(e) => {
-                      setDietaryTextInput(e.target.value);
-                      updateFormField('dietary', e.target.value);
-                    }}
+                    value={dietaryTextInput}
+                    onChange={(e) => setDietaryTextInput(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleApplyDietary();
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleApplyDietary();
+                      }
                     }}
-                    placeholder="SPECIFIC FOOD ADVICE (AUTO-FILLS FROM CODE OR TYPE)..."
+                    placeholder="SPECIFIC FOOD ADVICE (AUTO-FILLS FROM CODE OR TYPE DIRECTLY)..."
                     style={styles.photoInput}
                   />
                 </div>
+
                 <button
                   type="button"
                   onClick={handleApplyDietary}
                   style={styles.photoApplyBtnGreen}
+                  title="Apply dietary instruction to case"
                 >
-                  Apply
+                  + Apply
                 </button>
+              </div>
+
+              {/* Quick Master Data Chips (One-click toggle from Master Data) */}
+              {dietaryMasterList.length > 0 && (
+                <div style={styles.photoDietaryChipsRow}>
+                  <span style={{ fontSize: '10px', color: '#166534', fontWeight: 700 }}>Quick Codes:</span>
+                  {dietaryMasterList.slice(0, 12).map((item, idx) => {
+                    const code = item.shortcut || item.value.slice(0, 8);
+                    const isAlreadyAdded = (visitForm.dietary || '').toLowerCase().includes((item.value || '').toLowerCase());
+                    return (
+                      <button
+                        key={item._id || idx}
+                        type="button"
+                        onClick={() => {
+                          if (isAlreadyAdded) {
+                            handleRemoveDietaryItem(item.value);
+                          } else {
+                            handleApplyDietaryItem(item.value);
+                          }
+                        }}
+                        style={{
+                          ...styles.photoDietaryChipBtn,
+                          backgroundColor: isAlreadyAdded ? '#166534' : '#F0FDF4',
+                          color: isAlreadyAdded ? '#FFFFFF' : '#166534',
+                          borderColor: isAlreadyAdded ? '#14532D' : '#86EFAC',
+                          fontWeight: isAlreadyAdded ? 800 : 600,
+                        }}
+                        title={`${item.shortcut ? `[${item.shortcut}] ` : ''}${item.value}`}
+                      >
+                        <span>{code}</span>
+                        {isAlreadyAdded && <span>✓</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Applied Dietary Advice Pills Row */}
+              <div style={styles.photoPillsContainer}>
+                {(visitForm.dietary || '').split(',').map((s) => s.trim()).filter(Boolean).length === 0 ? (
+                  <span style={styles.photoNoItemsText}>
+                    No custom food advice added (default Gujarati clinic advice will print on letterhead)
+                  </span>
+                ) : (
+                  (visitForm.dietary || '').split(',').map((s) => s.trim()).filter(Boolean).map((item, idx) => (
+                    <span key={idx} style={styles.photoPillGreen}>
+                      <UtensilsCrossed size={11} color="#166534" />
+                      <span>{item}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveDietaryItem(item)}
+                        style={styles.photoPillCloseBtn}
+                        title="Remove this advice"
+                      >
+                        <X size={11} />
+                      </button>
+                    </span>
+                  ))
+                )}
               </div>
             </div>
           </div>
@@ -5352,6 +5614,46 @@ const styles = {
     fontWeight: 700,
     padding: '1px 6px',
     cursor: 'pointer',
+  },
+  photoDietaryDropdown: {
+    position: 'absolute',
+    top: 'calc(100% + 2px)',
+    left: 0,
+    width: '320px',
+    backgroundColor: '#FFFFFF',
+    border: '1.5px solid #16A34A',
+    borderRadius: '4px',
+    boxShadow: '0 8px 20px rgba(0,0,0,0.18)',
+    maxHeight: '200px',
+    overflowY: 'auto',
+    zIndex: 999999,
+    padding: '3px 0',
+    listStyle: 'none',
+    margin: 0,
+  },
+  photoDietaryDropdownItem: {
+    padding: '5px 8px',
+    fontSize: '11px',
+    cursor: 'pointer',
+    borderBottom: '1px solid #F1F5F9',
+  },
+  photoDietaryChipsRow: {
+    display: 'flex',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: '4px',
+    padding: '2px 0',
+  },
+  photoDietaryChipBtn: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '3px',
+    border: '1px solid #86EFAC',
+    borderRadius: '3px',
+    padding: '1px 5px',
+    fontSize: '10px',
+    cursor: 'pointer',
+    transition: 'all 0.15s ease',
   },
   photoBottomActionsRow: {
     display: 'flex',
