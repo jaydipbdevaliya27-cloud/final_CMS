@@ -602,6 +602,13 @@ export const RecentHistory = ({
                   const caseDue = Math.max(0, caseCharge - caseReceived);
                   const caseDeposit = Math.max(0, caseReceived - caseCharge);
 
+                  // Extract known allergies for prominent highlight
+                  const rawAllergies = visit.allergies || [];
+                  const allergiesList = (Array.isArray(rawAllergies) ? rawAllergies : [rawAllergies])
+                    .flatMap((a) => (typeof a === 'string' ? a.split(',') : [String(a || '')]))
+                    .map((a) => a.trim())
+                    .filter(Boolean);
+
                   const isEven = idx % 2 === 0;
 
                   return (
@@ -622,18 +629,32 @@ export const RecentHistory = ({
                         <div style={styles.timeBadge}>{timeStr}</div>
                       </td>
 
-                      {/* 2. Patient Name */}
+                      {/* 2. Patient Name & Highlighted Allergies Only */}
                       <td style={styles.tdPatient}>
                         <div style={styles.patientName}>{visit.patientName || 'PATIENT'}</div>
-                        <div style={styles.patientSubMeta}>
-                          {visit.patientId && (
-                            <span style={styles.pidBadge}>{visit.patientId}</span>
-                          )}
-                          {visit.familyId && (
-                            <span style={styles.famBadge}>FAM {visit.familyId}</span>
-                          )}
-                          {visit.phone && <span>📞 {visit.phone}</span>}
-                        </div>
+                        {allergiesList.length > 0 && (
+                          <div
+                            style={{
+                              marginTop: '4px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              backgroundColor: '#FEE2E2',
+                              color: '#B91C1C',
+                              border: '1px solid #FCA5A5',
+                              padding: '2px 7px',
+                              borderRadius: '4px',
+                              fontSize: '11px',
+                              fontWeight: '700',
+                              lineHeight: 1.2,
+                              whiteSpace: 'nowrap',
+                            }}
+                            title={`Known Allergies: ${allergiesList.join(', ')}`}
+                          >
+                            <ShieldAlert size={12} color="#DC2626" style={{ flexShrink: 0 }} />
+                            <span>ALLERGY: {allergiesList.join(', ')}</span>
+                          </div>
+                        )}
                       </td>
 
                       {/* 3. Complaints */}

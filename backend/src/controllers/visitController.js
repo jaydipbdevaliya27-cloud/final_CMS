@@ -649,47 +649,30 @@ export const getRecentVisits = async (req, res) => {
       query.visitDate = date;
     }
 
-    // Search query: patient name, patient id, family id, complaint, reference, phone, or area
+    // Fast search: search directly on indexed Visit fields (patientName, patientId, complaint, reference)
     if (search && search.trim()) {
       const s = search.trim();
       const escaped = s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const regex = new RegExp(escaped, 'i');
 
-      // Also search matching patientIds by phone, mobile, area, or society
-      const matchedPatients = await Patient.find({
-        $or: [
-          { name: regex },
-          { patientId: regex },
-          { familyId: regex },
-          { phone: regex },
-          { mobile: regex },
-          { area: regex },
-          { society: regex },
-        ],
-      }).select('patientId').lean();
-
-      const matchedPids = matchedPatients.map((p) => p.patientId);
-
       query.$or = [
         { patientName: regex },
         { patientId: regex },
-        { familyId: regex },
         { complaint: regex },
         { reference: regex },
-        { investigation: regex },
-        { patientId: { $in: matchedPids } },
       ];
     }
 
     const visits = await Visit.find(query)
-      .sort({ createdAt: -1, _id: -1 })
-      .limit(Math.min(300, Number(limit) || 150))
+      .select('patientId familyId patientName visitDate createdAt complaint ipdDetails treatments prescriptions bp sugar other reference charge received due allergies')
+      .sort({ createdAt: -1 })
+      .limit(Math.min(250, Number(limit) || 100))
       .lean();
 
-    // Attach patient details (phone, mobile, area, society)
+    // Attach latest patient allergies for highlight
     const patientIds = [...new Set(visits.map((v) => v.patientId).filter(Boolean))];
     const patients = await Patient.find({ patientId: { $in: patientIds } })
-      .select('patientId name phone mobile area society gender age')
+      .select('patientId allergies')
       .lean();
     const patMap = {};
     patients.forEach((p) => {
@@ -698,12 +681,12 @@ export const getRecentVisits = async (req, res) => {
 
     const enriched = visits.map((v) => {
       const pat = patMap[v.patientId];
+      const combinedAllergies = (pat?.allergies && pat.allergies.length > 0)
+        ? pat.allergies
+        : (v.allergies || []);
       return {
         ...v,
-        phone: pat?.phone || pat?.mobile || '',
-        area: pat?.area || pat?.society || '',
-        gender: pat?.gender || '',
-        age: pat?.age || '',
+        allergies: combinedAllergies,
       };
     });
 
