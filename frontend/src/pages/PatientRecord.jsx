@@ -281,6 +281,7 @@ export const PatientRecord = ({
   // --- New Case Visibility & Edit Mode State ---
   const [showNewCaseForm, setShowNewCaseForm] = useState(false);
   const [editingVisitId, setEditingVisitId] = useState(null);
+  const [editingVisit, setEditingVisit] = useState(null);
 
   // --- Case Lab Report State (Attached to Visit in MongoDB) ---
   const [showAddReportModal, setShowAddReportModal] = useState(false);
@@ -436,6 +437,11 @@ export const PatientRecord = ({
   useEffect(() => {
     editingVisitIdRef.current = editingVisitId;
   }, [editingVisitId]);
+
+  const editingVisitRef = useRef(editingVisit);
+  useEffect(() => {
+    editingVisitRef.current = editingVisit;
+  }, [editingVisit]);
 
   const currentPatientRef = useRef(currentPatient);
   useEffect(() => {
@@ -956,12 +962,40 @@ export const PatientRecord = ({
   const receivedNum = Math.max(0, Number(visitForm.received) || 0);
   const computedDue = Math.max(0, chargeNum - receivedNum);
 
-  // Previous patient balance: positive = due, negative = deposit
-  const prevBalance = (Number(currentPatient?.totalDue) || 0) - (Number(currentPatient?.deposit) || 0);
-  // Net balance after current visit:
-  const newNetBalance = prevBalance + chargeNum - receivedNum;
+  // Existing recorded patient balance before this session (positive = due, negative = deposit)
+  const recordedPatientDue = Math.max(0, Number(currentPatient?.totalDue) || 0);
+  const recordedPatientDeposit = Math.max(0, Number(currentPatient?.deposit) || 0);
+  const recordedPatientBalance = recordedPatientDue - recordedPatientDeposit;
+
+  // If editing an existing stored visit, subtract its original net impact (charge - received)
+  // so that we don't double count the visit that is ALREADY stored in recordedPatientBalance!
+  const activeEditingVisit = editingVisit || (editingVisitId ? (patientVisits || []).find((v) => v._id === editingVisitId) : null);
+  const origVisitNet = activeEditingVisit
+    ? ((Math.max(0, Number(activeEditingVisit.charge) || 0)) - (Math.max(0, Number(activeEditingVisit.received) || 0)))
+    : 0;
+
+  // Baseline patient balance prior to this visit
+  const baselinePatientBalance = recordedPatientBalance - origVisitNet;
+
+  // Net projected patient balance after current form's charge and received are applied:
+  const newNetBalance = baselinePatientBalance + (chargeNum - receivedNum);
   const finalPatientDue = newNetBalance > 0 ? newNetBalance : 0;
   const finalPatientDeposit = newNetBalance < 0 ? Math.abs(newNetBalance) : 0;
+
+  // Personal Due & Family Due values for display in Billing Details section
+  const personalDue = recordedPatientDue;
+  const personalDeposit = recordedPatientDeposit;
+
+  const familyDue = Math.max(0, Number(
+    currentPatient?.family?.familyDue !== undefined
+      ? currentPatient.family.familyDue
+      : (currentPatient?.familyDue || familyData?.family?.familyDue || 0)
+  ));
+  const familyDeposit = Math.max(0, Number(
+    currentPatient?.family?.familyDeposit !== undefined
+      ? currentPatient.family.familyDeposit
+      : (currentPatient?.familyDeposit || familyData?.family?.familyDeposit || 0)
+  ));
 
   // --- New Card Quick Handlers for Exact Photo Layout ---
   const handleAddAllergy = (valToAdd = null) => {
@@ -1291,6 +1325,8 @@ export const PatientRecord = ({
     }
     setEditingVisitId(null);
     editingVisitIdRef.current = null;
+    setEditingVisit(null);
+    editingVisitRef.current = null;
     setAttachedReport(null);
     attachedReportRef.current = null;
 
@@ -1333,6 +1369,8 @@ export const PatientRecord = ({
   const handleStartEditVisit = (visit) => {
     setEditingVisitId(visit._id);
     editingVisitIdRef.current = visit._id;
+    setEditingVisit(visit);
+    editingVisitRef.current = visit;
     const compList = visit.complaint
       ? visit.complaint.split(',').map((c) => c.trim().toUpperCase()).filter(Boolean)
       : [];
@@ -1608,6 +1646,8 @@ export const PatientRecord = ({
         visitFormRef.current = initialVisitForm;
         setEditingVisitId(null);
         editingVisitIdRef.current = null;
+        setEditingVisit(null);
+        editingVisitRef.current = null;
         setAttachedReport(null);
         attachedReportRef.current = null;
       } else {
@@ -1751,6 +1791,8 @@ export const PatientRecord = ({
                     type="button"
                     onClick={() => {
                       setCurrentPatient(null);
+                      setEditingVisitId(null);
+                      setEditingVisit(null);
                       setPatientSearch('');
                       setSearchResults([]);
                     }}
@@ -2906,9 +2948,89 @@ export const PatientRecord = ({
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Receipt size={14} color="#854D0E" />
                 <span style={{ ...styles.photoHeaderTitle, color: '#854D0E' }}>Billing Details</span>
+                {activeEditingVisit && (
+                  <span style={styles.photoEditingBadge}>
+                    ✏️ EDITING CASE ({activeEditingVisit.visitDate || 'RECORD'})
+                  </span>
+                )}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                {activeEditingVisit && (
+                  <button
+                    type="button"
+                    onClick={() => handleOpenNewCase()}
+                    style={styles.photoCancelEditBtn}
+                    title="Cancel editing and switch to fresh new case entry"
+                  >
+                    ✕ Cancel Edit (New Case)
+                  </button>
+                )}
+                {personalDue > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowTotalDueModal(true)}
+                    style={styles.photoBillingTagRed}
+                    title="Click to view all past pending visits"
+                  >
+                    <span>👤 Personal: ₹{personalDue}</span>
+                  </button>
+                )}
+                {familyDue > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleOpenFamilyDueModal}
+                    style={styles.photoBillingTagAmber}
+                    title="Click to view full family due breakdown"
+                  >
+                    <span>👥 Family: ₹{familyDue}</span>
+                  </button>
+                )}
               </div>
             </div>
+
             <div style={styles.photoCardBody}>
+              {/* Dues Status Notice Bar (Shown if Personal Due or Family Due exists, or in Edit mode) */}
+              {(personalDue > 0 || familyDue > 0 || personalDeposit > 0 || familyDeposit > 0 || activeEditingVisit) && (
+                <div style={styles.photoBillingDueBar}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    {personalDue > 0 ? (
+                      <span
+                        onClick={() => setShowTotalDueModal(true)}
+                        style={styles.photoBillingTagRed}
+                        title="Click to view personal visit dues"
+                      >
+                        <span>👤 Personal Due: ₹{personalDue}</span>
+                      </span>
+                    ) : personalDeposit > 0 ? (
+                      <span style={styles.photoBillingTagGreen}>
+                        🟢 Personal Deposit: ₹{personalDeposit}
+                      </span>
+                    ) : null}
+
+                    {familyDue > 0 ? (
+                      <span
+                        onClick={handleOpenFamilyDueModal}
+                        style={styles.photoBillingTagAmber}
+                        title="Click to view family due breakdown across members"
+                      >
+                        <span>👥 Family Due: ₹{familyDue}</span>
+                      </span>
+                    ) : familyDeposit > 0 ? (
+                      <span style={styles.photoBillingTagGreen}>
+                        🟢 Family Deposit: ₹{familyDeposit}
+                      </span>
+                    ) : null}
+                  </div>
+
+                  {activeEditingVisit && (
+                    <span style={{ fontSize: '10px', color: '#92400E', marginLeft: 'auto', fontWeight: 600 }}>
+                      *Editing: original visit net (₹{origVisitNet > 0 ? origVisitNet : 0}) is not double-counted
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* Main Fields Row */}
               <div style={styles.photoRow3Col}>
                 <div style={styles.photoFieldGroup}>
                   <label style={styles.photoLabel}>Charged Amount (₹):</label>
@@ -2931,6 +3053,58 @@ export const PatientRecord = ({
                     style={styles.photoInput}
                   />
                 </div>
+
+                {/* Show Personal Due field if personalDue > 0 */}
+                {personalDue > 0 && (
+                  <div style={styles.photoFieldGroup}>
+                    <label style={{ ...styles.photoLabel, color: '#B91C1C', fontWeight: 700 }}>
+                      Personal Due (₹):
+                    </label>
+                    <div
+                      onClick={() => setShowTotalDueModal(true)}
+                      style={{
+                        ...styles.photoDueDisplay,
+                        backgroundColor: '#FEE2E2',
+                        color: '#B91C1C',
+                        borderColor: '#FCA5A5',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                      }}
+                      title="Click to view all past pending visits"
+                    >
+                      <span>₹{personalDue}</span>
+                      <span style={{ fontSize: '9px', fontWeight: 700, color: '#DC2626' }}>View ↗</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Show Family Due field if familyDue > 0 */}
+                {familyDue > 0 && (
+                  <div style={styles.photoFieldGroup}>
+                    <label style={{ ...styles.photoLabel, color: '#92400E', fontWeight: 700 }}>
+                      Family Due (₹):
+                    </label>
+                    <div
+                      onClick={handleOpenFamilyDueModal}
+                      style={{
+                        ...styles.photoDueDisplay,
+                        backgroundColor: '#FEF3C7',
+                        color: '#92400E',
+                        borderColor: '#FCD34D',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                      }}
+                      title="Click to view family due breakdown across all members"
+                    >
+                      <span>₹{familyDue}</span>
+                      <span style={{ fontSize: '9px', fontWeight: 700, color: '#B45309' }}>View ↗</span>
+                    </div>
+                  </div>
+                )}
 
                 <div style={styles.photoFieldGroup}>
                   <label
@@ -5107,6 +5281,77 @@ const styles = {
     borderRadius: '3px',
     color: '#B45309',
     boxSizing: 'border-box',
+  },
+  photoBillingDueBar: {
+    display: 'flex',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: '6px',
+    padding: '3px 6px',
+    backgroundColor: '#FFFBEB',
+    border: '1px dashed #FCD34D',
+    borderRadius: '3px',
+    marginBottom: '4px',
+  },
+  photoBillingTagRed: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '3px',
+    backgroundColor: '#FEE2E2',
+    border: '1px solid #FCA5A5',
+    color: '#B91C1C',
+    borderRadius: '3px',
+    padding: '1px 6px',
+    fontSize: '10px',
+    fontWeight: 700,
+    cursor: 'pointer',
+  },
+  photoBillingTagAmber: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '3px',
+    backgroundColor: '#FEF3C7',
+    border: '1px solid #FCD34D',
+    color: '#92400E',
+    borderRadius: '3px',
+    padding: '1px 6px',
+    fontSize: '10px',
+    fontWeight: 700,
+    cursor: 'pointer',
+  },
+  photoBillingTagGreen: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '3px',
+    backgroundColor: '#DCFCE7',
+    border: '1px solid #86EFAC',
+    color: '#15803D',
+    borderRadius: '3px',
+    padding: '1px 6px',
+    fontSize: '10px',
+    fontWeight: 700,
+  },
+  photoEditingBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '3px',
+    backgroundColor: '#FEF3C7',
+    border: '1px solid #FCD34D',
+    color: '#92400E',
+    borderRadius: '3px',
+    padding: '1px 6px',
+    fontSize: '10px',
+    fontWeight: 700,
+  },
+  photoCancelEditBtn: {
+    backgroundColor: '#FFFFFF',
+    border: '1px solid #FCD34D',
+    borderRadius: '3px',
+    color: '#92400E',
+    fontSize: '10px',
+    fontWeight: 700,
+    padding: '1px 6px',
+    cursor: 'pointer',
   },
   photoBottomActionsRow: {
     display: 'flex',

@@ -242,7 +242,9 @@ export const recordVisit = async (req, res) => {
       message: 'Visit and clinical case recorded successfully',
       visit,
       totalDue: patientDue,
+      deposit: patientDeposit,
       familyDue: famDue,
+      familyDeposit: famDeposit,
     });
   } catch (error) {
     console.error('Error recording visit:', error);
@@ -462,7 +464,9 @@ export const updateVisit = async (req, res) => {
       message: 'Visit updated successfully',
       visit,
       totalDue: patientDue,
+      deposit: patientDeposit,
       familyDue: famDue,
+      familyDeposit: famDeposit,
     });
   } catch (error) {
     console.error('Error updating visit:', error);
