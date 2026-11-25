@@ -379,9 +379,6 @@ export const Dashboard = () => {
         const last7Days = dashboardData?.last7Days || [];
 
         const maxDayCount = Math.max(1, ...last7Days.map((d) => d.count || 0));
-        const recoveryRate = stats.overallCharge > 0
-          ? Math.min(100, Math.round((stats.overallReceived / stats.overallCharge) * 100))
-          : 100;
 
         const periodLabel = dashboardData?.filter?.periodLabel || (
           selectedPeriod === 'yesterday'
@@ -644,394 +641,242 @@ export const Dashboard = () => {
               </div>
             </div>
 
-            {/* 3. QUICK ACTION SHORTCUT BAR */}
-            <div style={styles.dashShortcutBar}>
-              <span style={styles.dashShortcutTitle}>
-                <Zap size={14} color="var(--primary)" />
-                <span>Quick Actions:</span>
-              </span>
-
-              <div style={styles.dashShortcutPills}>
-                <button
-                  type="button"
-                  style={styles.dashShortcutPill}
-                  onClick={() => setActiveTab('family-head')}
-                >
-                  <span style={styles.dashKeyBadge}>F1</span>
-                  <span>Register Family Head</span>
-                </button>
-
-                <button
-                  type="button"
-                  style={styles.dashShortcutPill}
-                  onClick={() => setActiveTab('add-member')}
-                >
-                  <span style={styles.dashKeyBadge}>F2</span>
-                  <span>Add Member</span>
-                </button>
-
-                <button
-                  type="button"
-                  style={{ ...styles.dashShortcutPill, backgroundColor: 'var(--primary-soft)', borderColor: 'var(--primary)', color: 'var(--primary-dark)', fontWeight: 700 }}
-                  onClick={() => {
-                    setSelectedPatientId('');
-                    setActiveTab('patient-record');
-                  }}
-                >
-                  <span style={{ ...styles.dashKeyBadge, backgroundColor: 'var(--primary)', color: '#FFFFFF' }}>F3</span>
-                  <span>New Consultation / Case</span>
-                </button>
-
-                <button
-                  type="button"
-                  style={styles.dashShortcutPill}
-                  onClick={() => setActiveTab('medical-certificate')}
-                >
-                  <span style={styles.dashKeyBadge}>F6</span>
-                  <span>Medical Certificate</span>
-                </button>
-
-                <button
-                  type="button"
-                  style={styles.dashShortcutPill}
-                  onClick={() => setActiveTab('reports')}
-                >
-                  <span style={styles.dashKeyBadge}>F7</span>
-                  <span>Clinic Reports</span>
-                </button>
-
-                <button
-                  type="button"
-                  style={styles.dashShortcutPill}
-                  onClick={handleSearchFocus}
-                >
-                  <span style={styles.dashKeyBadge}>/</span>
-                  <span>Universal Search</span>
-                </button>
-              </div>
-            </div>
-
-            {/* 4. DYNAMIC 2-COLUMN PRACTICE WORKSPACE */}
+            {/* 3. PRACTICE WORKSPACE (FULL WIDTH STACK) */}
             <div className="dash-workspace-grid" style={styles.dashWorkspaceGrid}>
-              {/* LEFT COLUMN: 7-DAY TREND & RECENT OPD VISITS */}
-              <div style={styles.dashLeftCol}>
-                {/* Card A: Consultations & Collections Trend */}
-                <div style={styles.dashCard}>
-                  <div style={styles.dashCardHeader}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <TrendingUp size={16} color="var(--primary)" />
-                      <h3 style={styles.dashCardTitle}>
-                        {selectedPeriod === 'thismonth'
-                          ? 'This Month Consultations & Collections'
-                          : selectedPeriod === 'custom'
-                            ? `OPD Trend around ${periodLabel}`
-                            : `${periodLabel} Consultations & Collections`}
-                      </h3>
-                    </div>
-                    <span style={styles.dashCardBadge}>{periodLabel}</span>
+              {/* Card A: Consultations & Collections Trend */}
+              <div style={styles.dashCard}>
+                <div style={styles.dashCardHeader}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <TrendingUp size={16} color="var(--primary)" />
+                    <h3 style={styles.dashCardTitle}>
+                      {selectedPeriod === 'thismonth'
+                        ? 'This Month Consultations & Collections'
+                        : selectedPeriod === 'custom'
+                          ? `OPD Trend around ${periodLabel}`
+                          : `${periodLabel} Consultations & Collections`}
+                    </h3>
                   </div>
-
-                  <div style={styles.trendChartWrap}>
-                    {last7Days.map((day, idx) => {
-                      const heightPercent = Math.max(12, Math.round((day.count / maxDayCount) * 100));
-                      const isHighlighted = idx === last7Days.length - 1;
-                      return (
-                        <div key={day.date} style={styles.trendCol}>
-                          <div style={styles.trendBarContainer}>
-                            <div
-                              style={{
-                                ...styles.trendBar,
-                                height: `${heightPercent}%`,
-                                backgroundColor: isHighlighted ? 'var(--primary)' : '#99D5C9',
-                              }}
-                              title={`${day.date}: ${day.count} visits, ₹${day.received} collected`}
-                            >
-                              <span style={styles.trendBarVal}>{day.count}</span>
-                            </div>
-                          </div>
-                          <span
-                            style={{
-                              ...styles.trendDayLabel,
-                              fontWeight: isHighlighted ? 800 : 600,
-                              color: isHighlighted ? 'var(--primary-dark)' : 'var(--text-muted)',
-                            }}
-                          >
-                            {day.dayName}
-                          </span>
-                          <span style={styles.trendFeeLabel}>₹{day.received}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <span style={styles.dashCardBadge}>{periodLabel}</span>
                 </div>
 
-                {/* Card B: OPD Consultations Queue for Selected Filter */}
-                <div style={{ ...styles.dashCard, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-                  <div style={styles.dashCardHeader}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <Stethoscope size={16} color="var(--primary)" />
-                      <h3 style={styles.dashCardTitle}>OPD Consultations ({periodLabel})</h3>
-                      <span style={styles.dashCountBadge}>{recentVisits.length} Visits</span>
-                    </div>
+                <div style={styles.trendChartWrap}>
+                  {last7Days.map((day, idx) => {
+                    const heightPercent = Math.max(12, Math.round((day.count / maxDayCount) * 100));
+                    const isHighlighted = idx === last7Days.length - 1;
+                    return (
+                      <div key={day.date} style={styles.trendCol}>
+                        <div style={styles.trendBarContainer}>
+                          <div
+                            style={{
+                              ...styles.trendBar,
+                              height: `${heightPercent}%`,
+                              backgroundColor: isHighlighted ? 'var(--primary)' : '#99D5C9',
+                            }}
+                            title={`${day.date}: ${day.count} visits, ₹${day.received} collected`}
+                          >
+                            <span style={styles.trendBarVal}>{day.count}</span>
+                          </div>
+                        </div>
+                        <span
+                          style={{
+                            ...styles.trendDayLabel,
+                            fontWeight: isHighlighted ? 800 : 600,
+                            color: isHighlighted ? 'var(--primary-dark)' : 'var(--text-muted)',
+                          }}
+                        >
+                          {day.dayName}
+                        </span>
+                        <span style={styles.trendFeeLabel}>₹{day.received}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
 
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('reports')}
-                      style={styles.dashHeaderLink}
-                    >
-                      <span>All Reports</span>
-                      <ChevronRight size={13} />
-                    </button>
+              {/* Card B: OPD Consultations Queue (Takes Full Width) */}
+              <div style={{ ...styles.dashCard, width: '100%' }}>
+                <div style={styles.dashCardHeader}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Stethoscope size={16} color="var(--primary)" />
+                    <h3 style={styles.dashCardTitle}>OPD Consultations ({periodLabel})</h3>
+                    <span style={styles.dashCountBadge}>{recentVisits.length} Visits</span>
                   </div>
 
-                  {recentVisits.length === 0 ? (
-                    <div style={styles.dashEmptyState}>
-                      <div style={styles.dashEmptyIcon}>
-                        <Stethoscope size={28} color="var(--border)" strokeWidth={1.5} />
-                      </div>
-                      <p style={styles.dashEmptyTitle}>No Consultations Recorded for {periodLabel}</p>
-                      <p style={styles.dashEmptyDesc}>
-                        No patient case entries were found for this selected period filter.
-                      </p>
-                      <button
-                        type="button"
-                        style={styles.dashEmptyBtn}
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('reports')}
+                    style={styles.dashHeaderLink}
+                  >
+                    <span>All Reports</span>
+                    <ChevronRight size={13} />
+                  </button>
+                </div>
+
+                {recentVisits.length === 0 ? (
+                  <div style={styles.dashEmptyState}>
+                    <div style={styles.dashEmptyIcon}>
+                      <Stethoscope size={28} color="var(--border)" strokeWidth={1.5} />
+                    </div>
+                    <p style={styles.dashEmptyTitle}>No Consultations Recorded for {periodLabel}</p>
+                    <p style={styles.dashEmptyDesc}>
+                      No patient case entries were found for this selected period filter.
+                    </p>
+                    <button
+                      type="button"
+                      style={styles.dashEmptyBtn}
+                      onClick={() => {
+                        setSelectedPatientId('');
+                        setActiveTab('patient-record');
+                      }}
+                    >
+                      <UserPlus size={14} />
+                      <span>Start New Consultation (F3)</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div style={styles.dashTableWrap}>
+                    <table style={styles.dashTable}>
+                      <thead>
+                        <tr>
+                          <th style={styles.dashTh}>Patient</th>
+                          <th style={styles.dashTh}>Diagnosis / Complaint</th>
+                          <th style={styles.dashTh}>Fee Status</th>
+                          <th style={styles.dashTh}>Date / Time</th>
+                          <th style={{ ...styles.dashTh, textAlign: 'right' }}>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {recentVisits.map((v) => {
+                          const pName = v.patientName || v.patient?.name || 'Walk-in Patient';
+                          const pId = v.patientId || v.patient?.patientId || '-';
+                          const feePaid = v.received !== undefined ? v.received : (v.fees?.amountReceived || 0);
+                          const feeDue = v.due !== undefined ? v.due : (v.fees?.balanceDue || 0);
+                          const complaint = v.complaint || v.clinicalNotes?.chiefComplaints || v.diagnosis || 'General OPD Consultation';
+                          const dateStr = v.visitDate
+                            ? new Date(v.visitDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
+                            : '-';
+
+                          return (
+                            <tr key={v._id} style={styles.dashTr}>
+                              <td style={styles.dashTd}>
+                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                  <strong style={{ fontSize: '13px', color: 'var(--text)' }}>{pName}</strong>
+                                  <span style={{ fontSize: '11px', color: 'var(--primary)', fontWeight: 600 }}>
+                                    PID: {pId}
+                                  </span>
+                                </div>
+                              </td>
+                              <td style={styles.dashTd}>
+                                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                                  {complaint.length > 50 ? complaint.substring(0, 50) + '...' : complaint}
+                                </span>
+                              </td>
+                              <td style={styles.dashTd}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                  <span style={{ fontSize: '12px', fontWeight: 700, color: '#15803D' }}>
+                                    ₹{feePaid}
+                                  </span>
+                                  {feeDue > 0 && (
+                                    <span style={styles.dashDuePill}>Due: ₹{feeDue}</span>
+                                  )}
+                                </div>
+                              </td>
+                              <td style={styles.dashTd}>
+                                <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>{dateStr}</span>
+                              </td>
+                              <td style={{ ...styles.dashTd, textAlign: 'right' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (v.patient?._id || v.patient?.patientId || v.patientId) {
+                                      setSelectedPatientId(v.patientId || v.patient?.patientId || v.patient?._id);
+                                    }
+                                    setActiveTab('patient-record');
+                                  }}
+                                  style={styles.dashOpenCaseBtn}
+                                  title="Open Patient Record"
+                                >
+                                  <span>Open Case</span>
+                                  <ArrowUpRight size={12} />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* Card C: Recently Registered Patients (Moved to the End of Dashboard) */}
+              <div style={{ ...styles.dashCard, width: '100%' }}>
+                <div style={styles.dashCardHeader}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <UserCheck size={16} color="var(--primary)" />
+                    <h3 style={styles.dashCardTitle}>Recently Registered Patients</h3>
+                    <span style={styles.dashCountBadge}>{recentPatients.length}</span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('add-member')}
+                    style={styles.dashHeaderLink}
+                  >
+                    <Plus size={13} />
+                    <span>Add Patient</span>
+                  </button>
+                </div>
+
+                {recentPatients.length === 0 ? (
+                  <div style={styles.dashEmptyMini}>
+                    <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)' }}>
+                      No patients enrolled yet.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('family-head')}
+                      style={styles.dashLinkButton}
+                    >
+                      Register First Family Head &rarr;
+                    </button>
+                  </div>
+                ) : (
+                  <div style={styles.recentPatientsGrid}>
+                    {recentPatients.map((p) => (
+                      <div
+                        key={p._id}
+                        style={styles.recentPatientItem}
                         onClick={() => {
-                          setSelectedPatientId('');
+                          setSelectedPatientId(p.patientId || p._id);
                           setActiveTab('patient-record');
                         }}
                       >
-                        <UserPlus size={14} />
-                        <span>Start New Consultation (F3)</span>
-                      </button>
-                    </div>
-                  ) : (
-                    <div style={styles.dashTableWrap}>
-                      <table style={styles.dashTable}>
-                        <thead>
-                          <tr>
-                            <th style={styles.dashTh}>Patient</th>
-                            <th style={styles.dashTh}>Diagnosis / Complaint</th>
-                            <th style={styles.dashTh}>Fee Status</th>
-                            <th style={styles.dashTh}>Date / Time</th>
-                            <th style={{ ...styles.dashTh, textAlign: 'right' }}>Action</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {recentVisits.map((v) => {
-                            const pName = v.patientName || v.patient?.name || 'Walk-in Patient';
-                            const pId = v.patientId || v.patient?.patientId || '-';
-                            const feePaid = v.received !== undefined ? v.received : (v.fees?.amountReceived || 0);
-                            const feeDue = v.due !== undefined ? v.due : (v.fees?.balanceDue || 0);
-                            const complaint = v.complaint || v.clinicalNotes?.chiefComplaints || v.diagnosis || 'General OPD Consultation';
-                            const dateStr = v.visitDate
-                              ? new Date(v.visitDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
-                              : '-';
-
-                            return (
-                              <tr key={v._id} style={styles.dashTr}>
-                                <td style={styles.dashTd}>
-                                  <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                    <strong style={{ fontSize: '13px', color: 'var(--text)' }}>{pName}</strong>
-                                    <span style={{ fontSize: '11px', color: 'var(--primary)', fontWeight: 600 }}>
-                                      PID: {pId}
-                                    </span>
-                                  </div>
-                                </td>
-                                <td style={styles.dashTd}>
-                                  <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                                    {complaint.length > 38 ? complaint.substring(0, 38) + '...' : complaint}
-                                  </span>
-                                </td>
-                                <td style={styles.dashTd}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                    <span style={{ fontSize: '12px', fontWeight: 700, color: '#15803D' }}>
-                                      ₹{feePaid}
-                                    </span>
-                                    {feeDue > 0 && (
-                                      <span style={styles.dashDuePill}>Due: ₹{feeDue}</span>
-                                    )}
-                                  </div>
-                                </td>
-                                <td style={styles.dashTd}>
-                                  <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>{dateStr}</span>
-                                </td>
-                                <td style={{ ...styles.dashTd, textAlign: 'right' }}>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      if (v.patient?._id || v.patient?.patientId || v.patientId) {
-                                        setSelectedPatientId(v.patientId || v.patient?.patientId || v.patient?._id);
-                                      }
-                                      setActiveTab('patient-record');
-                                    }}
-                                    style={styles.dashOpenCaseBtn}
-                                    title="Open Patient Record"
-                                  >
-                                    <span>Open Case</span>
-                                    <ArrowUpRight size={12} />
-                                  </button>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* RIGHT COLUMN: FINANCIAL HEALTH & NEW PATIENTS */}
-              <div style={styles.dashRightCol}>
-                {/* Card C: Practice Financial Health Snapshot */}
-                <div style={styles.dashCard}>
-                  <div style={styles.dashCardHeader}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <IndianRupee size={16} color="var(--primary)" />
-                      <h3 style={styles.dashCardTitle}>Financial Health</h3>
-                    </div>
-                    <span style={styles.dashCardBadge}>All-Time</span>
-                  </div>
-
-                  {/* Recovery Rate Progress Bar */}
-                  <div style={styles.finHealthWrap}>
-                    <div style={styles.recoveryRateHeader}>
-                      <span style={styles.recoveryLabel}>Collection Recovery Rate</span>
-                      <strong style={styles.recoveryVal}>{recoveryRate}%</strong>
-                    </div>
-                    <div style={styles.progressBarTrack}>
-                      <div
-                        style={{
-                          ...styles.progressBarFill,
-                          width: `${recoveryRate}%`,
-                          backgroundColor: recoveryRate >= 90 ? 'var(--primary)' : '#D97706',
-                        }}
-                      />
-                    </div>
-
-                    {/* Breakdown Numbers */}
-                    <div style={styles.finBreakdownList}>
-                      <div style={styles.finRow}>
-                        <span style={styles.finLabel}>Total Billed:</span>
-                        <strong style={styles.finVal}>₹{stats.overallCharge.toLocaleString('en-IN')}</strong>
-                      </div>
-                      <div style={styles.finRow}>
-                        <span style={styles.finLabel}>Total Received:</span>
-                        <strong style={{ ...styles.finVal, color: '#15803D' }}>
-                          ₹{stats.overallReceived.toLocaleString('en-IN')}
-                        </strong>
-                      </div>
-                      <div style={styles.finRow}>
-                        <span style={styles.finLabel}>Outstanding Dues:</span>
-                        <strong
-                          style={{
-                            ...styles.finVal,
-                            color: stats.overallDue > 0 ? '#DC2626' : '#15803D',
-                          }}
-                        >
-                          ₹{stats.overallDue.toLocaleString('en-IN')}
-                        </strong>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Card D: Recently Registered Patients */}
-                <div style={{ ...styles.dashCard, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-                  <div style={styles.dashCardHeader}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <UserCheck size={16} color="var(--primary)" />
-                      <h3 style={styles.dashCardTitle}>Recently Registered</h3>
-                      <span style={styles.dashCountBadge}>{recentPatients.length}</span>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('add-member')}
-                      style={styles.dashHeaderLink}
-                    >
-                      <Plus size={13} />
-                      <span>Add</span>
-                    </button>
-                  </div>
-
-                  {recentPatients.length === 0 ? (
-                    <div style={styles.dashEmptyMini}>
-                      <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)' }}>
-                        No patients enrolled yet.
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => setActiveTab('family-head')}
-                        style={styles.dashLinkButton}
-                      >
-                        Register First Family Head &rarr;
-                      </button>
-                    </div>
-                  ) : (
-                    <div style={styles.recentPatientsList}>
-                      {recentPatients.map((p) => (
-                        <div
-                          key={p._id}
-                          style={styles.recentPatientItem}
-                          onClick={() => {
-                            setSelectedPatientId(p.patientId || p._id);
-                            setActiveTab('patient-record');
-                          }}
-                        >
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <strong style={{ fontSize: '13px', color: 'var(--text)' }}>
-                                {p.name || p.fullName}
-                              </strong>
-                              {p.isFamilyHead && (
-                                <span style={styles.headTagMini}>Head</span>
-                              )}
-                            </div>
-                            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                              PID: {p.patientId} &bull; Age: {p.age || '-'} &bull; {p.gender || '-'} &bull; {p.area || p.society || 'Surat'}
-                            </span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <strong style={{ fontSize: '13px', color: 'var(--text)' }}>
+                              {p.name || p.fullName}
+                            </strong>
+                            {p.isFamilyHead && (
+                              <span style={styles.headTagMini}>Head</span>
+                            )}
                           </div>
-
-                          <button
-                            type="button"
-                            style={styles.launchCaseBtn}
-                            title="Start Consultation"
-                          >
-                            <Stethoscope size={13} />
-                          </button>
+                          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                            PID: {p.patientId} &bull; Age: {p.age || '-'} &bull; {p.gender || '-'} &bull; {p.area || p.society || 'Surat'}
+                          </span>
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
 
-                {/* Card E: Practice Details & DB Connection */}
-                {/* <div style={styles.clinicCredsCard}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                    <Database size={15} color="var(--primary)" />
-                    <strong style={{ fontSize: '12px', color: 'var(--text)' }}>Database Persistence</strong>
+                        <button
+                          type="button"
+                          style={styles.launchCaseBtn}
+                          title="Start Consultation"
+                        >
+                          <Stethoscope size={13} />
+                        </button>
+                      </div>
+                    ))}
                   </div>
-                  <div style={styles.credsGrid}>
-                    <div style={styles.credsItem}>
-                      <span style={styles.credsLabel}>Active Database:</span>
-                      <span style={styles.credsVal}>clinic_management_db</span>
-                    </div>
-                    <div style={styles.credsItem}>
-                      <span style={styles.credsLabel}>Doctor:</span>
-                      <span style={styles.credsVal}>{doctor?.name || 'Dr. Dhyey'}</span>
-                    </div>
-                    <div style={styles.credsItem}>
-                      <span style={styles.credsLabel}>Consultant:</span>
-                      <span style={styles.credsVal}>{doctor?.specialization || 'Consulting Physician'}</span>
-                    </div>
-                    <div style={styles.credsItem}>
-                      <span style={styles.credsLabel}>Mode:</span>
-                      <span style={styles.credsVal}>Single Doctor OPD</span>
-                    </div>
-                  </div>
-                </div> */}
+                )}
               </div>
             </div>
           </div>
@@ -2345,13 +2190,17 @@ const styles = {
     color: 'var(--primary-dark)',
   },
 
-  // 2-Column Responsive Practice Workspace
+  // Full-Width Practice Workspace Stack
   dashWorkspaceGrid: {
-    display: 'grid',
-    gridTemplateColumns: '1.6fr 1fr',
+    display: 'flex',
+    flexDirection: 'column',
     gap: '12px',
-    flex: 1,
-    minHeight: 0,
+    width: '100%',
+  },
+  recentPatientsGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+    gap: '8px',
   },
   dashLeftCol: {
     display: 'flex',

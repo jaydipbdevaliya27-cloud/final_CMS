@@ -232,16 +232,16 @@ input:focus, select:focus, textarea:focus {
 
 /* Responsive Practice Workspace Grid */
 .dash-workspace-grid {
-  display: grid;
-  grid-template-columns: 1.6fr 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 12px;
-  flex: 1;
-  min-height: 0;
+  width: 100%;
 }
 
 @media screen and (max-width: 1100px) {
   .dash-workspace-grid {
-    grid-template-columns: 1fr !important;
+    display: flex;
+    flex-direction: column;
   }
 }
 
