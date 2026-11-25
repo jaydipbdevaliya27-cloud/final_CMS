@@ -1,40 +1,58 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { cutAPI, masterDataAPI } from '../services/api';
-import { useDebounce } from '../hooks/useDebounce';
 import {
-  Search,
-  Plus,
-  RefreshCw,
-  Trash2,
-  Edit,
   X,
-  Printer,
+  Save,
+  Search,
+  Trash2,
+  Calendar,
+  Building2,
+  User,
+  Tag,
+  AlertTriangle,
   CheckCircle2,
-  AlertCircle,
   FileText,
+  DollarSign,
   TrendingUp,
 } from 'lucide-react';
 
 export const CutMaster = ({ onNavigateToDashboard }) => {
+  // Cuts data & summary
   const [cuts, setCuts] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [summary, setSummary] = useState({ todayTotal: 0, monthTotal: 0, overallTotal: 0 });
-  const [searchQuery, setSearchQuery] = useState('');
-  const debouncedSearch = useDebounce(searchQuery, 300);
-
-  // Form State - STRICTLY NO EXTRA FIELDS: ONLY Date, Center Name (Datalist), Patient Name, Category (Datalist), Amount (₹)
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [editingCut, setEditingCut] = useState(null);
-  const [formData, setFormData] = useState({
-    date: new Date().toISOString().split('T')[0],
-    centerName: '',
-    patientName: '',
-    category: '',
-    amount: '',
+  const [summary, setSummary] = useState({
+    totalEntries: 0,
+    paidAmount: 0,
+    unpaidAmount: 0,
+    totalIncome: 0,
   });
 
+  // Entry Form State - EXACT FIELDS: Date, Center Name, Patient Name, Category, Cut Amount, Status
+  const [entryDate, setEntryDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [centerName, setCenterName] = useState('');
+  const [patientName, setPatientName] = useState('');
+  const [category, setCategory] = useState('');
+  const [amount, setAmount] = useState('');
+  const [status, setStatus] = useState('Unpaid'); // 'Unpaid' or 'Paid'
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Filter State - EXACT FIELDS: Center, Category, From, To
+  const [filterCenter, setFilterCenter] = useState('');
+  const [filterCategory, setFilterCategory] = useState('');
+  const [filterFrom, setFilterFrom] = useState('');
+  const [filterTo, setFilterTo] = useState('');
+
   // Autocomplete Datalists
-  const [categories, setCategories] = useState([
+  const [centerList, setCenterList] = useState([
+    'CARE DIAGNOSTICS',
+    'SURAT X-RAY & USG CENTER',
+    'SHIVAM PATHOLOGY LAB',
+    'SUNSHINE CT-SCAN & MRI',
+    'AMROLI DIAGNOSTIC CLINIC',
+    'KRISHNA LABORATORY',
+  ]);
+
+  const [categoryList, setCategoryList] = useState([
     'LAB INVESTIGATION CUT',
     'X-RAY / RADIOLOGY COMMISSION',
     'SONOGRAPHY / USG CUT',
@@ -46,63 +64,88 @@ export const CutMaster = ({ onNavigateToDashboard }) => {
     'MISCELLANEOUS REFERRAL',
   ]);
 
-  const [centers, setCenters] = useState([
-    'CARE DIAGNOSTICS',
-    'SURAT IMAGING & MRI CENTER',
-    'SHIVAM PATHOLOGY LAB',
-    'METROPOLIS HEALTHCARE',
-    'DR. LAL PATHLABS',
-    'KRISHNA X-RAY CLINIC',
-    'STERLING DIAGNOSTICS',
-    'CITY HOSPITAL',
-  ]);
-
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  // Toast notifications
   const [toast, setToast] = useState({ show: false, text: '', type: 'success' });
+
+  // Confirmation Mechanism & Double-Click Lock State
+  const [confirmStatusModal, setConfirmStatusModal] = useState({ open: false, item: null, nextStatus: '' });
+  const [togglingId, setTogglingId] = useState(null);
+
   const centerInputRef = useRef(null);
+  const amountInputRef = useRef(null);
 
   const showToast = (text, type = 'success') => {
     setToast({ show: true, text, type });
     setTimeout(() => setToast({ show: false, text: '', type: 'success' }), 3500);
   };
 
-  // Load Categories & Centers from Master Data
-  const loadMasterDatalists = async () => {
+  // Load Centers & Categories from Master Data
+  const loadMasterData = async () => {
     try {
-      const [catRes, centerRes] = await Promise.all([
-        masterDataAPI.getItems('cut_category', '', 1, 100),
+      const [centerRes, catRes] = await Promise.allSettled([
         masterDataAPI.getItems('center', '', 1, 100),
+        masterDataAPI.getItems('cut_category', '', 1, 100),
       ]);
-      if (catRes?.success && Array.isArray(catRes.data) && catRes.data.length > 0) {
-        const catList = catRes.data.map((c) => c.value?.toUpperCase()).filter(Boolean);
-        setCategories((prev) => [...new Set([...prev, ...catList])]);
+
+      if (centerRes.status === 'fulfilled' && centerRes.value?.success && Array.isArray(centerRes.value.data)) {
+        const centers = centerRes.value.data.map((c) => c.value?.toUpperCase()).filter(Boolean);
+        if (centers.length > 0) {
+          setCenterList((prev) => [...new Set([...prev, ...centers])]);
+        }
       }
-      if (centerRes?.success && Array.isArray(centerRes.data) && centerRes.data.length > 0) {
-        const centerList = centerRes.data.map((c) => c.value?.toUpperCase()).filter(Boolean);
-        setCenters((prev) => [...new Set([...prev, ...centerList])]);
+
+      if (catRes.status === 'fulfilled' && catRes.value?.success && Array.isArray(catRes.value.data)) {
+        const cats = catRes.value.data.map((c) => c.value?.toUpperCase()).filter(Boolean);
+        if (cats.length > 0) {
+          setCategoryList((prev) => [...new Set([...prev, ...cats])]);
+        }
       }
     } catch (e) {
-      console.warn('Could not load master datalists for cut master:', e);
+      console.warn('Could not load cut master data:', e);
     }
   };
 
-  const fetchCuts = async () => {
+  // Fetch Cuts with active filters
+  const fetchCuts = async (overrideFilters = null) => {
     try {
       setLoading(true);
+      const activeCenter = overrideFilters ? overrideFilters.center : filterCenter;
+      const activeCat = overrideFilters ? overrideFilters.category : filterCategory;
+      const activeFrom = overrideFilters ? overrideFilters.from : filterFrom;
+      const activeTo = overrideFilters ? overrideFilters.to : filterTo;
+
       const params = {
-        search: debouncedSearch.trim(),
-        period: 'all',
-        limit: 200,
+        limit: 500,
       };
-      const [listRes, sumRes] = await Promise.all([
-        cutAPI.getAll(params),
-        cutAPI.getSummary(),
-      ]);
-      if (listRes?.success) {
-        setCuts(listRes.cuts || []);
+
+      if (activeCenter && activeCenter.trim()) {
+        params.centerName = activeCenter.trim();
       }
-      if (sumRes?.success) {
-        setSummary(sumRes.summary || { todayTotal: 0, monthTotal: 0, overallTotal: 0 });
+
+      if (activeCat && activeCat.trim() && !activeCat.toUpperCase().includes('ALL')) {
+        params.category = activeCat.trim();
+      }
+
+      if (activeFrom) params.from = activeFrom;
+      if (activeTo) params.to = activeTo;
+
+      const res = await cutAPI.getAll(params);
+      if (res?.success) {
+        const list = res.cuts || [];
+        setCuts(list);
+
+        // Update KPI summary cards
+        const totalEntries = res.totalEntries ?? list.length;
+        const paidAmount = res.paidAmount ?? list.filter((c) => c.status === 'Paid').reduce((a, b) => a + (b.amount || 0), 0);
+        const unpaidAmount = res.unpaidAmount ?? list.filter((c) => c.status !== 'Paid').reduce((a, b) => a + (b.amount || 0), 0);
+        const totalIncome = res.totalIncome ?? res.totalAmount ?? list.reduce((a, b) => a + (b.amount || 0), 0);
+
+        setSummary({
+          totalEntries,
+          paidAmount,
+          unpaidAmount,
+          totalIncome,
+        });
       }
     } catch (err) {
       console.error('Error fetching cuts:', err);
@@ -113,157 +156,185 @@ export const CutMaster = ({ onNavigateToDashboard }) => {
   };
 
   useEffect(() => {
-    loadMasterDatalists();
+    loadMasterData();
+    fetchCuts();
   }, []);
 
-  useEffect(() => {
-    fetchCuts();
-  }, [debouncedSearch]);
-
-  const handleOpenAdd = () => {
-    setEditingCut(null);
-    setFormData({
-      date: new Date().toISOString().split('T')[0],
-      centerName: '',
-      patientName: '',
-      category: '',
-      amount: '',
-    });
-    setShowAddModal(true);
-    setTimeout(() => {
-      if (centerInputRef.current) centerInputRef.current.focus();
-    }, 50);
-  };
-
-  const handleOpenEdit = (c) => {
-    setEditingCut(c);
-    setFormData({
-      date: c.date || new Date().toISOString().split('T')[0],
-      centerName: c.centerName || '',
-      patientName: c.patientName || '',
-      category: c.category || '',
-      amount: c.amount || '',
-    });
-    setShowAddModal(true);
-    setTimeout(() => {
-      if (centerInputRef.current) centerInputRef.current.focus();
-    }, 50);
-  };
-
-  const handleSave = async (e) => {
-    if (e) e.preventDefault();
-    if (!formData.centerName.trim()) {
-      showToast('Please enter diagnostic center name.', 'error');
-      if (centerInputRef.current) centerInputRef.current.focus();
-      return;
-    }
-    if (!formData.category.trim()) {
-      showToast('Please enter commission category.', 'error');
-      return;
-    }
-    const num = Number(formData.amount);
-    if (!num || num <= 0) {
-      showToast('Please enter a valid amount greater than 0.', 'error');
-      return;
-    }
-
-    try {
-      setIsSubmitting(true);
-      const payload = {
-        date: formData.date,
-        centerName: formData.centerName.trim().toUpperCase(),
-        patientName: formData.patientName.trim().toUpperCase(),
-        category: formData.category.trim().toUpperCase(),
-        amount: num,
-      };
-
-      if (editingCut) {
-        const res = await cutAPI.update(editingCut._id, payload);
-        if (res?.success) {
-          showToast('Cut record updated successfully!');
-          setShowAddModal(false);
-          setEditingCut(null);
-          fetchCuts();
-        } else {
-          showToast(res?.message || 'Failed to update cut record', 'error');
-        }
-      } else {
-        const res = await cutAPI.create(payload);
-        if (res?.success) {
-          showToast(`Cut commission of ₹${num.toLocaleString('en-IN')} saved & added to Today's Income!`);
-          if (!categories.includes(payload.category)) {
-            setCategories((prev) => [...prev, payload.category]);
-          }
-          if (!centers.includes(payload.centerName)) {
-            setCenters((prev) => [...prev, payload.centerName]);
-          }
-          setShowAddModal(false);
-          fetchCuts();
-        } else {
-          showToast(res?.message || 'Failed to save cut record', 'error');
-        }
-      }
-    } catch (err) {
-      showToast(err.message || 'Error saving cut record', 'error');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleDelete = async (id, center, amt) => {
-    if (!window.confirm(`Delete cut commission from "${center}" (₹${amt})?`)) return;
-    try {
-      const res = await cutAPI.delete(id);
-      if (res?.success) {
-        showToast('Cut record deleted successfully');
-        fetchCuts();
-      } else {
-        showToast(res?.message || 'Failed to delete cut record', 'error');
-      }
-    } catch (err) {
-      showToast(err.message || 'Error deleting record', 'error');
-    }
-  };
-
-  const formatDateTime = (c) => {
-    let dateStr = c.date || '';
-    if (dateStr && dateStr.includes('-')) {
-      const parts = dateStr.split('-');
-      if (parts.length === 3) {
-        dateStr = `${parts[2]}-${parts[1]}-${parts[0]}`;
-      }
-    }
-    let timeStr = '';
-    if (c.createdAt) {
-      try {
-        const d = new Date(c.createdAt);
-        timeStr = d.toLocaleTimeString('en-US', {
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: true,
-        });
-      } catch (e) {}
-    } else {
-      timeStr = '12:00 PM';
-    }
-    return { dateStr, timeStr };
-  };
-
+  // Keyboard shortcut listener: F5 or Esc closes Cut Master
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === 'Escape') {
-        if (showAddModal) {
-          setShowAddModal(false);
-        } else if (onNavigateToDashboard) {
+      if (e.key === 'Escape' || e.key === 'F5') {
+        e.preventDefault();
+        if (onNavigateToDashboard) {
           onNavigateToDashboard();
         }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showAddModal, onNavigateToDashboard]);
+  }, [onNavigateToDashboard]);
 
-  const totalAmount = cuts.reduce((acc, c) => acc + (c.amount || 0), 0);
+  // Handle Save New Cut Entry
+  const handleSaveCut = async (e) => {
+    if (e) e.preventDefault();
+
+    if (!centerName.trim()) {
+      showToast('Please enter Diagnostic / Center Name.', 'error');
+      if (centerInputRef.current) centerInputRef.current.focus();
+      return;
+    }
+
+    if (!category.trim()) {
+      showToast('Please enter or select Cut Category.', 'error');
+      return;
+    }
+
+    const numAmount = Number(amount);
+    if (!numAmount || numAmount <= 0) {
+      showToast('Please enter a valid cut amount greater than 0.', 'error');
+      if (amountInputRef.current) amountInputRef.current.focus();
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      const cleanCenter = centerName.trim().toUpperCase();
+      const cleanCategory = category.trim().toUpperCase();
+
+      const payload = {
+        date: entryDate || new Date().toISOString().split('T')[0],
+        centerName: cleanCenter,
+        patientName: patientName.trim().toUpperCase(),
+        category: cleanCategory,
+        amount: numAmount,
+        status: status === 'Paid' ? 'Paid' : 'Unpaid',
+      };
+
+      const res = await cutAPI.create(payload);
+      if (res?.success) {
+        showToast(`Cut income of ₹${numAmount.toLocaleString('en-IN')} saved successfully!`);
+
+        // Auto-update suggestions lists locally
+        if (!centerList.includes(cleanCenter)) {
+          setCenterList((prev) => [...prev, cleanCenter]);
+        }
+        if (!categoryList.includes(cleanCategory)) {
+          setCategoryList((prev) => [...prev, cleanCategory]);
+        }
+
+        // Reset amount and patient name, keep date and center
+        setAmount('');
+        setPatientName('');
+        // Re-fetch cuts
+        fetchCuts();
+
+        if (amountInputRef.current) {
+          amountInputRef.current.focus();
+        }
+      } else {
+        showToast(res?.message || 'Failed to record cut income', 'error');
+      }
+    } catch (err) {
+      showToast(err.message || 'Error recording cut income', 'error');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Request Toggle Status (opens confirmation modal & guards against double-click)
+  const handleRequestToggleStatus = (cut) => {
+    if (togglingId === cut._id) return;
+    const nextStatus = cut.status === 'Paid' ? 'Unpaid' : 'Paid';
+    setConfirmStatusModal({ open: true, item: cut, nextStatus });
+  };
+
+  // Confirm Status Change
+  const handleConfirmToggleStatus = async () => {
+    const { item: cut, nextStatus } = confirmStatusModal;
+    if (!cut || !nextStatus || togglingId === cut._id) return;
+
+    try {
+      setTogglingId(cut._id);
+      const res = await cutAPI.update(cut._id, { status: nextStatus });
+      if (res?.success) {
+        // Safe immutable update and strictly recalculate summary from array (immune to double click count)
+        setCuts((prev) => {
+          const updated = prev.map((item) =>
+            item._id === cut._id ? { ...item, status: nextStatus } : item
+          );
+
+          const paidAmount = updated
+            .filter((i) => i.status === 'Paid')
+            .reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
+          const unpaidAmount = updated
+            .filter((i) => i.status !== 'Paid')
+            .reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
+          const totalIncome = updated.reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
+
+          setSummary({
+            totalEntries: updated.length,
+            paidAmount,
+            unpaidAmount,
+            totalIncome,
+          });
+
+          return updated;
+        });
+
+        showToast(`Status changed to ${nextStatus}`);
+      } else {
+        showToast(res?.message || 'Failed to update status', 'error');
+      }
+    } catch (err) {
+      showToast('Error changing status: ' + err.message, 'error');
+    } finally {
+      setTogglingId(null);
+      setConfirmStatusModal({ open: false, item: null, nextStatus: '' });
+    }
+  };
+
+  // Delete Cut Entry
+  const handleDeleteCut = async (cut) => {
+    const label = cut.centerName || cut.category || 'Entry';
+    if (!window.confirm(`Delete cut income entry "${label}" (₹${cut.amount})?`)) return;
+
+    try {
+      const res = await cutAPI.delete(cut._id);
+      if (res?.success) {
+        showToast('Cut income record deleted successfully');
+        fetchCuts();
+      } else {
+        showToast(res?.message || 'Failed to delete cut record', 'error');
+      }
+    } catch (err) {
+      showToast(err.message || 'Error deleting cut record', 'error');
+    }
+  };
+
+  // Filter actions
+  const handleApplyFilter = () => {
+    fetchCuts();
+  };
+
+  const handleClearFilter = () => {
+    setFilterCenter('');
+    setFilterCategory('');
+    setFilterFrom('');
+    setFilterTo('');
+    fetchCuts({ center: '', category: '', from: '', to: '' });
+  };
+
+  // Format Date for Table Display: YYYY-MM-DD -> DD-MM-YYYY
+  const formatDateDisplay = (dateStr) => {
+    if (!dateStr) return '';
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      if (parts[0].length === 4) {
+        return `${parts[2]}-${parts[1]}-${parts[0]}`;
+      }
+    }
+    return dateStr;
+  };
 
   return (
     <div style={styles.container}>
@@ -275,7 +346,7 @@ export const CutMaster = ({ onNavigateToDashboard }) => {
             backgroundColor: toast.type === 'error' ? '#DC2626' : '#15803D',
           }}
         >
-          {toast.type === 'error' ? <AlertCircle size={15} /> : <CheckCircle2 size={15} />}
+          {toast.type === 'error' ? <AlertTriangle size={15} /> : <CheckCircle2 size={15} />}
           <span>{toast.text}</span>
           <button
             type="button"
@@ -287,169 +358,373 @@ export const CutMaster = ({ onNavigateToDashboard }) => {
         </div>
       )}
 
-      {/* 1. TOP HEADER (EXACT SAME BLUE BAR FROM GIVEN PHOTO) */}
-      <div style={styles.topBlueBar}>
-        <div style={styles.topBarTitle}>
-          Cut Master (Press F5 or Esc to close)
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={styles.incomeNoticeBadge}>
-            <TrendingUp size={12} color="#86EFAC" />
-            <span>Today's Cut Added to Income: +₹{(summary.todayTotal || 0).toLocaleString('en-IN')}</span>
+      {/* Datalists for Center Name & Category */}
+      <datalist id="cut-center-list">
+        {centerList.map((c, i) => (
+          <option key={i} value={c} />
+        ))}
+      </datalist>
+
+      <datalist id="cut-category-list">
+        {categoryList.map((c, i) => (
+          <option key={i} value={c} />
+        ))}
+      </datalist>
+
+      {/* ============================================================== */}
+      {/* 1. TOP HEADER BAR: Cut Master (Press F5 or Esc to close)        */}
+      {/* ============================================================== */}
+      <div style={styles.headerBar}>
+        <div style={styles.headerTitleWrap}>
+          <div style={styles.headerAmberBadge}>
+            <TrendingUp size={15} color="#F59E0B" />
           </div>
+          <span style={styles.headerTitleText}>
+            Cut Master (Press F5 or Esc to close)
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={onNavigateToDashboard || (() => {})}
+          style={styles.headerCloseBtn}
+          title="Close (Esc / F5)"
+        >
+          <X size={18} color="#FFFFFF" />
+        </button>
+      </div>
+
+      {/* ============================================================== */}
+      {/* 2. ADD ENTRY STRIP: ✚ Add New Cut Entry                        */}
+      {/* ============================================================== */}
+      <div style={styles.entrySection}>
+        <div style={styles.entrySectionTitle}>
+          <span style={{ fontWeight: 800, color: '#0F172A', marginRight: '6px' }}>✚</span>
+          <span>Add New Cut Entry (Type Amount & Press Enter to Save)</span>
+        </div>
+
+        <form onSubmit={handleSaveCut} style={styles.entryFormRow}>
+          {/* Field 1: Date */}
+          <div style={styles.entryColDate}>
+            <label style={styles.fieldLabel}>Date:</label>
+            <input
+              type="date"
+              required
+              value={entryDate}
+              onChange={(e) => setEntryDate(e.target.value)}
+              style={styles.fieldInput}
+            />
+          </div>
+
+          {/* Field 2: Center Name (Datalist) */}
+          <div style={styles.entryColCenter}>
+            <label style={styles.fieldLabel}>Center Name:</label>
+            <input
+              ref={centerInputRef}
+              type="text"
+              list="cut-center-list"
+              required
+              placeholder="ENTER CENTER NAME..."
+              value={centerName}
+              onChange={(e) => setCenterName(e.target.value)}
+              style={{ ...styles.fieldInput, textTransform: 'uppercase' }}
+            />
+          </div>
+
+          {/* Field 3: Patient Name (Optional) */}
+          <div style={styles.entryColPatient}>
+            <label style={styles.fieldLabel}>Patient Name:</label>
+            <input
+              type="text"
+              placeholder="PATIENT NAME..."
+              value={patientName}
+              onChange={(e) => setPatientName(e.target.value)}
+              style={{ ...styles.fieldInput, textTransform: 'uppercase' }}
+            />
+          </div>
+
+          {/* Field 4: Category (Datalist) */}
+          <div style={styles.entryColCategory}>
+            <label style={styles.fieldLabel}>Category:</label>
+            <input
+              type="text"
+              list="cut-category-list"
+              required
+              placeholder="ENTER CATEGORY..."
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              style={{ ...styles.fieldInput, textTransform: 'uppercase' }}
+            />
+          </div>
+
+          {/* Field 5: Cut Amount (₹) */}
+          <div style={styles.entryColAmount}>
+            <label style={styles.fieldLabel}>Cut Amount (₹):</label>
+            <input
+              ref={amountInputRef}
+              type="number"
+              step="any"
+              min="0.01"
+              required
+              placeholder="AMOUNT_"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              style={{ ...styles.fieldInput, fontWeight: 700 }}
+            />
+          </div>
+
+          {/* Field 6: Status Toggle Button (Unpaid / Paid) */}
+          <div style={styles.entryColStatus}>
+            <label style={styles.fieldLabelHidden}>Status</label>
+            <button
+              type="button"
+              onClick={() => setStatus((prev) => (prev === 'Paid' ? 'Unpaid' : 'Paid'))}
+              style={{
+                ...styles.statusToggleBtn,
+                backgroundColor: status === 'Paid' ? '#15803D' : '#B91C1C',
+              }}
+              title="Click to toggle Paid/Unpaid"
+            >
+              {status === 'Paid' ? '✓ Paid' : 'Unpaid'}
+            </button>
+          </div>
+
+          {/* Field 7: Save Button */}
+          <div style={styles.entryColSave}>
+            <label style={styles.fieldLabelHidden}>Save</label>
+            <button
+              type="submit"
+              disabled={isSaving}
+              style={styles.saveBtn}
+            >
+              <Save size={14} style={{ marginRight: '5px' }} />
+              <span>{isSaving ? 'Saving...' : 'Save'}</span>
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {/* ============================================================== */}
+      {/* 3. FILTER STRIP: Center, Category, From, To, Filter, Clear     */}
+      {/* ============================================================== */}
+      <div style={styles.filterSection}>
+        <div style={styles.filterBar}>
+          {/* Filter 1: Center */}
+          <div style={styles.filterItem}>
+            <Building2 size={15} color="#64748B" style={{ flexShrink: 0 }} />
+            <span style={styles.filterLabel}>Center:</span>
+            <input
+              type="text"
+              list="cut-center-list"
+              placeholder="CARE DIAGNOSTICS"
+              value={filterCenter}
+              onChange={(e) => setFilterCenter(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleApplyFilter()}
+              style={{ ...styles.filterInput, textTransform: 'uppercase' }}
+            />
+          </div>
+
+          {/* Filter 2: Category */}
+          <div style={styles.filterItem}>
+            <Tag size={15} color="#64748B" style={{ flexShrink: 0 }} />
+            <span style={styles.filterLabel}>Category:</span>
+            <input
+              type="text"
+              list="cut-category-list"
+              placeholder="ALL CATEGORIES..."
+              value={filterCategory}
+              onChange={(e) => setFilterCategory(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleApplyFilter()}
+              style={{ ...styles.filterInput, textTransform: 'uppercase' }}
+            />
+          </div>
+
+          {/* Filter 3: From Date */}
+          <div style={styles.filterItem}>
+            <span style={styles.filterLabel}>From:</span>
+            <input
+              type="date"
+              value={filterFrom}
+              onChange={(e) => setFilterFrom(e.target.value)}
+              style={styles.filterDateInput}
+            />
+          </div>
+
+          {/* Filter 4: To Date */}
+          <div style={styles.filterItem}>
+            <span style={styles.filterLabel}>To:</span>
+            <input
+              type="date"
+              value={filterTo}
+              onChange={(e) => setFilterTo(e.target.value)}
+              style={styles.filterDateInput}
+            />
+          </div>
+
+          {/* Filter Button */}
           <button
             type="button"
-            onClick={onNavigateToDashboard || (() => {})}
-            style={styles.topBarCloseBtn}
-            title="Close (Esc)"
+            onClick={handleApplyFilter}
+            style={styles.filterBtn}
           >
-            <X size={17} color="#FFFFFF" />
+            <Search size={13} style={{ marginRight: '4px' }} />
+            <span>Filter</span>
+          </button>
+
+          {/* Clear Button */}
+          <button
+            type="button"
+            onClick={handleClearFilter}
+            style={styles.clearBtn}
+          >
+            Clear
           </button>
         </div>
       </div>
 
-      {/* 2. SEARCH & ACTION STRIP (EXACT SAME SEARCH BAR + GREEN BUTTON FROM GIVEN PHOTO) */}
-      <div style={styles.searchStrip}>
-        <input
-          type="text"
-          placeholder="SEARCH BY DIAGNOSTIC CENTER, PATIENT, CATEGORY, DATE..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              handleOpenAdd();
-            }
-          }}
-          style={styles.searchInput}
-          autoFocus
-        />
+      {/* ============================================================== */}
+      {/* 4. KPI SUMMARY CARDS: Total Entries, Paid, Unpaid, Total Cut   */}
+      {/* ============================================================== */}
+      <div style={styles.kpiContainer}>
+        {/* KPI Card 1: TOTAL ENTRIES */}
+        <div style={{ ...styles.kpiCard, borderLeft: '4px solid #3B82F6' }}>
+          <div style={styles.kpiHeader}>
+            <FileText size={15} color="#3B82F6" style={{ marginRight: '6px' }} />
+            <span style={styles.kpiTitle}>TOTAL ENTRIES</span>
+          </div>
+          <div style={styles.kpiValueDark}>
+            {summary.totalEntries}
+          </div>
+        </div>
 
-        {/* GREEN "+ ADD CUT (Enter)" BUTTON - EXACT SAME DESIGN AS "+ ADD PATIENT (Enter)" */}
-        <button
-          type="button"
-          onClick={handleOpenAdd}
-          style={styles.addGreenBtn}
-        >
-          + ADD CUT (Enter)
-        </button>
+        {/* KPI Card 2: PAID AMOUNT */}
+        <div style={{ ...styles.kpiCard, borderLeft: '4px solid #16A34A' }}>
+          <div style={styles.kpiHeader}>
+            <CheckCircle2 size={15} color="#16A34A" style={{ marginRight: '6px' }} />
+            <span style={styles.kpiTitle}>PAID AMOUNT</span>
+          </div>
+          <div style={styles.kpiValueGreen}>
+            ₹{summary.paidAmount.toLocaleString('en-IN')}
+          </div>
+        </div>
+
+        {/* KPI Card 3: UNPAID AMOUNT */}
+        <div style={{ ...styles.kpiCard, borderLeft: '4px solid #DC2626' }}>
+          <div style={styles.kpiHeader}>
+            <AlertTriangle size={15} color="#DC2626" style={{ marginRight: '6px' }} />
+            <span style={styles.kpiTitle}>UNPAID AMOUNT</span>
+          </div>
+          <div style={styles.kpiValueRed}>
+            ₹{summary.unpaidAmount.toLocaleString('en-IN')}
+          </div>
+        </div>
+
+        {/* KPI Card 4: TOTAL CUT INCOME */}
+        <div style={{ ...styles.kpiCard, borderLeft: '4px solid #64748B' }}>
+          <div style={styles.kpiHeader}>
+            <DollarSign size={15} color="#64748B" style={{ marginRight: '6px' }} />
+            <span style={styles.kpiTitle}>TOTAL CUT INCOME</span>
+          </div>
+          <div style={styles.kpiValueDark}>
+            ₹{summary.totalIncome.toLocaleString('en-IN')}
+          </div>
+        </div>
       </div>
 
-      {/* 3. CUTS DATA TABLE (EXACT SAME COMPACT DESKTOP GRID FROM PHOTO) */}
-      <div style={styles.tableContainer}>
+      {/* ============================================================== */}
+      {/* 5. DATA TABLE: Date, Center, Patient, Category, Amount, Status */}
+      {/* ============================================================== */}
+      <div style={styles.tableWrapper}>
         <table style={styles.table}>
           <thead>
             <tr style={styles.theadRow}>
-              <th style={{ ...styles.th, width: '140px' }}>Date & Time</th>
-              <th style={{ ...styles.th, width: '240px' }}>Diagnostic Center / Lab</th>
-              <th style={{ ...styles.th, width: '220px' }}>Patient Name</th>
-              <th style={styles.th}>Commission Category</th>
-              <th style={{ ...styles.th, width: '140px', textAlign: 'right' }}>Cut Amount (₹)</th>
-              <th style={{ ...styles.th, width: '140px', textAlign: 'center' }}>Act</th>
+              <th style={{ ...styles.th, width: '120px' }}>Date</th>
+              <th style={{ ...styles.th, width: '220px' }}>Center Name</th>
+              <th style={{ ...styles.th, width: '180px' }}>Patient Name</th>
+              <th style={{ ...styles.th, width: '180px' }}>Category</th>
+              <th style={{ ...styles.th, width: '140px', textAlign: 'right' }}>Amount (₹)</th>
+              <th style={{ ...styles.th, width: '130px', textAlign: 'center' }}>Status</th>
+              <th style={{ ...styles.th, width: '80px', textAlign: 'center' }}>Action</th>
             </tr>
           </thead>
           <tbody>
             {loading && cuts.length === 0 ? (
               <tr>
-                <td colSpan={6} style={styles.emptyTd}>
-                  <RefreshCw size={18} className="animate-spin" style={{ margin: '0 auto 6px' }} />
+                <td colSpan={7} style={styles.emptyTd}>
                   <span>Loading cut commission records...</span>
                 </td>
               </tr>
             ) : cuts.length === 0 ? (
               <tr>
-                <td colSpan={6} style={styles.emptyTd}>
-                  <span>No cut commission records found. Press Enter or click "+ ADD CUT" to add one.</span>
+                <td colSpan={7} style={styles.emptyTd}>
+                  <span>No cut records found. Add an entry above.</span>
                 </td>
               </tr>
             ) : (
-              cuts.map((c, idx) => {
-                const { dateStr, timeStr } = formatDateTime(c);
+              cuts.map((cut, idx) => {
                 const isEven = idx % 2 === 0;
+                const isPaid = cut.status === 'Paid';
+                const isToggling = togglingId === cut._id;
+
                 return (
                   <tr
-                    key={c._id || idx}
+                    key={cut._id || idx}
                     style={{
                       ...styles.tr,
                       backgroundColor: isEven ? '#FFFFFF' : '#F8FAFC',
                     }}
                   >
-                    {/* 1. Date & Time */}
-                    <td style={styles.tdDateTime}>
-                      <div style={styles.dateText}>{dateStr}</div>
-                      <div style={styles.timeBadge}>{timeStr}</div>
+                    {/* 1. Date */}
+                    <td style={styles.tdDate}>
+                      {formatDateDisplay(cut.date)}
                     </td>
 
-                    {/* 2. Diagnostic Center */}
+                    {/* 2. Center Name */}
                     <td style={styles.tdCenter}>
-                      <span style={styles.centerText}>
-                        {c.centerName}
-                      </span>
+                      {cut.centerName || '—'}
                     </td>
 
                     {/* 3. Patient Name */}
                     <td style={styles.tdPatient}>
-                      <span style={styles.patientText}>
-                        {c.patientName || '-'}
-                      </span>
+                      {cut.patientName || '—'}
                     </td>
 
                     {/* 4. Category */}
                     <td style={styles.tdCategory}>
-                      <span style={styles.categoryNameText}>
-                        {c.category}
-                      </span>
+                      {cut.category}
                     </td>
 
                     {/* 5. Amount (₹) */}
                     <td style={styles.tdAmount}>
-                      <span style={styles.amountText}>
-                        + ₹{(c.amount || 0).toLocaleString('en-IN')}
-                      </span>
+                      ₹{(cut.amount || 0).toLocaleString('en-IN')}
                     </td>
 
-                    {/* 6. Act (The exact 4 Icon Buttons from the photo) */}
-                    <td style={styles.tdAct}>
-                      <div style={styles.actBox}>
-                        {/* Button 1: View / Duplicate */}
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEdit(c)}
-                          title="View / Edit Cut Record"
-                          style={styles.actBtnBlue}
-                        >
-                          <FileText size={14} color="#0284C7" />
-                        </button>
+                    {/* 6. Status Pill Button (Protected against double-clicks with Confirmation) */}
+                    <td style={styles.tdStatus}>
+                      <button
+                        type="button"
+                        disabled={isToggling}
+                        onClick={() => handleRequestToggleStatus(cut)}
+                        style={{
+                          ...styles.tableStatusBtn,
+                          backgroundColor: isPaid ? '#15803D' : '#991B1B',
+                          opacity: isToggling ? 0.7 : 1,
+                        }}
+                        title="Click to change status (Confirmation required)"
+                      >
+                        {isToggling ? '...' : isPaid ? '✓ Paid' : 'Unpaid'}
+                      </button>
+                    </td>
 
-                        {/* Button 2: Edit */}
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEdit(c)}
-                          title="Edit Cut Record"
-                          style={styles.actBtnOrange}
-                        >
-                          <Edit size={14} color="#D97706" />
-                        </button>
-
-                        {/* Button 3: Print */}
-                        <button
-                          type="button"
-                          onClick={() => window.print()}
-                          title="Print Memo"
-                          style={styles.actBtnGray}
-                        >
-                          <Printer size={14} color="#475569" />
-                        </button>
-
-                        {/* Button 4: Delete */}
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(c._id, c.centerName, c.amount)}
-                          title="Delete Cut Record"
-                          style={styles.actBtnRed}
-                        >
-                          <Trash2 size={14} color="#DC2626" />
-                        </button>
-                      </div>
+                    {/* 7. Action: Delete Button */}
+                    <td style={styles.tdAction}>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteCut(cut)}
+                        style={styles.deleteBtn}
+                        title="Delete cut entry"
+                      >
+                        <Trash2 size={14} color="#475569" />
+                      </button>
                     </td>
                   </tr>
                 );
@@ -459,148 +734,60 @@ export const CutMaster = ({ onNavigateToDashboard }) => {
         </table>
       </div>
 
-      {/* 4. BOTTOM FOOTER BAR */}
-      <div style={styles.footerBar}>
-        <div>
-          Total Records: <strong>{cuts.length}</strong>
-        </div>
-        <div style={styles.footerTotalWrap}>
-          <span>TOTAL CUT COMMISSION:</span>
-          <span style={styles.footerTotalVal}>
-            + ₹{totalAmount.toLocaleString('en-IN')}
-          </span>
-        </div>
-      </div>
-
-      {/* 5. ADD / EDIT CUT MODAL (STRICTLY NO EXTRA FIELDS: ONLY DATE, CENTER DATALIST, PATIENT NAME, CATEGORY DATALIST, AMOUNT) */}
-      {showAddModal && (
-        <div style={styles.modalOverlay} onClick={() => setShowAddModal(false)}>
-          <div style={styles.modalBox} onClick={(e) => e.stopPropagation()}>
-            <div style={styles.modalHeader}>
-              <span style={styles.modalTitle}>
-                {editingCut ? 'EDIT CUT COMMISSION' : 'ADD NEW CUT COMMISSION'}
-              </span>
+      {/* ============================================================== */}
+      {/* 6. STATUS CHANGE CONFIRMATION MODAL                            */}
+      {/* ============================================================== */}
+      {confirmStatusModal.open && confirmStatusModal.item && (
+        <div
+          style={styles.modalOverlay}
+          onClick={() => !togglingId && setConfirmStatusModal({ open: false, item: null, nextStatus: '' })}
+        >
+          <div style={styles.confirmModalBox} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.confirmModalHeader}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <AlertTriangle size={18} color="#F59E0B" />
+                <span style={styles.confirmModalTitle}>Confirm Status Change</span>
+              </div>
               <button
                 type="button"
-                onClick={() => setShowAddModal(false)}
+                disabled={!!togglingId}
+                onClick={() => setConfirmStatusModal({ open: false, item: null, nextStatus: '' })}
                 style={styles.modalCloseBtn}
               >
                 <X size={16} />
               </button>
             </div>
-
-            <form onSubmit={handleSave} style={styles.modalForm}>
-              {/* Field 1: Date */}
-              <div style={styles.modalFieldGroup}>
-                <label style={styles.modalLabel}>Date: *</label>
-                <input
-                  type="date"
-                  required
-                  value={formData.date}
-                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                  style={styles.modalInput}
-                />
-              </div>
-
-              {/* Field 2: Diagnostic Center (Datalist) */}
-              <div style={styles.modalFieldGroup}>
-                <label style={styles.modalLabel}>
-                  Diagnostic Center / Lab: <span style={{ color: '#DC2626' }}>*</span>
-                </label>
-                <input
-                  ref={centerInputRef}
-                  list="cut-centers-modal-list"
-                  type="text"
-                  required
-                  placeholder="E.G. CARE DIAGNOSTICS, SURAT IMAGING..."
-                  value={formData.centerName}
-                  onChange={(e) => setFormData({ ...formData, centerName: e.target.value })}
-                  style={{ ...styles.modalInput, textTransform: 'uppercase' }}
-                  autoFocus
-                />
-                <datalist id="cut-centers-modal-list">
-                  {centers.map((c, i) => (
-                    <option key={i} value={c} />
-                  ))}
-                </datalist>
-                <span style={styles.modalHint}>
-                  (New centers are automatically remembered in Master Data)
-                </span>
-              </div>
-
-              {/* Field 3: Patient Name */}
-              <div style={styles.modalFieldGroup}>
-                <label style={styles.modalLabel}>
-                  Patient Name:
-                </label>
-                <input
-                  type="text"
-                  placeholder="PATIENT NAME (OPTIONAL)..."
-                  value={formData.patientName}
-                  onChange={(e) => setFormData({ ...formData, patientName: e.target.value })}
-                  style={{ ...styles.modalInput, textTransform: 'uppercase' }}
-                />
-              </div>
-
-              {/* Field 4: Category (Datalist) */}
-              <div style={styles.modalFieldGroup}>
-                <label style={styles.modalLabel}>
-                  Commission Category: <span style={{ color: '#DC2626' }}>*</span>
-                </label>
-                <input
-                  list="cut-categories-modal-list"
-                  type="text"
-                  required
-                  placeholder="E.G. LAB CUT, X-RAY, SONOGRAPHY..."
-                  value={formData.category}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  style={{ ...styles.modalInput, textTransform: 'uppercase' }}
-                />
-                <datalist id="cut-categories-modal-list">
-                  {categories.map((cat, i) => (
-                    <option key={i} value={cat} />
-                  ))}
-                </datalist>
-              </div>
-
-              {/* Field 5: Amount (₹) */}
-              <div style={styles.modalFieldGroup}>
-                <label style={styles.modalLabel}>
-                  Cut Amount (₹): <span style={{ color: '#DC2626' }}>*</span>
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  required
-                  placeholder="0.00"
-                  value={formData.amount}
-                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                  style={{ ...styles.modalInput, fontWeight: 800, fontSize: '14px', color: '#15803D' }}
-                />
-                <span style={{ fontSize: '10px', color: '#15803D', fontWeight: 600 }}>
-                  ✓ Automatically added to Today's Clinic Income
-                </span>
-              </div>
-
-              {/* Action Buttons */}
-              <div style={styles.modalBtnRow}>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  style={styles.modalSaveBtn}
-                >
-                  {isSubmitting ? 'SAVING...' : editingCut ? 'UPDATE' : 'SAVE (Enter)'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  style={styles.modalCancelBtn}
-                >
-                  CANCEL (Esc)
-                </button>
-              </div>
-            </form>
+            <div style={styles.confirmModalBody}>
+              <p style={{ margin: 0, fontSize: '13px', color: '#1E293B', lineHeight: 1.5 }}>
+                Are you sure you want to mark cut income for{' '}
+                <strong>{confirmStatusModal.item.centerName || confirmStatusModal.item.category}</strong>{' '}
+                (₹{Number(confirmStatusModal.item.amount || 0).toLocaleString('en-IN')}) as{' '}
+                <strong style={{ color: confirmStatusModal.nextStatus === 'Paid' ? '#15803D' : '#B91C1C' }}>
+                  {confirmStatusModal.nextStatus}
+                </strong>?
+              </p>
+            </div>
+            <div style={styles.confirmModalFooter}>
+              <button
+                type="button"
+                disabled={!!togglingId}
+                onClick={() => setConfirmStatusModal({ open: false, item: null, nextStatus: '' })}
+                style={styles.confirmCancelBtn}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!!togglingId}
+                onClick={handleConfirmToggleStatus}
+                style={{
+                  ...styles.confirmActionBtn,
+                  backgroundColor: confirmStatusModal.nextStatus === 'Paid' ? '#15803D' : '#B91C1C',
+                }}
+              >
+                {togglingId ? 'Updating...' : `Confirm (${confirmStatusModal.nextStatus})`}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -615,361 +802,9 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     backgroundColor: '#FFFFFF',
-    border: '1px solid #0056B3',
     userSelect: 'none',
     overflow: 'hidden',
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-  },
-
-  // 1. Top Blue Bar (Exact same blue bar from the given photo)
-  topBlueBar: {
-    backgroundColor: '#0B5ED7',
-    color: '#FFFFFF',
-    padding: '7px 12px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    fontSize: '13.5px',
-    fontWeight: 700,
-    flexShrink: 0,
-  },
-  topBarTitle: {
-    letterSpacing: '0.01em',
-  },
-  incomeNoticeBadge: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '5px',
-    backgroundColor: 'rgba(0,0,0,0.22)',
-    padding: '2px 8px',
-    borderRadius: '3px',
-    fontSize: '11px',
-    fontWeight: 700,
-    color: '#86EFAC',
-  },
-  topBarCloseBtn: {
-    background: 'none',
-    border: 'none',
-    cursor: 'pointer',
-    padding: 0,
-    display: 'flex',
-    alignItems: 'center',
-  },
-
-  // 2. Search & Action Strip (Exact same full-width input + Green Button from the given photo)
-  searchStrip: {
-    backgroundColor: '#F1F5F9',
-    padding: '8px 12px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    borderBottom: '1px solid #CBD5E1',
-    flexShrink: 0,
-  },
-  searchInput: {
-    flex: 1,
-    height: '34px',
-    padding: '6px 12px',
-    fontSize: '12.5px',
-    fontWeight: 600,
-    color: '#0F172A',
-    backgroundColor: '#FFFFFF',
-    border: '1px solid #94A3B8',
-    borderRadius: '3px',
-    outline: 'none',
-    textTransform: 'uppercase',
-  },
-  addGreenBtn: {
-    height: '34px',
-    backgroundColor: '#15803D', // Forest Green matching "+ ADD PATIENT (Enter)" in photo
-    color: '#FFFFFF',
-    fontWeight: 700,
-    fontSize: '12px',
-    border: 'none',
-    borderRadius: '3px',
-    padding: '0 18px',
-    cursor: 'pointer',
-    whiteSpace: 'nowrap',
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  // 3. Table Container (Exact same look and column header style as the given photo)
-  tableContainer: {
-    flex: 1,
-    overflowY: 'auto',
-    overflowX: 'auto',
-    backgroundColor: '#FFFFFF',
-  },
-  table: {
-    width: '100%',
-    borderCollapse: 'collapse',
-    fontSize: '12px',
-  },
-  theadRow: {
-    backgroundColor: '#E2E8F0', // Soft silver-blue header matching photo
-    borderBottom: '1px solid #94A3B8',
-    position: 'sticky',
-    top: 0,
-    zIndex: 2,
-  },
-  th: {
-    padding: '7px 10px',
-    textAlign: 'left',
-    fontSize: '11.5px',
-    fontWeight: 800,
-    color: '#0F172A',
-    borderRight: '1px solid #CBD5E1',
-    whiteSpace: 'nowrap',
-  },
-  tr: {
-    borderBottom: '1px solid #E2E8F0',
-    transition: 'background-color 0.1s ease',
-  },
-  tdDateTime: {
-    padding: '7px 10px',
-    verticalAlign: 'middle',
-    borderRight: '1px solid #F1F5F9',
-    whiteSpace: 'nowrap',
-  },
-  dateText: {
-    fontSize: '12px',
-    fontWeight: 700,
-    color: '#0F172A',
-  },
-  timeBadge: {
-    fontSize: '10.5px',
-    fontWeight: 600,
-    color: '#0284C7',
-  },
-  tdCenter: {
-    padding: '7px 10px',
-    verticalAlign: 'middle',
-    borderRight: '1px solid #F1F5F9',
-  },
-  centerText: {
-    fontWeight: 800,
-    color: '#0F172A',
-    textTransform: 'uppercase',
-  },
-  tdPatient: {
-    padding: '7px 10px',
-    verticalAlign: 'middle',
-    borderRight: '1px solid #F1F5F9',
-  },
-  patientText: {
-    fontWeight: 600,
-    color: '#1E40AF',
-    textTransform: 'uppercase',
-  },
-  tdCategory: {
-    padding: '7px 10px',
-    verticalAlign: 'middle',
-    borderRight: '1px solid #F1F5F9',
-  },
-  categoryNameText: {
-    fontWeight: 700,
-    color: '#0F172A',
-    textTransform: 'uppercase',
-  },
-  tdAmount: {
-    padding: '7px 10px',
-    verticalAlign: 'middle',
-    borderRight: '1px solid #F1F5F9',
-    textAlign: 'right',
-  },
-  amountText: {
-    fontSize: '13px',
-    fontWeight: 900,
-    color: '#15803D',
-  },
-  tdAct: {
-    padding: '6px 8px',
-    verticalAlign: 'middle',
-    textAlign: 'center',
-    width: '140px',
-  },
-  actBox: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '3px',
-    backgroundColor: '#F1F5F9',
-    padding: '3px 5px',
-    borderRadius: '4px',
-    border: '1px solid #CBD5E1',
-  },
-  actBtnBlue: {
-    padding: '4px',
-    backgroundColor: '#FFFFFF',
-    border: '1px solid #BAE6FD',
-    borderRadius: '3px',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  actBtnOrange: {
-    padding: '4px',
-    backgroundColor: '#FFFFFF',
-    border: '1px solid #FDE68A',
-    borderRadius: '3px',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  actBtnGray: {
-    padding: '4px',
-    backgroundColor: '#FFFFFF',
-    border: '1px solid #CBD5E1',
-    borderRadius: '3px',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  actBtnRed: {
-    padding: '4px',
-    backgroundColor: '#FFFFFF',
-    border: '1px solid #FECDD3',
-    borderRadius: '3px',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyTd: {
-    padding: '40px 16px',
-    textAlign: 'center',
-    color: '#64748B',
-    fontSize: '12.5px',
-  },
-
-  // 4. Footer Bar
-  footerBar: {
-    backgroundColor: '#F8FAFC',
-    borderTop: '1px solid #CBD5E1',
-    padding: '7px 14px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    fontSize: '12px',
-    fontWeight: 600,
-    color: '#334155',
-    flexShrink: 0,
-  },
-  footerTotalWrap: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-  },
-  footerTotalVal: {
-    fontSize: '13px',
-    fontWeight: 900,
-    color: '#15803D',
-  },
-
-  // 5. Modal
-  modalOverlay: {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
-    zIndex: 9999,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalBox: {
-    width: '440px',
-    backgroundColor: '#FFFFFF',
-    borderRadius: '4px',
-    border: '1px solid #0056B3',
-    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.25)',
-    overflow: 'hidden',
-  },
-  modalHeader: {
-    backgroundColor: '#0B5ED7',
-    color: '#FFFFFF',
-    padding: '8px 12px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  modalTitle: {
-    fontSize: '13px',
-    fontWeight: 700,
-    letterSpacing: '0.02em',
-  },
-  modalCloseBtn: {
-    background: 'none',
-    border: 'none',
-    color: '#FFFFFF',
-    cursor: 'pointer',
-    padding: 0,
-  },
-  modalForm: {
-    padding: '14px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '12px',
-  },
-  modalFieldGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '4px',
-  },
-  modalLabel: {
-    fontSize: '11.5px',
-    fontWeight: 700,
-    color: '#334155',
-  },
-  modalInput: {
-    height: '32px',
-    padding: '4px 8px',
-    fontSize: '12.5px',
-    border: '1px solid #94A3B8',
-    borderRadius: '3px',
-    outline: 'none',
-    backgroundColor: '#FFFFFF',
-  },
-  modalHint: {
-    fontSize: '10px',
-    color: '#64748B',
-  },
-  modalBtnRow: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    gap: '8px',
-    marginTop: '6px',
-    borderTop: '1px solid #E2E8F0',
-    paddingTop: '10px',
-  },
-  modalSaveBtn: {
-    height: '32px',
-    padding: '0 16px',
-    backgroundColor: '#15803D',
-    color: '#FFFFFF',
-    fontWeight: 700,
-    fontSize: '12px',
-    border: 'none',
-    borderRadius: '3px',
-    cursor: 'pointer',
-  },
-  modalCancelBtn: {
-    height: '32px',
-    padding: '0 12px',
-    backgroundColor: '#F1F5F9',
-    color: '#475569',
-    fontWeight: 600,
-    fontSize: '12px',
-    border: '1px solid #CBD5E1',
-    borderRadius: '3px',
-    cursor: 'pointer',
   },
 
   // Toast
@@ -977,16 +812,16 @@ const styles = {
     position: 'fixed',
     top: '16px',
     right: '16px',
-    zIndex: 10000,
+    zIndex: 99999,
     color: '#FFFFFF',
     padding: '8px 14px',
     borderRadius: '4px',
-    boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+    fontSize: '12.5px',
+    fontWeight: 600,
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
-    fontSize: '12px',
-    fontWeight: 600,
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.25)',
   },
   toastClose: {
     background: 'none',
@@ -996,6 +831,483 @@ const styles = {
     padding: 0,
     marginLeft: '6px',
     display: 'flex',
+    alignItems: 'center',
+  },
+
+  // 1. Top Header Bar (Exact match to Expense Master header bar)
+  headerBar: {
+    backgroundColor: '#0F172A',
+    color: '#FFFFFF',
+    padding: '8px 14px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    fontSize: '13.5px',
+    fontWeight: 700,
+    flexShrink: 0,
+    borderBottom: '1px solid #1E293B',
+  },
+  headerTitleWrap: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  headerAmberBadge: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitleText: {
+    letterSpacing: '0.01em',
+  },
+  headerCloseBtn: {
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    padding: '2px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // 2. Add New Cut Entry Strip
+  entrySection: {
+    backgroundColor: '#FFFFFF',
+    padding: '10px 14px 12px',
+    borderBottom: '1px solid #E2E8F0',
+    flexShrink: 0,
+  },
+  entrySectionTitle: {
+    fontSize: '12.5px',
+    fontWeight: 700,
+    color: '#0F172A',
+    marginBottom: '8px',
+    display: 'flex',
+    alignItems: 'center',
+  },
+  entryFormRow: {
+    display: 'flex',
+    alignItems: 'flex-end',
+    gap: '12px',
+  },
+  entryColDate: {
+    width: '135px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+    flexShrink: 0,
+  },
+  entryColCenter: {
+    flex: 2,
+    minWidth: '200px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+  },
+  entryColPatient: {
+    flex: 1.5,
+    minWidth: '160px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+  },
+  entryColCategory: {
+    flex: 1.8,
+    minWidth: '180px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+  },
+  entryColAmount: {
+    flex: 1.2,
+    minWidth: '130px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+  },
+  entryColStatus: {
+    width: '95px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+    flexShrink: 0,
+  },
+  entryColSave: {
+    width: '90px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+    flexShrink: 0,
+  },
+  fieldLabel: {
+    fontSize: '11px',
+    fontWeight: 700,
+    color: '#475569',
+  },
+  fieldLabelHidden: {
+    fontSize: '11px',
+    fontWeight: 700,
+    color: 'transparent',
+    visibility: 'hidden',
+  },
+  fieldInput: {
+    height: '32px',
+    padding: '4px 8px',
+    fontSize: '12.5px',
+    fontWeight: 600,
+    color: '#0F172A',
+    backgroundColor: '#FFFFFF',
+    border: '1px solid #94A3B8',
+    borderRadius: '3px',
+    outline: 'none',
+    boxSizing: 'border-box',
+    width: '100%',
+  },
+  statusToggleBtn: {
+    height: '32px',
+    color: '#FFFFFF',
+    fontWeight: 700,
+    fontSize: '12px',
+    border: 'none',
+    borderRadius: '3px',
+    cursor: 'pointer',
+    width: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transition: 'background-color 0.15s ease',
+  },
+  saveBtn: {
+    height: '32px',
+    backgroundColor: '#0F172A',
+    color: '#FFFFFF',
+    fontWeight: 700,
+    fontSize: '12px',
+    border: 'none',
+    borderRadius: '3px',
+    cursor: 'pointer',
+    width: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // 3. Filter Section
+  filterSection: {
+    padding: '8px 14px',
+    backgroundColor: '#FFFFFF',
+    flexShrink: 0,
+  },
+  filterBar: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    padding: '6px 12px',
+    backgroundColor: '#F8FAFC',
+    border: '1px solid #CBD5E1',
+    borderRadius: '4px',
+    overflowX: 'auto',
+  },
+  filterItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    flexShrink: 0,
+  },
+  filterLabel: {
+    fontSize: '11.5px',
+    fontWeight: 700,
+    color: '#334155',
+    whiteSpace: 'nowrap',
+  },
+  filterInput: {
+    height: '28px',
+    width: '170px',
+    padding: '3px 8px',
+    fontSize: '12px',
+    fontWeight: 600,
+    color: '#0F172A',
+    backgroundColor: '#FFFFFF',
+    border: '1px solid #94A3B8',
+    borderRadius: '3px',
+    outline: 'none',
+  },
+  filterDateInput: {
+    height: '28px',
+    width: '125px',
+    padding: '3px 6px',
+    fontSize: '11.5px',
+    fontWeight: 600,
+    color: '#0F172A',
+    backgroundColor: '#FFFFFF',
+    border: '1px solid #94A3B8',
+    borderRadius: '3px',
+    outline: 'none',
+  },
+  filterBtn: {
+    height: '28px',
+    padding: '0 14px',
+    backgroundColor: '#0F172A',
+    color: '#FFFFFF',
+    fontWeight: 700,
+    fontSize: '11.5px',
+    border: 'none',
+    borderRadius: '3px',
+    cursor: 'pointer',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    whiteSpace: 'nowrap',
+  },
+  clearBtn: {
+    height: '28px',
+    padding: '0 14px',
+    backgroundColor: '#0F172A',
+    color: '#FFFFFF',
+    fontWeight: 700,
+    fontSize: '11.5px',
+    border: 'none',
+    borderRadius: '3px',
+    cursor: 'pointer',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    whiteSpace: 'nowrap',
+  },
+
+  // 4. KPI Cards
+  kpiContainer: {
+    padding: '0 14px 10px',
+    display: 'grid',
+    gridTemplateColumns: 'repeat(4, 1fr)',
+    gap: '12px',
+    flexShrink: 0,
+  },
+  kpiCard: {
+    backgroundColor: '#FFFFFF',
+    border: '1px solid #CBD5E1',
+    borderRadius: '4px',
+    padding: '10px 14px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px',
+  },
+  kpiHeader: {
+    display: 'flex',
+    alignItems: 'center',
+  },
+  kpiTitle: {
+    fontSize: '11px',
+    fontWeight: 800,
+    color: '#475569',
+    letterSpacing: '0.04em',
+  },
+  kpiValueDark: {
+    fontSize: '22px',
+    fontWeight: 800,
+    color: '#0F172A',
+    letterSpacing: '-0.02em',
+  },
+  kpiValueGreen: {
+    fontSize: '22px',
+    fontWeight: 800,
+    color: '#15803D',
+    letterSpacing: '-0.02em',
+  },
+  kpiValueRed: {
+    fontSize: '22px',
+    fontWeight: 800,
+    color: '#B91C1C',
+    letterSpacing: '-0.02em',
+  },
+
+  // 5. Data Table
+  tableWrapper: {
+    flex: 1,
+    overflowY: 'auto',
+    overflowX: 'auto',
+    borderTop: '1px solid #CBD5E1',
+    backgroundColor: '#FFFFFF',
+  },
+  table: {
+    width: '100%',
+    borderCollapse: 'collapse',
+    fontSize: '12px',
+  },
+  theadRow: {
+    backgroundColor: '#E2E8F0',
+    borderBottom: '1px solid #94A3B8',
+    position: 'sticky',
+    top: 0,
+    zIndex: 2,
+  },
+  th: {
+    padding: '8px 12px',
+    textAlign: 'left',
+    fontSize: '12px',
+    fontWeight: 800,
+    color: '#0F172A',
+    borderRight: '1px solid #CBD5E1',
+    whiteSpace: 'nowrap',
+  },
+  tr: {
+    borderBottom: '1px solid #E2E8F0',
+    transition: 'background-color 0.1s ease',
+  },
+  tdDate: {
+    padding: '7px 12px',
+    fontSize: '12px',
+    fontWeight: 600,
+    color: '#0F172A',
+    whiteSpace: 'nowrap',
+    borderRight: '1px solid #F1F5F9',
+  },
+  tdCenter: {
+    padding: '7px 12px',
+    fontSize: '12px',
+    fontWeight: 800,
+    color: '#0F172A',
+    borderRight: '1px solid #F1F5F9',
+  },
+  tdPatient: {
+    padding: '7px 12px',
+    fontSize: '12px',
+    fontWeight: 600,
+    color: '#334155',
+    borderRight: '1px solid #F1F5F9',
+  },
+  tdCategory: {
+    padding: '7px 12px',
+    fontSize: '12px',
+    fontWeight: 700,
+    color: '#0284C7',
+    borderRight: '1px solid #F1F5F9',
+  },
+  tdAmount: {
+    padding: '7px 12px',
+    fontSize: '12.5px',
+    fontWeight: 800,
+    color: '#0F172A',
+    textAlign: 'right',
+    borderRight: '1px solid #F1F5F9',
+  },
+  tdStatus: {
+    padding: '5px 10px',
+    textAlign: 'center',
+    borderRight: '1px solid #F1F5F9',
+  },
+  tableStatusBtn: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: '#FFFFFF',
+    fontWeight: 700,
+    fontSize: '11px',
+    padding: '3px 12px',
+    borderRadius: '3px',
+    border: 'none',
+    cursor: 'pointer',
+    minWidth: '70px',
+    transition: 'all 0.15s ease',
+  },
+  tdAction: {
+    padding: '5px 8px',
+    textAlign: 'center',
+  },
+  deleteBtn: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '28px',
+    height: '28px',
+    backgroundColor: '#F1F5F9',
+    border: '1px solid #CBD5E1',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    padding: 0,
+  },
+  emptyTd: {
+    padding: '40px 16px',
+    textAlign: 'center',
+    color: '#64748B',
+    fontSize: '12.5px',
+    fontWeight: 500,
+  },
+
+  // Confirmation Modal
+  modalOverlay: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    zIndex: 99999,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  confirmModalBox: {
+    width: '420px',
+    maxWidth: '92vw',
+    backgroundColor: '#FFFFFF',
+    borderRadius: '6px',
+    boxShadow: '0 10px 25px rgba(0, 0, 0, 0.25)',
+    overflow: 'hidden',
+    border: '1px solid #CBD5E1',
+  },
+  confirmModalHeader: {
+    backgroundColor: '#F8FAFC',
+    padding: '10px 14px',
+    borderBottom: '1px solid #E2E8F0',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  confirmModalTitle: {
+    fontSize: '13px',
+    fontWeight: 700,
+    color: '#0F172A',
+  },
+  modalCloseBtn: {
+    background: 'none',
+    border: 'none',
+    color: '#64748B',
+    cursor: 'pointer',
+    padding: 0,
+    display: 'flex',
+    alignItems: 'center',
+  },
+  confirmModalBody: {
+    padding: '16px',
+    backgroundColor: '#FFFFFF',
+  },
+  confirmModalFooter: {
+    padding: '10px 14px',
+    backgroundColor: '#F8FAFC',
+    borderTop: '1px solid #E2E8F0',
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: '8px',
+  },
+  confirmCancelBtn: {
+    padding: '6px 14px',
+    backgroundColor: '#FFFFFF',
+    border: '1px solid #CBD5E1',
+    borderRadius: '3px',
+    fontSize: '12px',
+    fontWeight: 600,
+    color: '#334155',
+    cursor: 'pointer',
+  },
+  confirmActionBtn: {
+    padding: '6px 16px',
+    borderRadius: '3px',
+    border: 'none',
+    fontSize: '12px',
+    fontWeight: 700,
+    color: '#FFFFFF',
+    cursor: 'pointer',
   },
 };
 

@@ -69,6 +69,10 @@ export const ExpenseMaster = ({ onNavigateToDashboard }) => {
   // Toast notifications
   const [toast, setToast] = useState({ show: false, text: '', type: 'success' });
 
+  // Confirmation Mechanism & Double-Click Lock State
+  const [confirmStatusModal, setConfirmStatusModal] = useState({ open: false, item: null, nextStatus: '' });
+  const [togglingId, setTogglingId] = useState(null);
+
   const companyInputRef = useRef(null);
   const amountInputRef = useRef(null);
 
@@ -237,39 +241,55 @@ export const ExpenseMaster = ({ onNavigateToDashboard }) => {
     }
   };
 
-  // Toggle Status directly from table row
-  const handleToggleStatus = async (exp) => {
+  // Request toggle status (opens confirmation mechanism & guards against double click)
+  const handleRequestToggleStatus = (exp) => {
+    if (togglingId === exp._id) return;
     const nextStatus = exp.status === 'Paid' ? 'Unpaid' : 'Paid';
+    setConfirmStatusModal({ open: true, item: exp, nextStatus });
+  };
+
+  // Confirm and apply status change safely
+  const handleConfirmToggleStatus = async () => {
+    const { item: exp, nextStatus } = confirmStatusModal;
+    if (!exp || !nextStatus || togglingId === exp._id) return;
+
     try {
+      setTogglingId(exp._id);
       const res = await expenseAPI.update(exp._id, { status: nextStatus });
       if (res?.success) {
-        // Optimistically update list
-        setExpenses((prev) =>
-          prev.map((item) => (item._id === exp._id ? { ...item, status: nextStatus } : item))
-        );
-        // Recalculate summary metrics
-        setSummary((prev) => {
-          const amt = Number(exp.amount) || 0;
-          if (nextStatus === 'Paid') {
-            return {
-              ...prev,
-              paidAmount: prev.paidAmount + amt,
-              unpaidAmount: Math.max(0, prev.unpaidAmount - amt),
-            };
-          } else {
-            return {
-              ...prev,
-              paidAmount: Math.max(0, prev.paidAmount - amt),
-              unpaidAmount: prev.unpaidAmount + amt,
-            };
-          }
+        // Safe immutable update and strictly recalculate summary from array (immune to double click count)
+        setExpenses((prev) => {
+          const updated = prev.map((item) =>
+            item._id === exp._id ? { ...item, status: nextStatus } : item
+          );
+
+          const paidAmount = updated
+            .filter((i) => i.status === 'Paid')
+            .reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
+          const unpaidAmount = updated
+            .filter((i) => i.status !== 'Paid')
+            .reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
+          const totalExpense = updated.reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
+
+          setSummary({
+            totalEntries: updated.length,
+            paidAmount,
+            unpaidAmount,
+            totalExpense,
+          });
+
+          return updated;
         });
+
         showToast(`Status changed to ${nextStatus}`);
       } else {
         showToast(res?.message || 'Failed to update status', 'error');
       }
     } catch (err) {
       showToast('Error changing status: ' + err.message, 'error');
+    } finally {
+      setTogglingId(null);
+      setConfirmStatusModal({ open: false, item: null, nextStatus: '' });
     }
   };
 
@@ -662,14 +682,16 @@ export const ExpenseMaster = ({ onNavigateToDashboard }) => {
                     <td style={styles.tdStatus}>
                       <button
                         type="button"
-                        onClick={() => handleToggleStatus(exp)}
+                        disabled={togglingId === exp._id}
+                        onClick={() => handleRequestToggleStatus(exp)}
                         style={{
                           ...styles.tableStatusBtn,
                           backgroundColor: isPaid ? '#15803D' : '#991B1B',
+                          opacity: togglingId === exp._id ? 0.7 : 1,
                         }}
-                        title="Click to toggle status"
+                        title="Click to change status (Confirmation required)"
                       >
-                        {isPaid ? '✓ Paid' : 'Unpaid'}
+                        {togglingId === exp._id ? '...' : isPaid ? '✓ Paid' : 'Unpaid'}
                       </button>
                     </td>
 
@@ -691,6 +713,62 @@ export const ExpenseMaster = ({ onNavigateToDashboard }) => {
           </tbody>
         </table>
       </div>
+
+      {/* 6. STATUS CHANGE CONFIRMATION MODAL (PREVENTS DOUBLE-CLICK & CONFIRMS ACTION) */}
+      {confirmStatusModal.open && confirmStatusModal.item && (
+        <div
+          style={styles.modalOverlay}
+          onClick={() => !togglingId && setConfirmStatusModal({ open: false, item: null, nextStatus: '' })}
+        >
+          <div style={styles.confirmModalBox} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.confirmModalHeader}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <AlertTriangle size={18} color="#F59E0B" />
+                <span style={styles.confirmModalTitle}>Confirm Status Change</span>
+              </div>
+              <button
+                type="button"
+                disabled={!!togglingId}
+                onClick={() => setConfirmStatusModal({ open: false, item: null, nextStatus: '' })}
+                style={styles.modalCloseBtn}
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div style={styles.confirmModalBody}>
+              <p style={{ margin: 0, fontSize: '13px', color: '#1E293B', lineHeight: 1.5 }}>
+                Are you sure you want to mark expense for{' '}
+                <strong>{confirmStatusModal.item.companyName || confirmStatusModal.item.category}</strong>{' '}
+                (₹{Number(confirmStatusModal.item.amount || 0).toLocaleString('en-IN')}) as{' '}
+                <strong style={{ color: confirmStatusModal.nextStatus === 'Paid' ? '#15803D' : '#B91C1C' }}>
+                  {confirmStatusModal.nextStatus}
+                </strong>?
+              </p>
+            </div>
+            <div style={styles.confirmModalFooter}>
+              <button
+                type="button"
+                disabled={!!togglingId}
+                onClick={() => setConfirmStatusModal({ open: false, item: null, nextStatus: '' })}
+                style={styles.confirmCancelBtn}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!!togglingId}
+                onClick={handleConfirmToggleStatus}
+                style={{
+                  ...styles.confirmActionBtn,
+                  backgroundColor: confirmStatusModal.nextStatus === 'Paid' ? '#15803D' : '#B91C1C',
+                }}
+              >
+                {togglingId ? 'Updating...' : `Confirm (${confirmStatusModal.nextStatus})`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -1118,6 +1196,82 @@ const styles = {
     color: '#64748B',
     fontSize: '12.5px',
     fontWeight: 500,
+  },
+
+  // Confirmation Modal
+  modalOverlay: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    zIndex: 99999,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  confirmModalBox: {
+    width: '420px',
+    maxWidth: '92vw',
+    backgroundColor: '#FFFFFF',
+    borderRadius: '6px',
+    boxShadow: '0 10px 25px rgba(0, 0, 0, 0.25)',
+    overflow: 'hidden',
+    border: '1px solid #CBD5E1',
+  },
+  confirmModalHeader: {
+    backgroundColor: '#F8FAFC',
+    padding: '10px 14px',
+    borderBottom: '1px solid #E2E8F0',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  confirmModalTitle: {
+    fontSize: '13px',
+    fontWeight: 700,
+    color: '#0F172A',
+  },
+  modalCloseBtn: {
+    background: 'none',
+    border: 'none',
+    color: '#64748B',
+    cursor: 'pointer',
+    padding: 0,
+    display: 'flex',
+    alignItems: 'center',
+  },
+  confirmModalBody: {
+    padding: '16px',
+    backgroundColor: '#FFFFFF',
+  },
+  confirmModalFooter: {
+    padding: '10px 14px',
+    backgroundColor: '#F8FAFC',
+    borderTop: '1px solid #E2E8F0',
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: '8px',
+  },
+  confirmCancelBtn: {
+    padding: '6px 14px',
+    backgroundColor: '#FFFFFF',
+    border: '1px solid #CBD5E1',
+    borderRadius: '3px',
+    fontSize: '12px',
+    fontWeight: 600,
+    color: '#334155',
+    cursor: 'pointer',
+  },
+  confirmActionBtn: {
+    padding: '6px 16px',
+    borderRadius: '3px',
+    border: 'none',
+    fontSize: '12px',
+    fontWeight: 700,
+    color: '#FFFFFF',
+    cursor: 'pointer',
   },
 };
 

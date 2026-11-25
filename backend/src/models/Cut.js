@@ -29,6 +29,12 @@ const cutSchema = new mongoose.Schema(
       required: [true, 'Cut commission amount is required'],
       min: [0, 'Amount must be positive'],
     },
+    status: {
+      type: String,
+      enum: ['Unpaid', 'Paid'],
+      default: 'Unpaid',
+      index: true,
+    },
     paymentMode: {
       type: String,
       default: 'Cash',
@@ -55,4 +61,3 @@ cutSchema.index({ date: -1, createdAt: -1 });
 const Cut = mongoose.model('Cut', cutSchema);
 
 export default Cut;
-

@@ -28,16 +28,41 @@ const resolveDateRange = (period, customDate) => {
 // @access  Private
 export const getCuts = async (req, res) => {
   try {
-    const { period = 'all', date, category, search, limit = 200 } = req.query;
+    const {
+      period = 'all',
+      date,
+      centerName,
+      category,
+      status,
+      from,
+      to,
+      search,
+      limit = 500,
+    } = req.query;
     const query = {};
 
-    const range = resolveDateRange(period, date);
-    if (range) {
-      query.date = { $gte: range.startDate, $lte: range.endDate };
+    // Date range filtering: custom from/to or period
+    if (from || to) {
+      query.date = {};
+      if (from) query.date.$gte = from;
+      if (to) query.date.$lte = to;
+    } else {
+      const range = resolveDateRange(period, date);
+      if (range) {
+        query.date = { $gte: range.startDate, $lte: range.endDate };
+      }
     }
 
-    if (category && category.trim()) {
+    if (centerName && centerName.trim()) {
+      query.centerName = new RegExp(centerName.trim(), 'i');
+    }
+
+    if (category && category.trim() && !category.toUpperCase().includes('ALL')) {
       query.category = new RegExp(category.trim(), 'i');
+    }
+
+    if (status && status.trim() && (status === 'Paid' || status === 'Unpaid')) {
+      query.status = status;
     }
 
     if (search && search.trim()) {
@@ -55,15 +80,33 @@ export const getCuts = async (req, res) => {
 
     const cuts = await Cut.find(query)
       .sort({ date: -1, createdAt: -1 })
-      .limit(Number(limit) || 200)
+      .limit(Number(limit) || 500)
       .lean();
 
-    const totalAmount = cuts.reduce((acc, c) => acc + (c.amount || 0), 0);
+    // Compute KPI metrics matching layout
+    const totalEntries = cuts.length;
+    let paidAmount = 0;
+    let unpaidAmount = 0;
+    let totalAmount = 0;
+
+    cuts.forEach((c) => {
+      const amt = Number(c.amount) || 0;
+      totalAmount += amt;
+      if (c.status === 'Paid') {
+        paidAmount += amt;
+      } else {
+        unpaidAmount += amt;
+      }
+    });
 
     return res.status(200).json({
       success: true,
       count: cuts.length,
+      totalEntries,
+      paidAmount,
+      unpaidAmount,
       totalAmount,
+      totalIncome: totalAmount,
       cuts,
     });
   } catch (error) {
@@ -87,6 +130,7 @@ export const createCut = async (req, res) => {
       patientName = '',
       category,
       amount,
+      status = 'Unpaid',
       paymentMode = 'Cash',
       reference = '',
       notes = '',
@@ -116,6 +160,7 @@ export const createCut = async (req, res) => {
 
     const cleanCategory = category.trim().toUpperCase();
     const cleanCenter = centerName.trim().toUpperCase();
+    const cleanStatus = status === 'Paid' ? 'Paid' : 'Unpaid';
     const todayStr = new Date().toISOString().split('T')[0];
 
     const cut = await Cut.create({
@@ -124,6 +169,7 @@ export const createCut = async (req, res) => {
       patientName: patientName.trim(),
       category: cleanCategory,
       amount: numAmount,
+      status: cleanStatus,
       paymentMode: (paymentMode || 'Cash').toUpperCase(),
       reference: reference.trim(),
       notes: notes.trim(),
@@ -153,7 +199,18 @@ export const createCut = async (req, res) => {
 // @access  Private
 export const updateCut = async (req, res) => {
   try {
-    const { date, centerName, patientName, category, amount, paymentMode, reference, notes } = req.body;
+    const {
+      date,
+      centerName,
+      patientName,
+      category,
+      amount,
+      status,
+      paymentMode,
+      reference,
+      notes,
+    } = req.body;
+
     const cut = await Cut.findById(req.params.id);
 
     if (!cut) {
@@ -176,6 +233,9 @@ export const updateCut = async (req, res) => {
     if (amount !== undefined) {
       const num = Math.max(0, Number(amount) || 0);
       if (num > 0) cut.amount = num;
+    }
+    if (status !== undefined) {
+      cut.status = status === 'Paid' ? 'Paid' : 'Unpaid';
     }
     if (paymentMode !== undefined) cut.paymentMode = (paymentMode || 'Cash').toUpperCase();
     if (reference !== undefined) cut.reference = reference.trim();
@@ -244,6 +304,14 @@ export const getCutSummary = async (req, res) => {
     const monthTotal = monthList.reduce((acc, c) => acc + (c.amount || 0), 0);
     const overallTotal = allCuts.reduce((acc, c) => acc + (c.amount || 0), 0);
 
+    const paidTotal = allCuts
+      .filter((c) => c.status === 'Paid')
+      .reduce((acc, c) => acc + (c.amount || 0), 0);
+
+    const unpaidTotal = allCuts
+      .filter((c) => c.status !== 'Paid')
+      .reduce((acc, c) => acc + (c.amount || 0), 0);
+
     // Group by center
     const centerBreakdown = {};
     monthList.forEach((c) => {
@@ -257,6 +325,8 @@ export const getCutSummary = async (req, res) => {
         todayTotal,
         monthTotal,
         overallTotal,
+        paidTotal,
+        unpaidTotal,
         todayCount: todayList.length,
         monthCount: monthList.length,
         centerBreakdown,
@@ -270,4 +340,3 @@ export const getCutSummary = async (req, res) => {
     });
   }
 };
-
