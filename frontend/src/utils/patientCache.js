@@ -1,6 +1,6 @@
 import { patientAPI } from '../services/api';
 
-const LOCAL_STORAGE_CACHE_KEY = 'cms_patient_cache_v5';
+const LOCAL_STORAGE_CACHE_KEY = 'cms_patient_cache_v7';
 
 // Index patient for sub-millisecond prefix & multi-token search
 const indexPatient = (p) => {
@@ -12,12 +12,10 @@ const indexPatient = (p) => {
   const digits = pid.replace(/\D/g, '');
   const phone = String(p.phone || '').trim().toUpperCase();
   const famId = String(p.familyId || p.family?.familyId || '').trim().toUpperCase();
-  const headName = String(p.family?.headName || p.headName || '').trim().toUpperCase();
-  const area = String(p.area || p.family?.area || '').trim().toUpperCase();
-  const society = String(p.society || p.family?.society || '').trim().toUpperCase();
+  const area = String(p.area || p.family?.area || p.society || '').trim().toUpperCase();
 
-  const blob = `${nameUpper} ${pid} ${digits} ${phone} ${famId} ${headName} ${area} ${society}`;
-
+  // ONLY index patient's OWN searchable properties: name, patientId, phone
+  // Exclude family headName so other family members are NEVER matched when searching by patient name!
   return {
     ...p,
     recentVisits: Array.isArray(p.recentVisits) ? p.recentVisits : [],
@@ -25,7 +23,9 @@ const indexPatient = (p) => {
     _nameWords: nameWords,
     _pid: pid,
     _digits: digits,
-    _blob: blob,
+    _phone: phone,
+    _famId: famId,
+    _area: area,
   };
 };
 
@@ -154,11 +154,13 @@ export const updateCachedPatient = (patient) => {
 
 /**
  * Ultra-fast sub-millisecond in-memory search across all preloaded patients.
+ * Searches STRICTLY by patient's own name (or phone / patient ID).
+ * Never matches family head or other family members.
  * Prioritizes:
- *  1. Exact Name Prefix (starts with query)
- *  2. Word Prefix (surname / middle name starts with query)
- *  3. Patient ID / Digit match
- *  4. Full Token contains match
+ *  1. Exact Full Name Match (p.name === query)
+ *  2. Name Prefix (p.name starts with query)
+ *  3. Word Prefix / Multi-token Match (each token in patient's name)
+ *  4. Patient ID / Phone Match
  */
 export const searchPatientsInMemory = (rawQuery, maxResults = 35) => {
   if (!rawQuery || !rawQuery.trim() || !Array.isArray(patientCache) || patientCache.length === 0) {
@@ -169,44 +171,61 @@ export const searchPatientsInMemory = (rawQuery, maxResults = 35) => {
   const tokens = query.split(/\s+/).filter(Boolean);
   if (tokens.length === 0) return [];
 
-  const firstToken = tokens[0];
-  const exactPrefixMatches = [];
-  const wordPrefixMatches = [];
-  const idMatches = [];
-  const otherMatches = [];
+  const isPureDigits = /^\d+$/.test(query);
+  const isPidQuery = query.startsWith('P-') || query.startsWith('PAT-') || (query.startsWith('P') && /^\d+$/.test(query.slice(1)));
+
+  const exactMatches = [];
+  const namePrefixMatches = [];
+  const nameTokenMatches = [];
+  const idOrPhoneMatches = [];
 
   const len = patientCache.length;
   for (let i = 0; i < len; i++) {
     const p = patientCache[i];
     const nameUpper = p._nameUpper || (p.name || '').toUpperCase();
-    const blob = p._blob || `${nameUpper} ${(p.patientId || '')} ${(p.phone || '')}`;
 
-    // Fast check: must contain all tokens
-    let matchesAll = true;
+    if (isPureDigits) {
+      // Pure numeric query: match patient phone or patientId digits
+      if (p._phone && p._phone.includes(query)) {
+        idOrPhoneMatches.push(p);
+      } else if (p._digits && p._digits.includes(query)) {
+        idOrPhoneMatches.push(p);
+      }
+      continue;
+    }
+
+    if (isPidQuery) {
+      // Explicit Patient ID query (P-00001)
+      if (p._pid && p._pid.includes(query)) {
+        idOrPhoneMatches.push(p);
+      }
+      continue;
+    }
+
+    // --- MUST BE SEARCHED ONLY BY PATIENT'S OWN NAME ---
+    // All entered tokens must exist inside patient's own name
+    let matchesAllTokens = true;
     for (let t = 0; t < tokens.length; t++) {
-      if (!blob.includes(tokens[t])) {
-        matchesAll = false;
+      if (!nameUpper.includes(tokens[t])) {
+        matchesAllTokens = false;
         break;
       }
     }
-    if (!matchesAll) continue;
+    if (!matchesAllTokens) continue;
 
-    // Prioritized Bucketing
-    if (nameUpper.startsWith(query)) {
-      exactPrefixMatches.push(p);
-    } else if (p._nameWords && p._nameWords.some((w) => w.startsWith(firstToken))) {
-      wordPrefixMatches.push(p);
-    } else if (p._pid && (p._pid.includes(query) || (p._digits && p._digits.startsWith(query)))) {
-      idMatches.push(p);
+    // Prioritized Bucketing:
+    if (nameUpper === query) {
+      exactMatches.push(p);
+    } else if (nameUpper.startsWith(query)) {
+      namePrefixMatches.push(p);
     } else {
-      otherMatches.push(p);
-    }
-
-    // Fast breakout if we have enough exact & word prefix matches
-    if (exactPrefixMatches.length + wordPrefixMatches.length >= maxResults * 1.5) {
-      break;
+      nameTokenMatches.push(p);
     }
   }
 
-  return [...exactPrefixMatches, ...wordPrefixMatches, ...idMatches, ...otherMatches].slice(0, maxResults);
+  // Sort within groups: shorter names closer to query length come first
+  namePrefixMatches.sort((a, b) => a._nameUpper.length - b._nameUpper.length || a._nameUpper.localeCompare(b._nameUpper));
+  nameTokenMatches.sort((a, b) => a._nameUpper.length - b._nameUpper.length || a._nameUpper.localeCompare(b._nameUpper));
+
+  return [...exactMatches, ...namePrefixMatches, ...nameTokenMatches, ...idOrPhoneMatches].slice(0, maxResults);
 };

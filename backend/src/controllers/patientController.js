@@ -128,67 +128,82 @@ export const getPatients = async (req, res) => {
       query.familyId = familyId.trim();
     }
 
+    let isNameSearch = false;
+    let searchUpper = '';
+
     if (search && search.trim()) {
       const rawSearch = search.trim();
-      const regex = new RegExp(escapeRegex(rawSearch), 'i');
+      searchUpper = rawSearch.toUpperCase();
+      const tokens = rawSearch.split(/\s+/).filter(Boolean);
 
+      const isFamExplicit = /^fam[-\s]*/i.test(rawSearch);
       const famStripped = rawSearch.replace(/^fam[-\s]*/i, '').trim();
       const pidStripped = rawSearch.replace(/^p[-\s]*/i, '').trim();
-      const digitsOnly = rawSearch.replace(/\D/g, '');
+      const isDigitsOnly = /^\d+$/.test(rawSearch);
 
-      const candidateFamIds = new Set();
-      if (famStripped) {
-        candidateFamIds.add(famStripped);
-        if (/^\d+$/.test(famStripped)) {
-          candidateFamIds.add(famStripped.padStart(5, '0'));
-          candidateFamIds.add(String(parseInt(famStripped, 10)));
+      if (isFamExplicit && famStripped) {
+        // Explicit family search (e.g. FAM-00001)
+        const candidateFamIds = [
+          famStripped,
+          famStripped.padStart(5, '0'),
+          String(parseInt(famStripped, 10)),
+        ].filter(Boolean);
+        query.familyId = { $in: candidateFamIds };
+      } else if (isDigitsOnly) {
+        // Pure numeric search: phone number or numeric patientId
+        query.$or = [
+          { phone: new RegExp(escapeRegex(rawSearch), 'i') },
+          { patientId: new RegExp(escapeRegex(rawSearch), 'i') },
+        ];
+      } else if (/^p[-\s]*/i.test(rawSearch) && pidStripped) {
+        // Explicit patient ID search (e.g. P-00001)
+        query.patientId = new RegExp(escapeRegex(pidStripped), 'i');
+      } else {
+        // Patient Name Search: MUST search ONLY by patient's own name, NEVER other family members or headName!
+        isNameSearch = true;
+        if (tokens.length === 1) {
+          query.name = new RegExp(escapeRegex(tokens[0]), 'i');
+        } else {
+          // Multi-word search: patient name must match all entered words
+          query.$and = tokens.map((t) => ({
+            name: new RegExp(escapeRegex(t), 'i'),
+          }));
         }
       }
-      if (digitsOnly) {
-        candidateFamIds.add(digitsOnly);
-        candidateFamIds.add(digitsOnly.padStart(5, '0'));
-        candidateFamIds.add(String(parseInt(digitsOnly, 10)));
-      }
-      const candidateFamIdArr = Array.from(candidateFamIds).filter(Boolean);
-
-      // Also match if user searches by family head name or society or area
-      const matchingFamilies = await Family.find(
-        {
-          $or: [
-            { headName: regex },
-            { society: regex },
-            { area: regex },
-            { phone: regex },
-            ...(candidateFamIdArr.length > 0 ? [{ familyId: { $in: candidateFamIdArr } }] : []),
-          ],
-        },
-        'familyId'
-      )
-        .limit(15)
-        .lean();
-      const matchingFamilyIds = matchingFamilies.map((f) => f.familyId);
-      const allFamIdsToMatch = Array.from(new Set([...candidateFamIdArr, ...matchingFamilyIds]));
-
-      query.$or = [
-        { name: regex },
-        { patientId: regex },
-        ...(pidStripped ? [{ patientId: new RegExp(escapeRegex(pidStripped), 'i') }] : []),
-        { phone: regex },
-        { society: regex },
-        { area: regex },
-        { familyId: regex },
-        ...(allFamIdsToMatch.length > 0 ? [{ familyId: { $in: allFamIdsToMatch } }] : []),
-      ];
     }
 
     // Fast selective limits: up to 10,000 for RAM preloading, 50 for live network search
     const maxLimit = reqLimit ? parseInt(reqLimit, 10) : (search && search.trim() ? 50 : 10000);
 
-    const patients = await Patient.find(query)
+    let patients = await Patient.find(query)
       .select('patientId familyId name age gender bloodGroup allergies society area phone relation isHead totalDue deposit createdAt')
-      .sort({ createdAt: -1 })
       .limit(maxLimit)
       .lean();
+
+    // When searching by patient name, sort by relevance so the exact name match is ALWAYS first!
+    if (isNameSearch && searchUpper) {
+      patients.sort((a, b) => {
+        const aName = (a.name || '').toUpperCase();
+        const bName = (b.name || '').toUpperCase();
+
+        // 1. Exact full name match
+        const aExact = aName === searchUpper;
+        const bExact = bName === searchUpper;
+        if (aExact && !bExact) return -1;
+        if (!aExact && bExact) return 1;
+
+        // 2. Starts with query
+        const aStarts = aName.startsWith(searchUpper);
+        const bStarts = bName.startsWith(searchUpper);
+        if (aStarts && !bStarts) return -1;
+        if (!aStarts && bStarts) return 1;
+
+        // 3. Closest length to search query
+        return aName.length - bName.length || aName.localeCompare(bName);
+      });
+    } else {
+      patients.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    }
 
     // Enrich with family info (headName, familyDue, area, etc.)
     const familyIds = [...new Set(patients.map((p) => p.familyId).filter(Boolean))];
