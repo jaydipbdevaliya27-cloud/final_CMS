@@ -7,27 +7,75 @@ import { autoSaveMasterItem } from './masterDataController.js';
 import { getNextReportId, generateLabSummary } from './labReportController.js';
 import { getNextFamilyIdValue } from './familyController.js';
 
-// Helper to recalculate dues and deposits for patient & family
+// Helper to recalculate dues and deposits for patient & family concurrently
 export const recalculateDues = async (patientId, familyId) => {
   try {
-    // 1. Patient Total Due & Deposit
-    const patientVisits = await Visit.find({ patientId });
-    const rawPatientDue = patientVisits.reduce((acc, v) => acc + (v.charge || 0) - (v.received || 0), 0);
+    const [patientVisits, familyVisits] = await Promise.all([
+      Visit.find({ patientId }).select('charge received').lean(),
+      Visit.find({ familyId }).select('charge received').lean(),
+    ]);
+
+    const rawPatientDue = (patientVisits || []).reduce((acc, v) => acc + (v.charge || 0) - (v.received || 0), 0);
     const patientDue = rawPatientDue > 0 ? rawPatientDue : 0;
     const patientDeposit = rawPatientDue < 0 ? Math.abs(rawPatientDue) : 0;
-    await Patient.findOneAndUpdate({ patientId }, { totalDue: patientDue, deposit: patientDeposit });
 
-    // 2. Family Total Due & Deposit
-    const familyVisits = await Visit.find({ familyId });
-    const rawFamDue = familyVisits.reduce((acc, v) => acc + (v.charge || 0) - (v.received || 0), 0);
+    const rawFamDue = (familyVisits || []).reduce((acc, v) => acc + (v.charge || 0) - (v.received || 0), 0);
     const famDue = rawFamDue > 0 ? rawFamDue : 0;
     const famDeposit = rawFamDue < 0 ? Math.abs(rawFamDue) : 0;
-    await Family.findOneAndUpdate({ familyId }, { familyDue: famDue, familyDeposit: famDeposit });
+
+    await Promise.all([
+      Patient.findOneAndUpdate({ patientId }, { totalDue: patientDue, deposit: patientDeposit }),
+      Family.findOneAndUpdate({ familyId }, { familyDue: famDue, familyDeposit: famDeposit }),
+    ]);
 
     return { patientDue, patientDeposit, famDue, famDeposit };
   } catch (err) {
     console.error('Error recalculating dues:', err.message);
     return { patientDue: 0, patientDeposit: 0, famDue: 0, famDeposit: 0 };
+  }
+};
+
+// Background helper to auto-save terms to Master Data without blocking HTTP response
+const dispatchAutoSaveMasterData = (complaint, investigation, cleanPrescriptions, cleanTreatments, ipdDetails, dietary, reqBody, allergies) => {
+  try {
+    const tasks = [];
+    if (complaint && typeof complaint === 'string') {
+      complaint.split(',').forEach((c) => { if (c.trim()) tasks.push(autoSaveMasterItem('complaint', c.trim())); });
+    }
+    if (investigation && typeof investigation === 'string') {
+      investigation.split(',').forEach((i) => { if (i.trim()) tasks.push(autoSaveMasterItem('investigation', i.trim())); });
+    }
+    if (Array.isArray(cleanPrescriptions)) {
+      cleanPrescriptions.forEach((rx) => { if (rx.medicine) tasks.push(autoSaveMasterItem('medicine', rx.medicine)); });
+    }
+    if (Array.isArray(cleanTreatments)) {
+      cleanTreatments.forEach((tr) => { if (tr.item) tasks.push(autoSaveMasterItem('medicine', tr.item)); });
+    }
+    if (Array.isArray(ipdDetails)) {
+      ipdDetails.forEach((ipdItem) => {
+        const itemVal = typeof ipdItem === 'string' ? ipdItem : ipdItem?.item;
+        if (itemVal && itemVal.trim()) tasks.push(autoSaveMasterItem('medicine', itemVal.trim()));
+      });
+    }
+    if (dietary && typeof dietary === 'string') {
+      dietary.split(',').forEach((d) => { if (d.trim()) tasks.push(autoSaveMasterItem('dietary', d.trim())); });
+    }
+    if (reqBody.society && typeof reqBody.society === 'string' && reqBody.society.trim()) {
+      tasks.push(autoSaveMasterItem('society', reqBody.society.trim()));
+    }
+    if (reqBody.area && typeof reqBody.area === 'string' && reqBody.area.trim()) {
+      tasks.push(autoSaveMasterItem('area', reqBody.area.trim()));
+    }
+    if (Array.isArray(allergies)) {
+      allergies.forEach((alg) => {
+        if (typeof alg === 'string' && alg.trim()) tasks.push(autoSaveMasterItem('allergy', alg.trim()));
+      });
+    }
+    if (tasks.length > 0) {
+      Promise.allSettled(tasks).catch(() => {});
+    }
+  } catch (e) {
+    // Non-critical background task
   }
 };
 
@@ -176,54 +224,8 @@ export const recordVisit = async (req, res) => {
     // Recalculate dues & deposits
     const { patientDue, patientDeposit, famDue, famDeposit } = await recalculateDues(finalPatientId, finalFamilyId);
 
-    // Auto-save individual terms to Master Data for autocomplete:
-    // Split comma-separated items and only save new individual terms if not already existing
-    if (complaint && typeof complaint === 'string') {
-      const tokens = complaint.split(',').map((c) => c.trim()).filter(Boolean);
-      for (const item of tokens) {
-        await autoSaveMasterItem('complaint', item);
-      }
-    }
-    if (investigation && typeof investigation === 'string') {
-      const tokens = investigation.split(',').map((i) => i.trim()).filter(Boolean);
-      for (const item of tokens) {
-        await autoSaveMasterItem('investigation', item);
-      }
-    }
-    for (const rx of cleanPrescriptions) {
-      if (rx.medicine) await autoSaveMasterItem('medicine', rx.medicine);
-    }
-    for (const tr of cleanTreatments) {
-      if (tr.item) await autoSaveMasterItem('medicine', tr.item);
-    }
-    if (Array.isArray(ipdDetails)) {
-      for (const ipdItem of ipdDetails) {
-        const itemVal = typeof ipdItem === 'string' ? ipdItem : ipdItem?.item;
-        if (itemVal && itemVal.trim()) {
-          // IPD data stored in medicine tab of master data
-          await autoSaveMasterItem('medicine', itemVal.trim());
-        }
-      }
-    }
-    if (dietary && typeof dietary === 'string') {
-      const tokens = dietary.split(',').map((d) => d.trim()).filter(Boolean);
-      for (const item of tokens) {
-        await autoSaveMasterItem('dietary', item);
-      }
-    }
-    if (req.body.society && typeof req.body.society === 'string' && req.body.society.trim()) {
-      await autoSaveMasterItem('society', req.body.society.trim());
-    }
-    if (req.body.area && typeof req.body.area === 'string' && req.body.area.trim()) {
-      await autoSaveMasterItem('area', req.body.area.trim());
-    }
-    if (Array.isArray(allergies) && allergies.length > 0) {
-      for (const alg of allergies) {
-        if (typeof alg === 'string' && alg.trim()) {
-          await autoSaveMasterItem('allergy', alg.trim());
-        }
-      }
-    }
+    // Auto-save individual terms to Master Data in background without blocking HTTP response
+    dispatchAutoSaveMasterData(complaint, investigation, cleanPrescriptions, cleanTreatments, ipdDetails, dietary, req.body, allergies);
 
     // Sync patient demographic updates (dob, age, phone, society, area, allergies)
     const patUpdates = {};
@@ -409,54 +411,8 @@ export const updateVisit = async (req, res) => {
     // Recalculate dues
     const { patientDue, patientDeposit, famDue, famDeposit } = await recalculateDues(visit.patientId, visit.familyId);
 
-    // Auto-save individual terms to Master Data for autocomplete:
-    // Split comma-separated items and only save new individual terms if not already existing
-    if (complaint && typeof complaint === 'string') {
-      const tokens = complaint.split(',').map((c) => c.trim()).filter(Boolean);
-      for (const item of tokens) {
-        await autoSaveMasterItem('complaint', item);
-      }
-    }
-    if (investigation && typeof investigation === 'string') {
-      const tokens = investigation.split(',').map((i) => i.trim()).filter(Boolean);
-      for (const item of tokens) {
-        await autoSaveMasterItem('investigation', item);
-      }
-    }
-    for (const rx of cleanPrescriptions) {
-      if (rx.medicine) await autoSaveMasterItem('medicine', rx.medicine);
-    }
-    for (const tr of cleanTreatments) {
-      if (tr.item) await autoSaveMasterItem('medicine', tr.item);
-    }
-    if (Array.isArray(ipdDetails)) {
-      for (const ipdItem of ipdDetails) {
-        const itemVal = typeof ipdItem === 'string' ? ipdItem : ipdItem?.item;
-        if (itemVal && itemVal.trim()) {
-          // IPD data stored in medicine tab of master data
-          await autoSaveMasterItem('medicine', itemVal.trim());
-        }
-      }
-    }
-    if (dietary && typeof dietary === 'string') {
-      const tokens = dietary.split(',').map((d) => d.trim()).filter(Boolean);
-      for (const item of tokens) {
-        await autoSaveMasterItem('dietary', item);
-      }
-    }
-    if (req.body.society && typeof req.body.society === 'string' && req.body.society.trim()) {
-      await autoSaveMasterItem('society', req.body.society.trim());
-    }
-    if (req.body.area && typeof req.body.area === 'string' && req.body.area.trim()) {
-      await autoSaveMasterItem('area', req.body.area.trim());
-    }
-    if (Array.isArray(allergies) && allergies.length > 0) {
-      for (const alg of allergies) {
-        if (typeof alg === 'string' && alg.trim()) {
-          await autoSaveMasterItem('allergy', alg.trim());
-        }
-      }
-    }
+    // Auto-save individual terms to Master Data in background without blocking HTTP response
+    dispatchAutoSaveMasterData(complaint, investigation, cleanPrescriptions, cleanTreatments, ipdDetails, dietary, req.body, allergies);
 
     // Sync patient demographic updates (dob, age, phone, society, area, allergies)
     const patUpdates = {};

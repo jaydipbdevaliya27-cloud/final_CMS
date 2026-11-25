@@ -98,19 +98,28 @@ const RX_TRANSLATIONS = {
   en: {
     langKey: 'en',
     langName: 'English',
-    patientLabel: 'PATIENT NAME:',
-    ageGenderLabel: 'AGE / GENDER:',
-    dateLabel: 'DATE:',
-    caseNoLabel: 'CASE / PID:',
-    rxTitle: 'PRESCRIPTION (Rx)',
-    colNum: '#',
-    colMedicine: 'MEDICINE NAME',
-    colQty: 'QTY',
-    colDosageInstructions: 'DOSAGE & WHEN TO TAKE',
-    bfLabel: 'Before Food',
-    afLabel: 'After Food',
-    sosLabel: 'SOS (As Needed)',
+    flag: '🇬🇧',
+    patientLabel: 'Patient:',
+    dateLabel: 'Date:',
+    ageLabel: 'Age:',
+    bpLabel: 'B.P.:',
+    mobileLabel: 'Mobile:',
+    sugarLabel: 'Sugar:',
+    colMedicine: 'Medicine Name',
+    colQty: 'Qty',
+    colDose: 'Dose',
+    colInstruction: 'Instruction',
+    morning: 'Morning',
+    noon: 'Noon',
+    evening: 'Evening',
+    night: 'Night',
+    beforeFood: 'Before Food',
+    afterFood: 'After Food',
+    asNeeded: 'As Needed (SOS)',
+    feverSos: 'When Fever / SOS',
     dietaryTitle: 'DIETARY SUGGESTIONS',
+    adviceTitle: 'ADVICE / PRECAUTIONS:',
+    defaultAdvice: '---Avoid heavy grains (Roti, Bhakhri), potatoes, milk. Have Dal-Rice, Khichdi, Buttermilk, Curd, Lemon water, Sweet lime/Pineapple juice, Lassi in plenty.---',
     noPrescription: 'No medical store prescription prescribed for this visit.',
     footerAdvice: '* Please take medicines on time as prescribed.',
     opdTimings: 'OPD Hours: Mon - Sat (9:00 AM - 1:00 PM, 5:00 PM - 9:00 PM)',
@@ -119,19 +128,28 @@ const RX_TRANSLATIONS = {
   hi: {
     langKey: 'hi',
     langName: 'हिंदी',
+    flag: '🇮🇳',
     patientLabel: 'मरीज़ का नाम:',
-    ageGenderLabel: 'उम्र / लिंग:',
     dateLabel: 'दिनांक:',
-    caseNoLabel: 'केस नंबर:',
-    rxTitle: 'दवाइयों की पर्ची (Rx)',
-    colNum: 'क्र.',
-    colMedicine: 'दवा का नाम (Medicine Name)',
+    ageLabel: 'उम्र:',
+    bpLabel: 'बी.पी.:',
+    mobileLabel: 'मोबाइल:',
+    sugarLabel: 'शुगर:',
+    colMedicine: 'दवा का नाम',
     colQty: 'मात्रा',
-    colDosageInstructions: 'खुराक और लेने का समय (When to Take)',
-    bfLabel: 'खाने से पहले (भूखे पेट)',
-    afLabel: 'खाने के बाद ',
-    sosLabel: 'ज़रूरत पड़ने पर (SOS)',
+    colDose: 'खुराक',
+    colInstruction: 'निर्देश',
+    morning: 'सुबह',
+    noon: 'दोपहर',
+    evening: 'शाम',
+    night: 'रात',
+    beforeFood: 'खाने से पहले (भूखे पेट)',
+    afterFood: 'खाने के बाद',
+    asNeeded: 'ज़रूरत पड़ने पर (SOS)',
+    feverSos: 'बुखार आने पर (SOS)',
     dietaryTitle: 'आहार एवं परहेज़ संबंधी सलाह:',
+    adviceTitle: 'सलाह एवं परहेज़ (ADVICE):',
+    defaultAdvice: '---अनाज [रोटी, भाखरी, रोटला], आलू, दूध न लें----- ---दाल-चावल, खिचड़ी, छाछ, दही, नींबू पानी, मौसंबी का जूस, पाइनएप्पल का जूस, लस्सी ज्यादा लें---',
     noPrescription: 'इस विज़िट के लिए कोई दवा नहीं लिखी गई है।',
     footerAdvice: '* कृपया दवाइयाँ समय पर और निर्देशानुसार लें।',
     opdTimings: 'ओपीडी समय: सोम - शनि (सुबह 9:00 - 1:00, शाम 5:00 - 9:00)',
@@ -140,19 +158,28 @@ const RX_TRANSLATIONS = {
   gu: {
     langKey: 'gu',
     langName: 'ગુજરાતી',
+    flag: '🇮🇳',
     patientLabel: 'દર્દીનું નામ:',
-    ageGenderLabel: 'ઉંમર / જાતિ:',
     dateLabel: 'તારીખ:',
-    caseNoLabel: 'કેસ નં.:',
-    rxTitle: 'દવાઓની યાદી (Rx)',
-    colNum: 'ક્ર.',
-    colMedicine: 'દવાનું નામ (Medicine Name)',
+    ageLabel: 'ઉંમર:',
+    bpLabel: 'બી.પી.:',
+    mobileLabel: 'મોબાઇલ:',
+    sugarLabel: 'શુગર:',
+    colMedicine: 'દવાનું નામ',
     colQty: 'જથ્થો',
-    colDosageInstructions: 'માત્રા અને ક્યારે લેવી (When to Take)',
-    bfLabel: 'જમ્યા પહેલાં (ભૂખ્યા પેટે)',
-    afLabel: 'જમ્યા પછી',
-    sosLabel: 'જરૂર પડ્યે (SOS)',
+    colDose: 'માત્રા',
+    colInstruction: 'સૂચના',
+    morning: 'સવાર',
+    noon: 'બપોર',
+    evening: 'સાંજ',
+    night: 'રાત',
+    beforeFood: 'જમ્યા પહેલા',
+    afterFood: 'જમ્યા પછી',
+    asNeeded: 'જરૂર પડ્યે (SOS)',
+    feverSos: 'તાવ આવે ત્યારે (SOS)',
     dietaryTitle: 'ખોરાક અને પરેજી અંગેની સૂચનાઓ:',
+    adviceTitle: 'સૂચન / પરહેજ (ADVICE):',
+    defaultAdvice: '---અનાજ [ રોટલી , ભાખરી , રોટલો ] , બટાકા , દૂધ ના લેવુ----- --- દાળ ભાત, ખીચડી , છાશ, દહીં, લીંબુ પાણી, મોસંબી નુ જ્યુસ, પાઈનેપલ નુ જ્યુસ, લસ્સી વધારે લેવી---',
     noPrescription: 'આ મુલાકાત માટે કોઈ દવા લખેલ નથી.',
     footerAdvice: '* કૃપા કરીને દવાઓ સમયસર અને સૂચના મુજબ લો.',
     opdTimings: 'ઓપીડી સમય: સોમ - શનિ (સવારે 9:00 - 1:00, સાંજે 5:00 - 9:00)',
@@ -231,10 +258,44 @@ export const PatientRecord = ({
 
   const [printVisit, setPrintVisit] = useState(null);
   const [showPrintModal, setShowPrintModal] = useState(false);
-  const [printLanguage, setPrintLanguage] = useState('en'); // 'en' | 'hi' | 'gu'
+  const [showLanguageModal, setShowLanguageModal] = useState(false);
+  const [pendingPrintVisit, setPendingPrintVisit] = useState(null);
+  const [printLanguage, setPrintLanguage] = useState(() => {
+    try {
+      return localStorage.getItem('cms_print_lang') || 'gu';
+    } catch (e) {
+      return 'gu';
+    }
+  });
   const [printMode, setPrintMode] = useState('full'); // 'full' (plain paper/PDF with letterhead) | 'padOnly' (physical pre-printed letterpad)
   const [printDietary, setPrintDietary] = useState('');
   const [masterDietaryList, setMasterDietaryList] = useState([]);
+
+  // Trigger print in selected language (Gujarati, Hindi, English)
+  const triggerPrintInLanguage = (langKey, autoTrigger = true) => {
+    setPrintLanguage(langKey);
+    try {
+      localStorage.setItem('cms_print_lang', langKey);
+    } catch (e) {}
+
+    const targetVisit = pendingPrintVisit || printVisit;
+    if (targetVisit) {
+      setPrintVisit(targetVisit);
+      setPrintDietary(targetVisit.dietary || '');
+    }
+    setShowLanguageModal(false);
+    setShowPrintModal(true);
+
+    if (autoTrigger) {
+      setTimeout(() => {
+        try {
+          window.print();
+        } catch (e) {
+          console.warn('Auto print error:', e);
+        }
+      }, 180);
+    }
+  };
 
   // Dietary state
   const [dietaryCodeInput, setDietaryCodeInput] = useState('');
@@ -1814,33 +1875,28 @@ export const PatientRecord = ({
             : null,
         }));
 
-        // Reload patient visits and refresh in-memory search cache
-        if (patient.patientId && patient.patientId !== 'NEW') {
-          loadPatientVisits(patient.patientId);
+        // Update cached patient directly in memory
+        if (patient) {
+          updateCachedPatient({
+            ...patient,
+            totalDue: res.totalDue !== undefined ? res.totalDue : patient.totalDue,
+            deposit: res.deposit !== undefined ? res.deposit : (patient.deposit || 0),
+          });
         }
-        preloadPatients().catch(() => {});
 
         if (andPrint) {
           const visitForPrint = res.visit || {
             ...payload,
             _id: editingId || 'printed-case',
           };
-          setPrintVisit({
+          const preparedVisit = {
             ...visitForPrint,
             patient,
-          });
+          };
+          setPendingPrintVisit(preparedVisit);
+          setPrintVisit(preparedVisit);
           setPrintDietary(form.dietary || '');
-          setPrintLanguage('en');
-          setShowPrintModal(true);
-
-          // Fast Auto-Print: Immediately pop open the browser print dialog
-          setTimeout(() => {
-            try {
-              window.print();
-            } catch (e) {
-              console.warn('Auto-print error:', e);
-            }
-          }, 80);
+          setShowLanguageModal(true);
         }
 
         // Reset ALL form fields and clear active patient so next entry is completely clean
@@ -3560,13 +3616,14 @@ export const PatientRecord = ({
                         <button
                           type="button"
                           onClick={() => {
-                            setPrintVisit({ ...visit, patient: currentPatient });
+                            const prepared = { ...visit, patient: currentPatient };
+                            setPendingPrintVisit(prepared);
+                            setPrintVisit(prepared);
                             setPrintDietary(visit.dietary || '');
-                            setPrintLanguage('en');
-                            setShowPrintModal(true);
+                            setShowLanguageModal(true);
                           }}
                           style={styles.printPastRxBtn}
-                          title="Print Prescription"
+                          title="Print Prescription (Select Language)"
                         >
                           <Printer size={12} />
                           <span>Print</span>
@@ -3868,6 +3925,183 @@ export const PatientRecord = ({
                 style={styles.dangerConfirmBtn}
               >
                 {deletingPatient ? 'Deleting...' : 'Confirm Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: SELECT PRESCRIPTION PRINT LANGUAGE (GUJARATI, HINDI, ENGLISH) */}
+      {showLanguageModal && (
+        <div style={styles.modalOverlay} onClick={() => setShowLanguageModal(false)}>
+          <div
+            style={{
+              backgroundColor: '#FFFFFF',
+              borderRadius: '12px',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
+              width: '92%',
+              maxWidth: '460px',
+              overflow: 'hidden',
+              animation: 'modalSlideDown 0.18s ease-out',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div
+              style={{
+                padding: '14px 18px',
+                backgroundColor: '#F0FDF4',
+                borderBottom: '1.5px solid #BBF7D0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+                <Languages size={20} color="#15803D" />
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: '#166534' }}>
+                    Select Prescription Language
+                  </h3>
+                  <span style={{ fontSize: '11px', color: '#16A34A', fontWeight: 500 }}>
+                    Click language to print prescription & dosage advice
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowLanguageModal(false)}
+                style={styles.closeModalBtn}
+                title="Cancel"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Language Choice Cards */}
+            <div style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {[
+                {
+                  key: 'gu',
+                  title: 'ગુજરાતી (Gujarati)',
+                  sub: 'સવાર-બપોર-સાંજ-રાત, જમ્યા પહેલા / જમ્યા પછી, પરહેજ',
+                  flag: '🇮🇳',
+                  color: '#166534',
+                  bg: '#F0FDF4',
+                  border: '#86EFAC',
+                },
+                {
+                  key: 'hi',
+                  title: 'हिंदी (Hindi)',
+                  sub: 'सुबह-दोपहर-शाम-रात, खाने से पहले / खाने के बाद, परहेज़',
+                  flag: '🇮🇳',
+                  color: '#9A3412',
+                  bg: '#FFF7ED',
+                  border: '#FED7AA',
+                },
+                {
+                  key: 'en',
+                  title: 'English',
+                  sub: 'Morning-Noon-Evening-Night, Before/After Food, Advice',
+                  flag: '🇬🇧',
+                  color: '#1E40AF',
+                  bg: '#EFF6FF',
+                  border: '#BFDBFE',
+                },
+              ].map((lang) => {
+                const isCurrent = printLanguage === lang.key;
+                return (
+                  <button
+                    key={lang.key}
+                    type="button"
+                    onClick={() => triggerPrintInLanguage(lang.key, true)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '12px 16px',
+                      backgroundColor: lang.bg,
+                      border: isCurrent ? `2px solid ${lang.color}` : `1.5px solid ${lang.border}`,
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      textAlign: 'left',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-1px)';
+                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'none';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <span style={{ fontSize: '24px' }}>{lang.flag}</span>
+                      <div>
+                        <div style={{ fontWeight: 800, fontSize: '14px', color: lang.color, display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span>{lang.title}</span>
+                          {isCurrent && (
+                            <span style={{ fontSize: '10px', backgroundColor: lang.color, color: '#FFFFFF', padding: '1px 5px', borderRadius: 4 }}>
+                              Default
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#64748B', marginTop: '2px' }}>
+                          {lang.sub}
+                        </div>
+                      </div>
+                    </div>
+                    <Printer size={16} color={lang.color} />
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Bottom Footer with Preview Option */}
+            <div
+              style={{
+                padding: '12px 18px',
+                backgroundColor: '#F8FAFC',
+                borderTop: '1px solid #E2E8F0',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => triggerPrintInLanguage(printLanguage || 'gu', false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#2563EB',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                }}
+              >
+                <span>👁️ Preview On Screen First</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowLanguageModal(false)}
+                style={{
+                  padding: '6px 14px',
+                  backgroundColor: '#FFFFFF',
+                  border: '1px solid #CBD5E1',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  color: '#475569',
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
               </button>
             </div>
           </div>
@@ -4191,13 +4425,13 @@ export const PatientRecord = ({
                 <div style={styles.photoPatientInfoBlock}>
                   <div style={styles.photoPatientInfoRow}>
                     <div style={styles.photoPatientColLeft}>
-                      <span style={styles.photoPatientLabel}>Patient:</span>{' '}
+                      <span style={styles.photoPatientLabel}>{t.patientLabel || 'Patient:'}</span>{' '}
                       <span style={styles.photoPatientValueBold}>
                         {printVisit.patientName || currentPatient?.name || '—'}
                       </span>
                     </div>
                     <div style={styles.photoPatientColRight}>
-                      <span style={styles.photoPatientLabel}>Date:</span>{' '}
+                      <span style={styles.photoPatientLabel}>{t.dateLabel || 'Date:'}</span>{' '}
                       <span style={styles.photoPatientValue}>
                         {(() => {
                           let dPart = '';
@@ -4231,13 +4465,13 @@ export const PatientRecord = ({
 
                   <div style={styles.photoPatientInfoRow}>
                     <div style={styles.photoPatientColLeft}>
-                      <span style={styles.photoPatientLabel}>Age:</span>{' '}
+                      <span style={styles.photoPatientLabel}>{t.ageLabel || 'Age:'}</span>{' '}
                       <span style={styles.photoPatientValue}>
                         {currentPatient?.age ? `${currentPatient.age} Y` : (printVisit.age ? `${printVisit.age} Y` : '—')}
                       </span>
                     </div>
                     <div style={styles.photoPatientColRight}>
-                      <span style={styles.photoPatientLabel}>B.P.:</span>{' '}
+                      <span style={styles.photoPatientLabel}>{t.bpLabel || 'B.P.:'}</span>{' '}
                       <span style={styles.photoPatientValue}>
                         {printVisit.bp ? printVisit.bp : '-'}
                       </span>
@@ -4246,13 +4480,13 @@ export const PatientRecord = ({
 
                   <div style={styles.photoPatientInfoRow}>
                     <div style={styles.photoPatientColLeft}>
-                      <span style={styles.photoPatientLabel}>Mobile:</span>{' '}
+                      <span style={styles.photoPatientLabel}>{t.mobileLabel || 'Mobile:'}</span>{' '}
                       <span style={styles.photoPatientValue}>
                         {currentPatient?.phone || printVisit.phone || '-'}
                       </span>
                     </div>
                     <div style={styles.photoPatientColRight}>
-                      <span style={styles.photoPatientLabel}>Sugar:</span>{' '}
+                      <span style={styles.photoPatientLabel}>{t.sugarLabel || 'Sugar:'}</span>{' '}
                       <span style={styles.photoPatientValue}>
                         {printVisit.sugar ? printVisit.sugar : '-'}
                       </span>
@@ -4271,10 +4505,10 @@ export const PatientRecord = ({
                 <table style={styles.photoRxTable}>
                   <thead>
                     <tr>
-                      <th style={{ ...styles.photoRxTh, width: '42%', textAlign: 'left' }}>Medicine Name</th>
-                      <th style={{ ...styles.photoRxTh, width: '12%', textAlign: 'center' }}>Qty</th>
-                      <th style={{ ...styles.photoRxTh, width: '26%', textAlign: 'center' }}>Dose</th>
-                      <th style={{ ...styles.photoRxTh, width: '20%', textAlign: 'left' }}>Instruction</th>
+                      <th style={{ ...styles.photoRxTh, width: '42%', textAlign: 'left' }}>{t.colMedicine || 'Medicine Name'}</th>
+                      <th style={{ ...styles.photoRxTh, width: '12%', textAlign: 'center' }}>{t.colQty || 'Qty'}</th>
+                      <th style={{ ...styles.photoRxTh, width: '26%', textAlign: 'center' }}>{t.colDose || 'Dose'}</th>
+                      <th style={{ ...styles.photoRxTh, width: '20%', textAlign: 'left' }}>{t.colInstruction || 'Instruction'}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -4287,14 +4521,14 @@ export const PatientRecord = ({
                           (rx.evening && rx.evening !== '0') ||
                           (rx.night && rx.night !== '0');
 
-                        // Gujarati instruction text
+                        // Multilingual instruction text
                         let instructionText = '';
                         if (isSos) {
-                          instructionText = rx.sosInstruction?.trim() || 'તાવ આવે ત્યારે';
+                          instructionText = rx.sosInstruction?.trim() || t.feverSos || t.asNeeded || 'SOS';
                         } else if (rx.timing === 'BF') {
-                          instructionText = 'જમ્યા પહેલા';
+                          instructionText = t.beforeFood || 'Before Food';
                         } else {
-                          instructionText = 'જમ્યા પછી';
+                          instructionText = t.afterFood || 'After Food';
                         }
 
                         return (
@@ -4317,10 +4551,10 @@ export const PatientRecord = ({
                                 <table style={styles.photoDoseMiniTable}>
                                   <thead>
                                     <tr>
-                                      <th style={styles.photoDoseMiniTh}>સવાર</th>
-                                      <th style={styles.photoDoseMiniTh}>બપોર</th>
-                                      <th style={styles.photoDoseMiniTh}>સાંજ</th>
-                                      <th style={{ ...styles.photoDoseMiniTh, borderRight: 'none' }}>રાત</th>
+                                      <th style={styles.photoDoseMiniTh}>{t.morning || 'M'}</th>
+                                      <th style={styles.photoDoseMiniTh}>{t.noon || 'N'}</th>
+                                      <th style={styles.photoDoseMiniTh}>{t.evening || 'E'}</th>
+                                      <th style={{ ...styles.photoDoseMiniTh, borderRight: 'none' }}>{t.night || 'Nt'}</th>
                                     </tr>
                                   </thead>
                                   <tbody>
@@ -4363,12 +4597,12 @@ export const PatientRecord = ({
                 {/* 4. ADVICE BOX (સૂચન / પરહેજ (ADVICE)) */}
                 <div style={styles.photoAdviceBox}>
                   <span style={styles.photoAdviceTitle}>
-                    સૂચન / પરહેજ (ADVICE):{' '}
+                    {t.adviceTitle || 'સૂચન / પરહેજ (ADVICE):'}{' '}
                   </span>
                   <span style={styles.photoAdviceText}>
                     {printDietary && printDietary.trim()
                       ? printDietary
-                      : '---અનાજ [ રોટલી , ભાખરી , રોટલો ] , બટાકા , દૂધ ના લેવુ----- --- દાળ ભાત, ખીચડી , છાશ, દહીં, લીંબુ પાણી, મોસંબી નુ જ્યુસ, પાઈનેપલ નુ જ્યુસ, લસ્સી વધારે લેવી'}
+                      : (t.defaultAdvice || '---અનાજ [ રોટલી , ભાખરી , રોટલો ] , બટાકા , દૂધ ના લેવુ----- --- દાળ ભાત, ખીચડી , છાશ, દહીં, લીંબુ પાણી, મોસંબી નુ જ્યુસ, પાઈનેપલ નુ જ્યુસ, લસ્સી વધારે લેવી')}
                   </span>
                 </div>
 
