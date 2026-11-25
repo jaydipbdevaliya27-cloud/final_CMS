@@ -200,9 +200,42 @@ export const getPatients = async (req, res) => {
       familyMap[f.familyId] = f;
     });
 
+    // Enrich with the last 2 to 3 case records for each matching patient
+    const patientIds = [...new Set(patients.map((p) => p.patientId).filter(Boolean))];
+    const visitsByPatient = {};
+    if (patientIds.length > 0) {
+      const recentVisits = await Visit.find({ patientId: { $in: patientIds } })
+        .select('patientId visitDate complaint treatments prescriptions bp sugar other charge received due createdAt')
+        .sort({ visitDate: -1, createdAt: -1 })
+        .lean();
+
+      recentVisits.forEach((v) => {
+        if (!visitsByPatient[v.patientId]) {
+          visitsByPatient[v.patientId] = [];
+        }
+        if (visitsByPatient[v.patientId].length < 3) {
+          visitsByPatient[v.patientId].push({
+            _id: v._id,
+            visitDate: v.visitDate,
+            complaint: v.complaint || '',
+            treatments: v.treatments || [],
+            prescriptions: v.prescriptions || [],
+            bp: v.bp || '',
+            sugar: v.sugar || '',
+            other: v.other || '',
+            charge: v.charge || 0,
+            received: v.received || 0,
+            due: v.due || 0,
+            createdAt: v.createdAt,
+          });
+        }
+      });
+    }
+
     const enriched = patients.map((p) => ({
       ...p,
       family: familyMap[p.familyId] || null,
+      recentVisits: visitsByPatient[p.patientId] || [],
     }));
 
     return res.status(200).json({

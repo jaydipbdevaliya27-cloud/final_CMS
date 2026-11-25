@@ -163,9 +163,9 @@ export const visitAPI = {
     const response = await api.post('/visits/collect-due', data);
     return response.data;
   },
-  getByPatient: async (patientId) => {
+  getByPatient: async (patientId, params = {}) => {
     const response = await api.get('/visits', {
-      params: { patientId },
+      params: { patientId, ...params },
     });
     return response.data;
   },

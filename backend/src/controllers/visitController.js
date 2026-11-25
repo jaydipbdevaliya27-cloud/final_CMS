@@ -261,13 +261,24 @@ export const recordVisit = async (req, res) => {
 // @access  Private
 export const getPatientVisits = async (req, res) => {
   try {
-    const { patientId, familyId } = req.query;
+    const { patientId, patientIds, familyId, limit } = req.query;
     const query = {};
 
-    if (patientId) query.patientId = patientId.trim();
+    if (patientIds) {
+      const idList = Array.isArray(patientIds)
+        ? patientIds
+        : String(patientIds).split(',').map((id) => id.trim()).filter(Boolean);
+      query.patientId = { $in: idList };
+    } else if (patientId) {
+      query.patientId = patientId.trim();
+    }
     if (familyId) query.familyId = familyId.trim();
 
-    const visits = await Visit.find(query).sort({ createdAt: -1 });
+    let queryBuilder = Visit.find(query).sort({ visitDate: -1, createdAt: -1 });
+    if (limit) {
+      queryBuilder = queryBuilder.limit(parseInt(limit, 10));
+    }
+    const visits = await queryBuilder.lean();
 
     return res.status(200).json({
       success: true,

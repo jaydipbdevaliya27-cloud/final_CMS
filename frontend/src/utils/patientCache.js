@@ -20,6 +20,7 @@ const indexPatient = (p) => {
 
   return {
     ...p,
+    recentVisits: Array.isArray(p.recentVisits) ? p.recentVisits : [],
     _nameUpper: nameUpper,
     _nameWords: nameWords,
     _pid: pid,
@@ -75,6 +76,7 @@ const persistCacheToStorage = (list) => {
         isHead: p.isHead,
         totalDue: p.totalDue,
         deposit: p.deposit,
+        recentVisits: Array.isArray(p.recentVisits) ? p.recentVisits.slice(0, 3) : [],
         family: p.family ? {
           familyId: p.family.familyId,
           headName: p.family.headName,

@@ -193,6 +193,7 @@ export const PatientRecord = ({
 
   const [currentPatient, setCurrentPatient] = useState(null);
   const [patientVisits, setPatientVisits] = useState([]);
+  const [dropdownVisitsMap, setDropdownVisitsMap] = useState({});
   const [loadingVisits, setLoadingVisits] = useState(false);
   const [toastMessage, setToastMessage] = useState({ text: '', type: 'success' });
 
@@ -890,25 +891,28 @@ export const PatientRecord = ({
         return;
       }
 
-      // Check RAM cache first
+      // Check RAM cache first for 0ms immediate responsiveness
       const instantMatches = searchPatientsInMemory(q, 35);
       if (instantMatches.length > 0) {
         setSearchResults(instantMatches);
-        setPatientHighlightIndex(0);
         setShowSearchDropdown(true);
-        return;
       }
 
       try {
         setIsSearching(true);
         const res = await patientAPI.getAll(q);
-        if (active && res.success) {
-          setSearchResults(res.data || []);
-          setPatientHighlightIndex(0); // Automatically select first match
-          setShowSearchDropdown(true);
-          if (Array.isArray(res.data)) {
-            res.data.forEach((p) => updateCachedPatient(p));
-          }
+        if (active && res.success && Array.isArray(res.data)) {
+          setSearchResults(res.data);
+          setShowSearchDropdown(res.data.length > 0);
+          res.data.forEach((p) => {
+            updateCachedPatient(p);
+            if (p.patientId && Array.isArray(p.recentVisits) && p.recentVisits.length > 0) {
+              setDropdownVisitsMap((prev) => ({
+                ...prev,
+                [p.patientId]: p.recentVisits,
+              }));
+            }
+          });
         }
       } catch (err) {
         console.error('Search error:', err);
@@ -921,6 +925,47 @@ export const PatientRecord = ({
       active = false;
     };
   }, [debouncedSearch]);
+
+  // Fetch missing recent visits for displayed search results (top 8)
+  useEffect(() => {
+    if (!showSearchDropdown || !Array.isArray(searchResults) || searchResults.length === 0) return;
+    let active = true;
+
+    const targets = searchResults.slice(0, 8);
+    // Populate any already attached recentVisits
+    targets.forEach((p) => {
+      if (p.patientId && Array.isArray(p.recentVisits) && p.recentVisits.length > 0 && !dropdownVisitsMap[p.patientId]) {
+        setDropdownVisitsMap((prev) => ({
+          ...prev,
+          [p.patientId]: p.recentVisits,
+        }));
+      }
+    });
+
+    const needFetch = targets.filter(
+      (p) => p.patientId && p.patientId !== 'NEW' && (!p.recentVisits || p.recentVisits.length === 0) && !dropdownVisitsMap[p.patientId]
+    );
+
+    if (needFetch.length > 0) {
+      needFetch.forEach(async (p) => {
+        try {
+          const res = await visitAPI.getByPatient(p.patientId, { limit: 3 });
+          if (active && res?.success && Array.isArray(res.data)) {
+            setDropdownVisitsMap((prev) => ({
+              ...prev,
+              [p.patientId]: res.data,
+            }));
+          }
+        } catch (e) {
+          // ignore
+        }
+      });
+    }
+
+    return () => {
+      active = false;
+    };
+  }, [searchResults, showSearchDropdown]);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -1996,19 +2041,24 @@ export const PatientRecord = ({
             <div style={styles.photoCardBody}>
               {/* Row 1: Entry Date & Patient Full Name */}
               <div style={styles.photoRow2Col}>
-                <div style={{ ...styles.photoFieldGroup, width: '135px', flexShrink: 0 }}>
+                <div style={{ ...styles.photoFieldGroup, width: '110px', flex: '0 0 110px' }}>
                   <label style={styles.photoLabel}>Entry Date:</label>
                   <input
                     type="date"
                     value={visitForm.visitDate}
                     onChange={(e) => updateFormField('visitDate', e.target.value)}
-                    style={styles.photoInput}
+                    style={{
+                      ...styles.photoInput,
+                      height: '30px',
+                      padding: '2px 4px',
+                      fontSize: '11px',
+                    }}
                   />
                 </div>
 
-                <div style={{ ...styles.photoFieldGroup, flex: 1, position: 'relative' }} ref={searchWrapRef}>
+                <div style={{ ...styles.photoFieldGroup, flex: 1, minWidth: '220px', position: 'relative' }} ref={searchWrapRef}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <label style={styles.photoLabel}>
+                    <label style={{ ...styles.photoLabel, fontSize: '12px' }}>
                       Patient Full Name: <span style={{ color: '#DC2626' }}>*</span>
                     </label>
                     {currentPatient && (
@@ -2076,35 +2126,166 @@ export const PatientRecord = ({
                     }}
                     style={{
                       ...styles.photoInput,
-                      fontWeight: currentPatient ? 800 : 500,
+                      height: '30px',
+                      fontSize: '13px',
+                      fontWeight: currentPatient ? 800 : 600,
                       color: currentPatient ? '#1E40AF' : '#0F172A',
                       backgroundColor: currentPatient ? '#F0F9FF' : '#FFFFFF',
+                      border: currentPatient ? '1.5px solid #2563EB' : '1.5px solid #94A3B8',
+                      padding: '3px 8px',
                     }}
                   />
 
-                  {/* Dropdown suggestions */}
+                  {/* Dropdown suggestions with Last 2 to 3 Case Records */}
                   {showSearchDropdown && searchResults.length > 0 && (
                     <div style={styles.photoPatientDropdown}>
-                      {searchResults.map((p, idx) => (
-                        <div
-                          key={p._id || p.patientId}
-                          onClick={() => handleSelectPatient(p)}
-                          onMouseEnter={() => setPatientHighlightIndex(idx)}
-                          style={{
-                            ...styles.photoDropdownItem,
-                            backgroundColor: idx === patientHighlightIndex ? '#E0F2FE' : '#FFFFFF',
-                          }}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <span style={{ fontWeight: 700, color: '#1E293B' }}>{p.name}</span>
-                            <span style={styles.photoMiniBadge}>{p.patientId}</span>
-                            {p.isHead && <span style={styles.photoHeadBadge}>HEAD</span>}
+                      {searchResults.map((p, idx) => {
+                        const isHighlighted = idx === patientHighlightIndex;
+                        const visits = (p.recentVisits && p.recentVisits.length > 0)
+                          ? p.recentVisits
+                          : (dropdownVisitsMap[p.patientId] || []);
+
+                        return (
+                          <div
+                            key={p._id || p.patientId}
+                            onClick={() => handleSelectPatient(p)}
+                            onMouseEnter={() => setPatientHighlightIndex(idx)}
+                            style={{
+                              ...styles.photoDropdownItem,
+                              backgroundColor: isHighlighted ? '#EFF6FF' : '#FFFFFF',
+                              borderLeft: isHighlighted ? '4px solid #2563EB' : '4px solid transparent',
+                            }}
+                          >
+                            {/* Patient Demographics Row */}
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                <span style={{ fontWeight: 800, fontSize: 13, color: '#1E293B' }}>{p.name}</span>
+                                <span style={styles.photoMiniBadge}>{p.patientId}</span>
+                                {p.isHead && <span style={styles.photoHeadBadge}>HEAD</span>}
+                                {p.gender && (
+                                  <span style={{ fontSize: 10, color: '#475569', fontWeight: 600 }}>({p.gender})</span>
+                                )}
+                                <span style={{ fontSize: 11, color: '#64748B' }}>
+                                  Age {p.age || '-'} &bull; 📱 {p.phone || '-'} &bull; 📍 {p.area || p.family?.area || p.society || ''}
+                                </span>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                                {Number(p.totalDue || 0) > 0 ? (
+                                  <span style={{ fontSize: 10, fontWeight: 700, color: '#DC2626', backgroundColor: '#FEF2F2', padding: '1px 6px', borderRadius: 4, border: '1px solid #FECACA' }}>
+                                    Due: ₹{p.totalDue}
+                                  </span>
+                                ) : Number(p.deposit || 0) > 0 ? (
+                                  <span style={{ fontSize: 10, fontWeight: 700, color: '#16A34A', backgroundColor: '#F0FDF4', padding: '1px 6px', borderRadius: 4, border: '1px solid #BBF7D0' }}>
+                                    Deposit: ₹{p.deposit}
+                                  </span>
+                                ) : null}
+                                <span style={{ fontSize: 10, color: '#2563EB', fontWeight: 600 }}>
+                                  {visits.length > 0 ? `${visits.length} past case${visits.length > 1 ? 's' : ''}` : 'Select ↵'}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Allergies alert */}
+                            {Array.isArray(p.allergies) && p.allergies.length > 0 && (
+                              <div style={{ marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <span style={{ fontSize: 9, fontWeight: 700, color: '#DC2626', backgroundColor: '#FEE2E2', padding: '0 4px', borderRadius: 3 }}>
+                                  ⚠️ ALLERGY:
+                                </span>
+                                <span style={{ fontSize: 10, color: '#B91C1C', fontWeight: 600 }}>
+                                  {p.allergies.join(', ')}
+                                </span>
+                              </div>
+                            )}
+
+                            {/* Past 2 to 3 Case Records Preview */}
+                            <div style={styles.dropdownCaseHistoryBox}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                                <span style={{ fontSize: 10, fontWeight: 700, color: '#1E40AF' }}>
+                                  📋 Past Records (Last {Math.min(visits.length || 3, 3)} Cases):
+                                </span>
+                                <span style={{ fontSize: 9, color: '#64748B' }}>
+                                  {visits.length > 0 ? 'Click to select patient' : 'No past visits recorded'}
+                                </span>
+                              </div>
+
+                              {visits.length === 0 ? (
+                                <div style={{ fontSize: 10, color: '#64748B', fontStyle: 'italic', padding: '2px 0' }}>
+                                  No previous case records found (New Consultation).
+                                </div>
+                              ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                  {visits.slice(0, 3).map((v, vIdx) => {
+                                    const clinicMedNames = (v.treatments || []).map((t) => t.medicine).filter(Boolean);
+                                    const rxMedNames = (v.prescriptions || []).map((rx) => rx.medicine).filter(Boolean);
+                                    const allMeds = [...new Set([...clinicMedNames, ...rxMedNames])];
+
+                                    const formattedDate = v.visitDate
+                                      ? (v.visitDate.includes('-')
+                                          ? v.visitDate.split('-').reverse().join('-')
+                                          : new Date(v.visitDate).toLocaleDateString('en-GB'))
+                                      : '-';
+
+                                    return (
+                                      <div
+                                        key={v._id || vIdx}
+                                        style={{
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: 6,
+                                          fontSize: 10,
+                                          backgroundColor: isHighlighted ? '#FFFFFF' : '#F8FAFC',
+                                          padding: '3px 6px',
+                                          borderRadius: 4,
+                                          border: '1px solid #E2E8F0',
+                                          flexWrap: 'wrap',
+                                        }}
+                                      >
+                                        <span style={{ fontWeight: 700, color: '#0F766E', backgroundColor: '#F0FDFA', padding: '1px 5px', borderRadius: 3, border: '1px solid #CCFBF1' }}>
+                                          📅 {formattedDate}
+                                        </span>
+
+                                        {v.bp && (
+                                          <span style={{ fontWeight: 700, color: '#B91C1C', backgroundColor: '#FEF2F2', padding: '1px 5px', borderRadius: 3, border: '1px solid #FECACA' }}>
+                                            BP: {v.bp}
+                                          </span>
+                                        )}
+
+                                        {v.sugar && (
+                                          <span style={{ fontWeight: 600, color: '#C2410C', backgroundColor: '#FFF7ED', padding: '1px 5px', borderRadius: 3 }}>
+                                            Sugar: {v.sugar}
+                                          </span>
+                                        )}
+
+                                        {v.complaint && (
+                                          <span style={{ color: '#334155' }}>
+                                            <strong style={{ color: '#0F172A' }}>Complaint:</strong> {v.complaint}
+                                          </span>
+                                        )}
+
+                                        {allMeds.length > 0 && (
+                                          <span style={{ color: '#1E40AF', marginLeft: 'auto' }}>
+                                            <strong style={{ color: '#1E3A8A' }}>Rx/Meds:</strong> {allMeds.slice(0, 3).join(', ')}{allMeds.length > 3 ? ` (+${allMeds.length - 3})` : ''}
+                                          </span>
+                                        )}
+
+                                        {Number(v.due || 0) > 0 ? (
+                                          <span style={{ color: '#DC2626', fontWeight: 700, marginLeft: 4 }}>
+                                            Due: ₹{v.due}
+                                          </span>
+                                        ) : (
+                                          <span style={{ color: '#16A34A', fontWeight: 600, marginLeft: 4 }}>
+                                            ✓ Paid
+                                          </span>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
                           </div>
-                          <div style={{ fontSize: 10, color: '#64748B' }}>
-                            {p.phone || ''} &bull; Age {p.age || '-'} &bull; {p.area || p.family?.area || ''}
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -5120,19 +5301,27 @@ const styles = {
     top: '100%',
     left: 0,
     right: 0,
+    minWidth: '100%',
     backgroundColor: '#FFFFFF',
-    border: '1px solid #3B82F6',
-    borderRadius: '4px',
-    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-    maxHeight: '220px',
+    border: '1.5px solid #2563EB',
+    borderRadius: '6px',
+    boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.25), 0 8px 10px -6px rgba(0, 0, 0, 0.15)',
+    maxHeight: '400px',
     overflowY: 'auto',
-    zIndex: 100,
-    marginTop: '2px',
+    zIndex: 1000,
+    marginTop: '3px',
   },
   photoDropdownItem: {
-    padding: '5px 8px',
-    borderBottom: '1px solid #F1F5F9',
+    padding: '7px 10px',
+    borderBottom: '1px solid #E2E8F0',
     cursor: 'pointer',
+  },
+  dropdownCaseHistoryBox: {
+    marginTop: '4px',
+    padding: '4px 6px',
+    backgroundColor: '#F8FAFC',
+    borderRadius: '4px',
+    border: '1px solid #E2E8F0',
   },
   photoMiniBadge: {
     fontSize: '9px',
