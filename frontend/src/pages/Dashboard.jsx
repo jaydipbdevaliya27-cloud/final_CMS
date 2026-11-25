@@ -1166,9 +1166,34 @@ export const Dashboard = () => {
                         : m.relation || 'Member';
                       const displayPid =
                         m.patientId || (m._id ? String(m._id).slice(-4) : 'PID');
-                      const allergyStr = Array.isArray(m.allergies)
-                        ? m.allergies.filter(Boolean).join(', ')
-                        : m.allergies || '';
+
+                      // Filter real allergies: ignore empty, NONE, NIL, NO
+                      const rawAllergies = Array.isArray(m.allergies)
+                        ? m.allergies
+                        : (m.allergies ? [m.allergies] : []);
+                      const realAllergies = rawAllergies
+                        .filter((a) => a && typeof a === 'string' && a.trim() && !['NONE', 'NIL', 'NO', 'NA', 'NO ALLERGIES'].includes(a.trim().toUpperCase()));
+
+                      // Only include fields that were actually written/entered:
+                      const detailItems = [];
+                      if (m.age && String(m.age).trim() && String(m.age).trim() !== '-') {
+                        detailItems.push(`Age ${String(m.age).trim()}`);
+                      }
+                      if (
+                        m.gender &&
+                        String(m.gender).trim() &&
+                        !['NOT SPECIFIED', 'UNKNOWN', '-', 'NOT_SPECIFIED'].includes(String(m.gender).trim().toUpperCase())
+                      ) {
+                        detailItems.push(String(m.gender).trim());
+                      }
+                      if (m.phone && String(m.phone).trim() && String(m.phone).trim() !== '-') {
+                        detailItems.push(String(m.phone).trim());
+                      }
+                      const areaVal = m.area || m.society || m.family?.area || '';
+                      if (areaVal && areaVal.trim() && areaVal.trim() !== '-') {
+                        detailItems.push(areaVal.trim());
+                      }
+
                       const isHighlighted = idx === searchHighlightIndex;
 
                       return (
@@ -1197,32 +1222,25 @@ export const Dashboard = () => {
                               </span>
                             </div>
                             <div style={styles.uniMemberDetails}>
-                              {m.age && <span>Age {m.age}</span>}
-                              <span>&bull;</span>
-                              <span>{m.gender || 'Not Specified'}</span>
-                              {m.phone && (
-                                <>
-                                  <span>&bull;</span>
-                                  <span>📱 {m.phone}</span>
-                                </>
-                              )}
-                              {(m.area || m.society || m.family?.area) && (
-                                <>
-                                  <span>&bull;</span>
-                                  <span>📍 {m.area || m.society || m.family?.area}</span>
-                                </>
-                              )}
+                              {detailItems.map((item, dIdx) => (
+                                <React.Fragment key={dIdx}>
+                                  {dIdx > 0 && <span>&bull;</span>}
+                                  <span>{item}</span>
+                                </React.Fragment>
+                              ))}
+
                               {Number(m.totalDue || 0) > 0 && (
                                 <>
-                                  <span>&bull;</span>
+                                  {detailItems.length > 0 && <span>&bull;</span>}
                                   <span style={{ color: '#DC2626', fontWeight: 700 }}>Due: ₹{m.totalDue}</span>
                                 </>
                               )}
-                              {allergyStr && (
+
+                              {realAllergies.length > 0 && (
                                 <>
-                                  <span>&bull;</span>
+                                  {(detailItems.length > 0 || Number(m.totalDue || 0) > 0) && <span>&bull;</span>}
                                   <span style={styles.uniMemberAllergy}>
-                                    ⚠️ {allergyStr}
+                                    ALLERGY: {realAllergies.join(', ')}
                                   </span>
                                 </>
                               )}
@@ -1722,11 +1740,17 @@ const styles = {
     color: '#64748B',
     display: 'flex',
     alignItems: 'center',
+    flexWrap: 'wrap',
     gap: '5px',
   },
   uniMemberAllergy: {
-    color: '#DC2626',
-    fontWeight: 600,
+    color: '#B91C1C',
+    fontWeight: 700,
+    backgroundColor: '#FEE2E2',
+    padding: '1px 5px',
+    borderRadius: '3px',
+    fontSize: '0.72rem',
+    border: '1px solid #FECACA',
   },
   uniMemberRight: {
     display: 'flex',
