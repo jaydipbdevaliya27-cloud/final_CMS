@@ -68,6 +68,7 @@ export const universalSearch = async (req, res) => {
           ...(candidateFamIdArr.length > 0 ? [{ familyId: { $in: candidateFamIdArr } }] : []),
         ],
       })
+        .select('familyId')
         .limit(10)
         .lean();
 

@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useDebounce } from '../hooks/useDebounce';
 import { familyAPI, universalSearchAPI, reportAPI } from '../services/api';
 import { preloadMasterData } from '../components/common/MasterDataInput';
-import { preloadPatients, searchPatientsInMemory } from '../utils/patientCache';
+import { preloadPatients, searchPatientsInMemory, updateCachedPatient } from '../utils/patientCache';
 import { SidebarTabs } from '../components/common/SidebarTabs';
 import { FamilyHeadRegistration } from './FamilyHeadRegistration';
 import { MasterDataManagement } from './MasterDataManagement';
@@ -67,7 +67,7 @@ export const Dashboard = () => {
   const [patientForNewCase, setPatientForNewCase] = useState(null);
   const [visitToEdit, setVisitToEdit] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const debouncedSearchQuery = useDebounce(searchQuery, 300);
+  const debouncedSearchQuery = useDebounce(searchQuery, 120);
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
@@ -274,43 +274,47 @@ export const Dashboard = () => {
     if (!val || !val.trim()) {
       setSearchResults([]);
       setShowSearchDropdown(false);
+      setIsSearching(false);
       return;
     }
+    setShowSearchDropdown(true);
     // Instant synchronous 0ms memory search from RAM
-    const instantMatches = searchPatientsInMemory(val);
+    const instantMatches = searchPatientsInMemory(val, 30);
     if (instantMatches.length > 0) {
-      setSearchResults(instantMatches.slice(0, 30));
+      setSearchResults(instantMatches);
       setSearchHighlightIndex(0);
-      setShowSearchDropdown(true);
+      setIsSearching(false);
+    } else {
+      setSearchResults([]);
+      setIsSearching(true);
     }
   };
 
-  // Perform debounced universal search (Fallback for un-cached terms)
+  // Perform fast debounced universal search (Fallback/enrichment for database terms & families)
   useEffect(() => {
     let active = true;
     const executeSearch = async () => {
-      if (!debouncedSearchQuery.trim()) {
+      const q = debouncedSearchQuery.trim();
+      if (!q) {
         setSearchResults([]);
         setIsSearching(false);
         return;
       }
 
       // Check RAM cache first
-      const instantMatches = searchPatientsInMemory(debouncedSearchQuery);
+      const instantMatches = searchPatientsInMemory(q, 30);
       if (instantMatches.length > 0) {
-        setSearchResults(instantMatches.slice(0, 30));
-        setSearchHighlightIndex(0);
+        setSearchResults(instantMatches);
         setShowSearchDropdown(true);
-        return;
+        setIsSearching(false);
       }
 
       try {
-        setIsSearching(true);
-        const res = await universalSearchAPI.search(debouncedSearchQuery);
-        if (active && res.success) {
-          setSearchResults(res.data || []);
-          setSearchHighlightIndex(0); // Automatically select first match
-          setShowSearchDropdown(true);
+        const res = await universalSearchAPI.search(q);
+        if (active && res.success && Array.isArray(res.data)) {
+          setSearchResults(res.data);
+          setShowSearchDropdown(res.data.length > 0);
+          res.data.forEach((p) => updateCachedPatient(p));
         }
       } catch (err) {
         console.error('Universal search error:', err);
@@ -1137,13 +1141,13 @@ export const Dashboard = () => {
             <span style={styles.searchShortcutBadge}>/</span>
           )}
 
-          {/* Debounced Universal Search Dropdown: Clean list of matched patients */}
-          {showSearchDropdown && debouncedSearchQuery.trim() && (() => {
+          {/* Instant Universal Search Dropdown: Clean list of matched patients */}
+          {showSearchDropdown && searchQuery.trim() && (() => {
             const list = Array.isArray(searchResults) ? searchResults : [];
 
             return (
               <div style={styles.globalSearchDropdown}>
-                {isSearching ? (
+                {isSearching && list.length === 0 ? (
                   <div style={styles.searchDropdownMessage}>
                     <div style={styles.searchLoadingSpinner} />
                     <span>Searching database...</span>
@@ -1151,7 +1155,7 @@ export const Dashboard = () => {
                 ) : list.length === 0 ? (
                   <div style={styles.searchEmptyContainer}>
                     <p style={styles.searchEmptyTitle}>
-                      No matching patients found for "{debouncedSearchQuery}"
+                      No matching patients found for "{searchQuery}"
                     </p>
                   </div>
                 ) : (
@@ -1191,14 +1195,29 @@ export const Dashboard = () => {
                               <span style={styles.uniMemberRelation}>
                                 ({relationLabel})
                               </span>
-                              {isHighlighted}
                             </div>
                             <div style={styles.uniMemberDetails}>
                               {m.age && <span>Age {m.age}</span>}
                               <span>&bull;</span>
                               <span>{m.gender || 'Not Specified'}</span>
-                              <span>&bull;</span>
-                              <span>{m.bloodGroup || 'Blood: --'}</span>
+                              {m.phone && (
+                                <>
+                                  <span>&bull;</span>
+                                  <span>📱 {m.phone}</span>
+                                </>
+                              )}
+                              {(m.area || m.society || m.family?.area) && (
+                                <>
+                                  <span>&bull;</span>
+                                  <span>📍 {m.area || m.society || m.family?.area}</span>
+                                </>
+                              )}
+                              {Number(m.totalDue || 0) > 0 && (
+                                <>
+                                  <span>&bull;</span>
+                                  <span style={{ color: '#DC2626', fontWeight: 700 }}>Due: ₹{m.totalDue}</span>
+                                </>
+                              )}
                               {allergyStr && (
                                 <>
                                   <span>&bull;</span>
@@ -1406,7 +1425,7 @@ const styles = {
     boxShadow: 'var(--shadow-sm)',
     position: 'sticky',
     top: 0,
-    zIndex: 10,
+    zIndex: 99999,
   },
   navBrand: {
     display: 'flex',
@@ -1492,6 +1511,7 @@ const styles = {
     maxWidth: '420px',
     minWidth: '160px',
     margin: '0 12px',
+    zIndex: 100000,
   },
   searchIcon: {
     position: 'absolute',
@@ -1538,14 +1558,15 @@ const styles = {
     position: 'absolute',
     top: 'calc(100% + 6px)',
     left: 0,
-    width: '560px',
+    width: '580px',
+    maxWidth: '90vw',
     maxHeight: '480px',
     overflowY: 'auto',
     backgroundColor: '#FFFFFF',
-    border: '1px solid #CBD5E1',
+    border: '1.5px solid #146B5C',
     borderRadius: '10px',
-    boxShadow: '0 12px 30px -4px rgba(0, 0, 0, 0.16), 0 6px 12px -3px rgba(0, 0, 0, 0.08)',
-    zIndex: 1000,
+    boxShadow: '0 20px 40px -4px rgba(0, 0, 0, 0.35), 0 8px 16px -4px rgba(0, 0, 0, 0.2)',
+    zIndex: 100001,
     display: 'flex',
     flexDirection: 'column',
   },
