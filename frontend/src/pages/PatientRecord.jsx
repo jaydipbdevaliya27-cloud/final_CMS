@@ -216,6 +216,7 @@ export const PatientRecord = ({
   const [patientHighlightIndex, setPatientHighlightIndex] = useState(0);
   const searchWrapRef = useRef(null);
   const patientSearchInputRef = useRef(null);
+  const ageInputRef = useRef(null);
   const [recentPatientsList, setRecentPatientsList] = useState([]);
 
   const [currentPatient, setCurrentPatient] = useState(null);
@@ -954,7 +955,7 @@ export const PatientRecord = ({
     const instantMatches = searchPatientsInMemory(val, 35);
     setSearchResults(instantMatches);
     setPatientHighlightIndex(0);
-    setShowSearchDropdown(instantMatches.length > 0);
+    setShowSearchDropdown(true);
   };
 
   useEffect(() => {
@@ -979,7 +980,7 @@ export const PatientRecord = ({
         const res = await patientAPI.getAll(q);
         if (active && res.success && Array.isArray(res.data)) {
           setSearchResults(res.data);
-          setShowSearchDropdown(res.data.length > 0);
+          setShowSearchDropdown(true);
           res.data.forEach((p) => {
             updateCachedPatient(p);
             if (p.patientId && Array.isArray(p.recentVisits) && p.recentVisits.length > 0) {
@@ -1082,7 +1083,9 @@ export const PatientRecord = ({
 
   const handleSelectPatient = (patient, autoStartCase = true) => {
     if (!patient) return;
-    addToRecentSearched(patient);
+    if (!patient.isNewPatient) {
+      addToRecentSearched(patient);
+    }
     setCurrentPatient(patient);
     setPatientDob(patient.dob || '');
     setPatientAge(patient.age !== undefined && patient.age !== null ? String(patient.age) : '');
@@ -1096,6 +1099,33 @@ export const PatientRecord = ({
     if (autoStartCase) {
       handleOpenNewCase(patient);
     }
+  };
+
+  // --- Immediate inline creation of a new patient directly from search input ---
+  const handleCreateNewPatientEntry = (nameToUse = null) => {
+    const raw = (nameToUse || patientSearch || '').trim();
+    if (!raw) return;
+    const newName = raw.toUpperCase();
+    setShowSearchDropdown(false);
+    setPatientSearch('');
+    const newPat = {
+      name: newName,
+      patientId: 'NEW',
+      familyId: 'NEW',
+      isNewPatient: true,
+      totalDue: 0,
+      deposit: 0,
+    };
+    handleSelectPatient(newPat, true);
+    showToast(`New patient "${newName}" initialized. Enter Age & details to proceed.`);
+    setTimeout(() => {
+      if (ageInputRef.current) {
+        ageInputRef.current.focus();
+        ageInputRef.current.select?.();
+      } else if (bpInputRef.current) {
+        bpInputRef.current.focus();
+      }
+    }, 80);
   };
 
   // --- Cleanly clear active patient and reset all clinical form fields to pristine state ---
@@ -1843,6 +1873,7 @@ export const PatientRecord = ({
         dob: patientDob,
         age: patientAge,
         phone: patientPhone,
+        houseNo: patientHouseNo,
         society: patientSociety,
         area: patientArea,
         bp: form.bp || '',
@@ -1883,18 +1914,28 @@ export const PatientRecord = ({
 
         setCurrentPatient((prev) => ({
           ...prev,
-          totalDue: res.totalDue !== undefined ? res.totalDue : prev.totalDue,
+          patientId: res.visit?.patientId || prev?.patientId,
+          familyId: res.visit?.familyId || prev?.familyId,
+          isNewPatient: false,
+          totalDue: res.totalDue !== undefined ? res.totalDue : prev?.totalDue,
           deposit: res.deposit !== undefined ? res.deposit : (prev?.deposit || 0),
           allergies: cleanAllergies,
           family: prev?.family
             ? {
               ...prev.family,
+              familyId: res.visit?.familyId || prev.family.familyId,
+              headName: patient.name,
               familyDue:
                 res.familyDue !== undefined ? res.familyDue : prev.family.familyDue,
               familyDeposit:
                 res.familyDeposit !== undefined ? res.familyDeposit : (prev.family.familyDeposit || 0),
             }
-            : null,
+            : {
+              familyId: res.visit?.familyId || prev?.familyId,
+              headName: patient.name,
+              familyDue: res.familyDue || 0,
+              familyDeposit: res.familyDeposit || 0,
+            },
         }));
 
         // Update cached patient directly in memory
@@ -2136,18 +2177,49 @@ export const PatientRecord = ({
 
                 <div style={{ ...styles.photoFieldGroup, flex: 1, minWidth: '220px', position: 'relative' }} ref={searchWrapRef}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <label style={{ ...styles.photoLabel, fontSize: '12px' }}>
-                      Patient Full Name: <span style={{ color: '#DC2626' }}>*</span>
-                    </label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <label style={{ ...styles.photoLabel, fontSize: '12px' }}>
+                        Patient Full Name: <span style={{ color: '#DC2626' }}>*</span>
+                      </label>
+                      {currentPatient?.isNewPatient && (
+                        <span style={{ fontSize: 10, fontWeight: 800, color: '#047857', backgroundColor: '#DCFCE7', border: '1px solid #86EFAC', padding: '1px 6px', borderRadius: 4 }}>
+                          NEW PATIENT
+                        </span>
+                      )}
+                    </div>
                     {currentPatient && (
-                      <button
-                        type="button"
-                        onClick={() => setShowHistoryModal(true)}
-                        style={styles.photoHistoryLinkBtn}
-                        title="Click to view full past visits & case history in modal"
-                      >
-                        *(History {patientVisits.length > 0 ? `(${patientVisits.length})` : ''})*
-                      </button>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleClearActivePatient();
+                            setTimeout(() => patientSearchInputRef.current?.focus(), 50);
+                          }}
+                          style={{
+                            fontSize: 10,
+                            fontWeight: 700,
+                            color: '#64748B',
+                            backgroundColor: '#F1F5F9',
+                            border: '1px solid #CBD5E1',
+                            borderRadius: 4,
+                            padding: '1px 7px',
+                            cursor: 'pointer',
+                          }}
+                          title="Clear current patient and search another"
+                        >
+                          ✕ Clear
+                        </button>
+                        {!currentPatient.isNewPatient && (
+                          <button
+                            type="button"
+                            onClick={() => setShowHistoryModal(true)}
+                            style={styles.photoHistoryLinkBtn}
+                            title="Click to view full past visits & case history in modal"
+                          >
+                            *(History {patientVisits.length > 0 ? `(${patientVisits.length})` : ''})*
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
                   <input
@@ -2162,7 +2234,7 @@ export const PatientRecord = ({
                       handlePatientSearchChange(e.target.value);
                     }}
                     onFocus={() => {
-                      if (searchResults.length > 0) setShowSearchDropdown(true);
+                      if (patientSearch.trim()) setShowSearchDropdown(true);
                     }}
                     onKeyDown={(e) => {
                       const list = Array.isArray(searchResults) ? searchResults : [];
@@ -2179,24 +2251,12 @@ export const PatientRecord = ({
                           setPatientHighlightIndex((prev) => (prev > 0 ? prev - 1 : list.length - 1));
                         }
                       } else if (e.key === 'Enter') {
+                        e.preventDefault();
                         if (list.length > 0) {
-                          e.preventDefault();
                           const chosen = list[patientHighlightIndex] || list[0];
                           if (chosen) handleSelectPatient(chosen);
                         } else if (patientSearch && patientSearch.trim()) {
-                          // Patient not found in search results: auto-create new patient with entered name and start case
-                          e.preventDefault();
-                          const newName = patientSearch.trim().toUpperCase();
-                          setShowSearchDropdown(false);
-                          const newPat = {
-                            name: newName,
-                            patientId: 'NEW',
-                            familyId: 'NEW',
-                            isNewPatient: true,
-                            totalDue: 0,
-                            deposit: 0,
-                          };
-                          handleSelectPatient(newPat, true);
+                          handleCreateNewPatientEntry(patientSearch);
                         }
                       } else if (e.key === 'Escape') {
                         setShowSearchDropdown(false);
@@ -2207,17 +2267,57 @@ export const PatientRecord = ({
                       height: '30px',
                       fontSize: '13px',
                       fontWeight: currentPatient ? 800 : 600,
-                      color: currentPatient ? '#1E40AF' : '#0F172A',
-                      backgroundColor: currentPatient ? '#F0F9FF' : '#FFFFFF',
-                      border: currentPatient ? '1.5px solid #2563EB' : '1.5px solid #94A3B8',
+                      color: currentPatient ? (currentPatient.isNewPatient ? '#047857' : '#1E40AF') : '#0F172A',
+                      backgroundColor: currentPatient ? (currentPatient.isNewPatient ? '#F0FDF4' : '#F0F9FF') : '#FFFFFF',
+                      border: currentPatient ? (currentPatient.isNewPatient ? '1.5px solid #16A34A' : '1.5px solid #2563EB') : '1.5px solid #94A3B8',
                       padding: '3px 8px',
                     }}
                   />
 
-                  {/* Dropdown suggestions with Last 2 to 3 Case Records */}
-                  {showSearchDropdown && searchResults.length > 0 && (
+                  {/* Dropdown suggestions: Matching Patients OR Quick New Patient Registration */}
+                  {showSearchDropdown && Boolean(patientSearch && patientSearch.trim()) && (
                     <div style={styles.photoPatientDropdown}>
-                      {searchResults.map((p, idx) => {
+                      {searchResults.length === 0 ? (
+                        <div
+                          onClick={() => handleCreateNewPatientEntry(patientSearch)}
+                          style={styles.newPatientNoResultsCard}
+                          title="Click or press Enter to register this new patient"
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div style={styles.newPatientPlusCircle}>
+                              <UserPlus size={18} color="#047857" />
+                            </div>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: 13, fontWeight: 800, color: '#0F172A' }}>
+                                Register New Patient: <span style={{ color: '#0D5C4E' }}>"{patientSearch.trim().toUpperCase()}"</span>
+                              </div>
+                              <div style={{ fontSize: 11, color: '#475569', marginTop: 2 }}>
+                                Patient not found in clinic records. Click here or press <kbd style={styles.enterKeyBadge}>Enter ↵</kbd> to start new entry.
+                              </div>
+                            </div>
+                            <span style={styles.newPatientQuickActionBtn}>
+                              + Create Entry
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          {/* Quick New Patient Option above results */}
+                          <div
+                            onClick={() => handleCreateNewPatientEntry(patientSearch)}
+                            style={styles.newPatientQuickHeader}
+                            title="Register a brand new patient with this typed name instead of choosing existing"
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <UserPlus size={14} color="#0D5C4E" />
+                              <span>
+                                Register New Patient: <strong>"{patientSearch.trim().toUpperCase()}"</strong>
+                              </span>
+                            </div>
+                            <span style={styles.newPatientQuickHint}>+ New Entry (Enter)</span>
+                          </div>
+
+                          {searchResults.map((p, idx) => {
                         const isHighlighted = idx === patientHighlightIndex;
                         const visits = (p.recentVisits && p.recentVisits.length > 0)
                           ? p.recentVisits
@@ -2389,6 +2489,8 @@ export const PatientRecord = ({
                           </div>
                         );
                       })}
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
@@ -2399,7 +2501,7 @@ export const PatientRecord = ({
                 <div style={styles.photoFieldGroup}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <label style={styles.photoLabel}>Family Head / ID: (Auto address & due)</label>
-                    {currentPatient && (
+                    {currentPatient && !currentPatient.isNewPatient && (
                       <button
                         type="button"
                         onClick={handleOpenFamilyDueModal}
@@ -2419,11 +2521,18 @@ export const PatientRecord = ({
                     readOnly
                     value={
                       currentPatient
-                        ? `${currentPatient.family?.headName || (currentPatient.isHead ? currentPatient.name : 'Family Head')} (FAM ID: ${currentPatient.familyId || currentPatient.family?.familyId || '-'})`
+                        ? currentPatient.isNewPatient
+                          ? 'New Family (Auto-generated on Save)'
+                          : `${currentPatient.family?.headName || (currentPatient.isHead ? currentPatient.name : 'Family Head')} (FAM ID: ${currentPatient.familyId || currentPatient.family?.familyId || '-'})`
                         : ''
                     }
                     placeholder="AUTO-POPULATED UPON PATIENT SELECTION"
-                    style={{ ...styles.photoInput, backgroundColor: '#F8FAFC', color: '#334155' }}
+                    style={{
+                      ...styles.photoInput,
+                      backgroundColor: '#F8FAFC',
+                      color: currentPatient?.isNewPatient ? '#047857' : '#334155',
+                      fontWeight: currentPatient?.isNewPatient ? 700 : 500,
+                    }}
                   />
                 </div>
               </div>
@@ -2434,6 +2543,7 @@ export const PatientRecord = ({
                   <label style={styles.photoLabel}>Age: <span style={{ color: '#DC2626' }}>*</span></label>
                   <div style={{ display: 'flex', gap: '3px' }}>
                     <input
+                      ref={ageInputRef}
                       type="text"
                       value={patientAge}
                       onChange={(e) => setPatientAge(e.target.value)}
@@ -5697,6 +5807,68 @@ const styles = {
     overflowY: 'auto',
     zIndex: 1000,
     marginTop: '4px',
+  },
+  newPatientNoResultsCard: {
+    padding: '12px 14px',
+    backgroundColor: '#F0FDF4',
+    border: '1.5px dashed #16A34A',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    margin: '6px',
+    transition: 'all 0.15s ease',
+  },
+  newPatientPlusCircle: {
+    width: '34px',
+    height: '34px',
+    borderRadius: '50%',
+    backgroundColor: '#DCFCE7',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+    border: '1px solid #86EFAC',
+  },
+  newPatientQuickActionBtn: {
+    fontSize: '11px',
+    fontWeight: 800,
+    color: '#FFFFFF',
+    backgroundColor: '#059669',
+    padding: '5px 10px',
+    borderRadius: '6px',
+    boxShadow: '0 1px 3px rgba(5, 150, 105, 0.3)',
+    flexShrink: 0,
+    whiteSpace: 'nowrap',
+  },
+  newPatientQuickHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '8px 12px',
+    backgroundColor: '#F0FDF4',
+    borderBottom: '1.5px solid #BBF7D0',
+    cursor: 'pointer',
+    color: '#065F46',
+    fontSize: '12px',
+    fontWeight: 700,
+    transition: 'background-color 0.15s ease',
+  },
+  newPatientQuickHint: {
+    fontSize: '10px',
+    color: '#15803D',
+    backgroundColor: '#DCFCE7',
+    border: '1px solid #86EFAC',
+    padding: '2px 7px',
+    borderRadius: '4px',
+    fontWeight: 700,
+  },
+  enterKeyBadge: {
+    padding: '1px 5px',
+    backgroundColor: '#FFFFFF',
+    border: '1px solid #86EFAC',
+    borderRadius: '3px',
+    fontWeight: 700,
+    fontSize: '10px',
+    color: '#166534',
   },
   photoDropdownItem: {
     padding: '9px 12px',

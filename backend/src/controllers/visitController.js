@@ -109,7 +109,7 @@ export const recordVisit = async (req, res) => {
     let finalFamilyId = familyId;
 
     // Auto-create Family and Patient if new unregistered patient
-    if ((!finalPatientId || finalPatientId === 'NEW' || !finalFamilyId) && patientName && patientName.trim()) {
+    if ((!finalPatientId || finalPatientId === 'NEW' || !finalFamilyId || finalFamilyId === 'NEW') && patientName && patientName.trim()) {
       try {
         const nextFamId = await getNextFamilyIdValue();
         const patId = `P-${nextFamId}-1`;
@@ -117,6 +117,7 @@ export const recordVisit = async (req, res) => {
           familyId: nextFamId,
           headName: patientName.trim(),
           phone: req.body.phone || '',
+          houseNo: req.body.houseNo || '',
           society: req.body.society || '',
           area: req.body.area || '',
           age: req.body.age ? String(req.body.age).trim() : '',
@@ -129,6 +130,7 @@ export const recordVisit = async (req, res) => {
           isHead: true,
           relation: 'Self',
           phone: req.body.phone || '',
+          houseNo: req.body.houseNo || '',
           society: req.body.society || '',
           area: req.body.area || '',
           age: req.body.age ? String(req.body.age).trim() : '',
