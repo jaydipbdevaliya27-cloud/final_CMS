@@ -60,9 +60,23 @@ export const RecentHistory = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const passwordInputRef = useRef(null);
 
-  // Print Prescription Modal State
+  // Print Prescription Modal State & Stationery Mode
   const [printModalOpen, setPrintModalOpen] = useState(false);
   const [visitToPrint, setVisitToPrint] = useState(null);
+  const [printMode, setPrintMode] = useState(() => {
+    try {
+      return localStorage.getItem('cms_print_mode') || 'padOnly';
+    } catch (e) {
+      return 'padOnly';
+    }
+  });
+
+  const handlePrintModeChange = (mode) => {
+    setPrintMode(mode);
+    try {
+      localStorage.setItem('cms_print_mode', mode);
+    } catch (e) {}
+  };
 
   // Fetch recent visits (instant cache + background sync)
   const fetchRecentVisits = async () => {
@@ -998,16 +1012,75 @@ export const RecentHistory = ({
                 <Printer size={18} color="#0D5C4E" />
                 <h3 style={styles.modalHeading}>Prescription Memo Preview</h3>
               </div>
-              <button
-                type="button"
-                onClick={() => setPrintModalOpen(false)}
-                style={styles.modalCloseBtn}
-              >
-                <X size={16} />
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <button
+                  type="button"
+                  onClick={() => handlePrintModeChange('padOnly')}
+                  style={{
+                    padding: '3px 8px',
+                    borderRadius: '4px',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    backgroundColor: printMode === 'padOnly' ? '#0D5C4E' : '#F1F5F9',
+                    color: printMode === 'padOnly' ? '#FFFFFF' : '#475569',
+                    border: printMode === 'padOnly' ? '1px solid #0D5C4E' : '1px solid #CBD5E1',
+                  }}
+                  title="Default: Hides printed letterhead graphics so you can feed your physical clinic letterpad into the printer"
+                >
+                  Pad Only (Stationery)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handlePrintModeChange('full')}
+                  style={{
+                    padding: '3px 8px',
+                    borderRadius: '4px',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    backgroundColor: printMode === 'full' ? '#0D5C4E' : '#F1F5F9',
+                    color: printMode === 'full' ? '#FFFFFF' : '#475569',
+                    border: printMode === 'full' ? '1px solid #0D5C4E' : '1px solid #CBD5E1',
+                  }}
+                  title="Prints full Dr. Chirag Paghdal letterhead with address, Caduceus watermark & medical store footer"
+                >
+                  Full Letterhead
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPrintModalOpen(false)}
+                  style={styles.modalCloseBtn}
+                >
+                  <X size={16} />
+                </button>
+              </div>
             </div>
 
-            <div style={styles.printMemoSheet} id="printable-rx">
+            {printMode === 'padOnly' && (
+              <div
+                className="no-print"
+                style={{
+                  margin: '8px 16px 0',
+                  border: '1.5px dashed #CBD5E1',
+                  borderRadius: '6px',
+                  padding: '7px 12px',
+                  backgroundColor: '#F8FAFC',
+                  textAlign: 'center',
+                  color: '#475569',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                }}
+              >
+                📄 <strong>Pre-Printed Letterpad Mode Active</strong>: Doctor letterhead header & pharmacy footer are hidden from printing. Only Patient Details, Prescriptions & Advice will print onto your clinic stationery.
+              </div>
+            )}
+
+            <div
+              style={styles.printMemoSheet}
+              id="printable-rx"
+              className={printMode === 'padOnly' ? 'pad-only-mode' : 'full-pad-mode'}
+            >
               {/* WATERMARK: DR. CHIRAG PAGHDAL SEAL */}
               <div
                 className="letterpad-watermark"
@@ -1019,6 +1092,7 @@ export const RecentHistory = ({
                   pointerEvents: 'none',
                   zIndex: 0,
                   opacity: 0.08,
+                  display: printMode === 'padOnly' ? 'none' : 'block',
                 }}
               >
                 <svg width="270" height="270" viewBox="0 0 300 300">
@@ -1056,7 +1130,13 @@ export const RecentHistory = ({
               </div>
 
               {/* 1. DOCTOR LETTERPAD HEADER */}
-              <div className="letterpad-preprinted-header rhLetterpadHeader" style={styles.rhLetterpadHeader}>
+              <div
+                className="letterpad-preprinted-header rhLetterpadHeader"
+                style={{
+                  ...styles.rhLetterpadHeader,
+                  visibility: printMode === 'padOnly' ? 'hidden' : 'visible',
+                }}
+              >
                 <div style={styles.rhHeaderTopRow}>
                   <div>
                     <div className="letterpadDocName" style={styles.rhDocName}>
@@ -1229,10 +1309,24 @@ export const RecentHistory = ({
               </div>
 
               {/* Separator line */}
-              <div style={{ height: '1px', backgroundColor: '#CBD5E1', width: '100%', margin: '12px 0 6px' }} />
+              <div
+                style={{
+                  height: '1px',
+                  backgroundColor: '#CBD5E1',
+                  width: '100%',
+                  margin: '12px 0 6px',
+                  visibility: printMode === 'padOnly' ? 'hidden' : 'visible',
+                }}
+              />
 
               {/* 5. FOOTER */}
-              <div className="letterpad-preprinted-footer rhPharmacyFooter" style={styles.rhPharmacyFooter}>
+              <div
+                className="letterpad-preprinted-footer rhPharmacyFooter"
+                style={{
+                  ...styles.rhPharmacyFooter,
+                  visibility: printMode === 'padOnly' ? 'hidden' : 'visible',
+                }}
+              >
                 <span style={{ fontSize: '18px', fontWeight: 900, color: '#0F172A' }}>✚</span>
                 <span style={styles.rhPharmacyText}>
                   {doctor?.medicalStore || 'Harsh Medical & General Stores'}

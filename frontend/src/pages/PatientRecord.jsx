@@ -323,7 +323,20 @@ export const PatientRecord = ({
       }
     }
   }, [showLanguageModal, printLanguage]);
-  const [printMode, setPrintMode] = useState('full'); // 'full' (plain paper/PDF with letterhead) | 'padOnly' (physical pre-printed letterpad)
+  const [printMode, setPrintMode] = useState(() => {
+    try {
+      return localStorage.getItem('cms_print_mode') || 'padOnly';
+    } catch (e) {
+      return 'padOnly';
+    }
+  });
+
+  const handlePrintModeChange = (mode) => {
+    setPrintMode(mode);
+    try {
+      localStorage.setItem('cms_print_mode', mode);
+    } catch (e) {}
+  };
   const [printDietary, setPrintDietary] = useState('');
   const [masterDietaryList, setMasterDietaryList] = useState([]);
 
@@ -4527,7 +4540,22 @@ export const PatientRecord = ({
                   <div style={styles.langPillsGroup}>
                     <button
                       type="button"
-                      onClick={() => setPrintMode('full')}
+                      onClick={() => handlePrintModeChange('padOnly')}
+                      style={{
+                        ...styles.langPillBtn,
+                        backgroundColor: printMode === 'padOnly' ? 'var(--primary)' : 'var(--surface)',
+                        color: printMode === 'padOnly' ? '#FFFFFF' : 'var(--text)',
+                        borderColor: printMode === 'padOnly' ? 'var(--primary-dark)' : 'var(--border)',
+                        fontWeight: printMode === 'padOnly' ? 700 : 500,
+                      }}
+                      title="Default: Hides printed letterhead graphics so you can feed your physical clinic letterpad into the printer"
+                    >
+                      <Printer size={14} style={{ marginRight: 5, verticalAlign: 'middle' }} />
+                      <span>Pre-Printed Letterpad (Default - Only Prints Rx & Advice)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handlePrintModeChange('full')}
                       style={{
                         ...styles.langPillBtn,
                         backgroundColor: printMode === 'full' ? 'var(--primary)' : 'var(--surface)',
@@ -4539,21 +4567,6 @@ export const PatientRecord = ({
                     >
                       <FileText size={14} style={{ marginRight: 5, verticalAlign: 'middle' }} />
                       <span>Full Letterhead (Plain Paper / PDF)</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPrintMode('padOnly')}
-                      style={{
-                        ...styles.langPillBtn,
-                        backgroundColor: printMode === 'padOnly' ? 'var(--accent)' : 'var(--surface)',
-                        color: printMode === 'padOnly' ? '#FFFFFF' : 'var(--text)',
-                        borderColor: printMode === 'padOnly' ? '#B87428' : 'var(--border)',
-                        fontWeight: printMode === 'padOnly' ? 700 : 500,
-                      }}
-                      title="Hides printed letterhead graphics so you can feed your physical clinic letterpad into the printer"
-                    >
-                      <Printer size={14} style={{ marginRight: 5, verticalAlign: 'middle' }} />
-                      <span>Feed Pre-Printed Pad (Stationery Mode)</span>
                     </button>
                   </div>
                 </div>
