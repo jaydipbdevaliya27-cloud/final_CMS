@@ -928,12 +928,12 @@ export const Dashboard = () => {
           <div style={styles.tabContentContainer}>
             <RecentHistory
               onNavigateToNewCase={(patient) => {
-                setPatientForNewCase(patient);
+                setPatientForNewCase({ ...patient, _navTs: Date.now() });
                 setSelectedPatientId(patient.patientId || patient._id || '');
                 setActiveTab('patient-record');
               }}
               onNavigateToEditCase={(visit) => {
-                setVisitToEdit(visit);
+                setVisitToEdit({ ...visit, _navTs: Date.now() });
                 setSelectedPatientId(visit.patientId || '');
                 setActiveTab('patient-record');
               }}

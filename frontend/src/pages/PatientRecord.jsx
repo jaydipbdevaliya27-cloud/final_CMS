@@ -865,48 +865,71 @@ export const PatientRecord = ({
 
   useEffect(() => {
     if (initialPatientForNewCase) {
-      const startCase = async () => {
-        try {
-          let pat = initialPatientForNewCase;
-          if (pat.patientId && pat.patientId !== 'NEW' && (!pat.age || !pat.family)) {
-            try {
-              const res = await patientAPI.getById(pat.patientId);
-              if (res?.success && res.patient) {
-                pat = res.patient;
-              }
-            } catch (e) {
-              console.warn('Could not fetch full patient for new case:', e);
+      const pat = initialPatientForNewCase;
+      try {
+        // 1. Immediately select patient and open new case form with 0ms delay
+        handleSelectPatient(pat, true);
+        handleOpenNewCase(pat);
+        if (onClearNavigationCase) onClearNavigationCase();
+
+        // 2. Background non-blocking fetch to enrich patient demographics if available
+        if (pat.patientId && pat.patientId !== 'NEW' && (!pat.age || !pat.family)) {
+          patientAPI.getById(pat.patientId).then((res) => {
+            if (res?.success && res.patient) {
+              setCurrentPatient(res.patient);
+              if (res.patient.dob) setPatientDob(res.patient.dob);
+              if (res.patient.age !== undefined && res.patient.age !== null) setPatientAge(String(res.patient.age));
+              if (res.patient.phone) setPatientPhone(res.patient.phone);
+              if (res.patient.houseNo) setPatientHouseNo(res.patient.houseNo);
+              if (res.patient.society) setPatientSociety(res.patient.society);
+              if (res.patient.area) setPatientArea(res.patient.area);
             }
-          }
-          handleSelectPatient(pat, true);
-          handleOpenNewCase(pat);
-        } catch (err) {
-          console.error('Error handling new case navigation:', err);
-        } finally {
-          if (onClearNavigationCase) onClearNavigationCase();
+          }).catch((err) => {
+            console.warn('Background patient fetch for new case:', err);
+          });
         }
-      };
-      startCase();
+      } catch (err) {
+        console.error('Error handling new case navigation:', err);
+        if (onClearNavigationCase) onClearNavigationCase();
+      }
     }
   }, [initialPatientForNewCase]);
 
   useEffect(() => {
     if (initialVisitToEdit) {
-      const loadEdit = async () => {
-        try {
-          if (initialVisitToEdit.patientId) {
-            const res = await patientAPI.getById(initialVisitToEdit.patientId);
+      const visit = initialVisitToEdit;
+      try {
+        // 1. Immediately select patient and populate edit form with 0ms delay
+        const fallbackPatient = {
+          patientId: visit.patientId,
+          familyId: visit.familyId,
+          name: visit.patientName,
+          allergies: Array.isArray(visit.allergies) ? visit.allergies : [],
+        };
+        handleSelectPatient(fallbackPatient, false);
+        handleStartEditVisit(visit);
+        if (onClearNavigationCase) onClearNavigationCase();
+
+        // 2. Background non-blocking fetch to enrich patient demographics
+        if (visit.patientId) {
+          patientAPI.getById(visit.patientId).then((res) => {
             if (res?.success && res.patient) {
-              handleSelectPatient(res.patient, false);
+              setCurrentPatient(res.patient);
+              if (res.patient.dob) setPatientDob(res.patient.dob);
+              if (res.patient.age !== undefined && res.patient.age !== null) setPatientAge(String(res.patient.age));
+              if (res.patient.phone) setPatientPhone(res.patient.phone);
+              if (res.patient.houseNo) setPatientHouseNo(res.patient.houseNo);
+              if (res.patient.society) setPatientSociety(res.patient.society);
+              if (res.patient.area) setPatientArea(res.patient.area);
             }
-          }
-          handleStartEditVisit(initialVisitToEdit);
-          if (onClearNavigationCase) onClearNavigationCase();
-        } catch (e) {
-          console.error('Error loading visit for edit:', e);
+          }).catch((err) => {
+            console.warn('Background patient fetch for edit:', err);
+          });
         }
-      };
-      loadEdit();
+      } catch (e) {
+        console.error('Error loading visit for edit:', e);
+        if (onClearNavigationCase) onClearNavigationCase();
+      }
     }
   }, [initialVisitToEdit]);
 

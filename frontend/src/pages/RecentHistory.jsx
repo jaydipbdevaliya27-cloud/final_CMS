@@ -136,41 +136,20 @@ export const RecentHistory = ({
     }
   };
 
-  // Handle Action 1: New Case Entry
-  const handleActionNewCase = async (visit) => {
-    try {
-      let patient = null;
-      if (visit.patientId) {
-        const res = await patientAPI.getById(visit.patientId);
-        if (res?.success && res.patient) {
-          patient = res.patient;
-        }
-      }
-      if (!patient) {
-        patient = {
-          patientId: visit.patientId,
-          familyId: visit.familyId,
-          name: visit.patientName,
-          phone: visit.phone || '',
-          area: visit.area || '',
-        };
-      }
-      if (onNavigateToNewCase) {
-        onNavigateToNewCase(patient);
-      }
-    } catch (e) {
-      console.error('Error opening new case:', e);
-      if (onNavigateToNewCase) {
-        onNavigateToNewCase({
-          patientId: visit.patientId,
-          familyId: visit.familyId,
-          name: visit.patientName,
-        });
-      }
+  // Handle Action 1: New Case Entry (Immediate zero-delay navigation)
+  const handleActionNewCase = (visit) => {
+    if (onNavigateToNewCase) {
+      onNavigateToNewCase({
+        patientId: visit.patientId,
+        familyId: visit.familyId,
+        name: visit.patientName,
+        phone: visit.phone || '',
+        area: visit.area || '',
+      });
     }
   };
 
-  // Handle Action 2: Edit Case
+  // Handle Action 2: Edit Case (Immediate zero-delay navigation)
   const handleActionEditCase = (visit) => {
     if (onNavigateToEditCase) {
       onNavigateToEditCase(visit);
