@@ -728,9 +728,14 @@ export const RecentHistory = ({
                     editedDateStr,
                     editedTimeStr,
                   } = formatDateTime(visit);
-                  const isDueCollection =
-                    visit.reference &&
-                    visit.reference.toUpperCase().includes('DUE COLLECTION');
+                  const isDueCollection = Boolean(
+                    (visit.reference &&
+                      visit.reference.toUpperCase().includes('DUE COLLECTION')) ||
+                    (Number(visit.charge || 0) === 0 &&
+                      Number(visit.received || 0) > 0 &&
+                      (!visit.prescriptions || visit.prescriptions.length === 0) &&
+                      (!visit.treatments || visit.treatments.length === 0))
+                  );
 
                   // Format complaints
                   const complaints = isDueCollection
@@ -813,6 +818,30 @@ export const RecentHistory = ({
                       {/* 2. Patient Name & Highlighted Allergies Only */}
                       <td style={styles.tdPatient}>
                         <div style={styles.patientName}>{visit.patientName || 'PATIENT'}</div>
+                        {isDueCollection && (
+                          <div style={{ marginTop: '3px' }}>
+                            <span
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                backgroundColor: '#ECFDF5',
+                                color: '#065F46',
+                                border: '1px solid #6EE7B7',
+                                padding: '1px 6px',
+                                borderRadius: '4px',
+                                fontSize: '10px',
+                                fontWeight: 800,
+                                lineHeight: 1.2,
+                                whiteSpace: 'nowrap',
+                              }}
+                              title={`Due payment of ₹${visit.received || 0} collected`}
+                            >
+                              <CheckCircle2 size={11} color="#059669" style={{ flexShrink: 0 }} />
+                              <span>DUE COLLECTED: ₹{(visit.received || 0).toLocaleString('en-IN')}</span>
+                            </span>
+                          </div>
+                        )}
                         {allergiesList.length > 0 && (
                           <div
                             style={{
@@ -840,7 +869,26 @@ export const RecentHistory = ({
 
                       {/* 3. Complaints */}
                       <td style={styles.tdComplaints}>
-                        {complaints === '-' ? (
+                        {isDueCollection ? (
+                          <div
+                            style={{
+                              display: 'inline-flex',
+                              flexDirection: 'column',
+                              gap: '2px',
+                              backgroundColor: '#DCFCE7',
+                              border: '1px solid #86EFAC',
+                              borderRadius: '5px',
+                              padding: '4px 8px',
+                            }}
+                          >
+                            <span style={{ fontSize: '11px', fontWeight: 800, color: '#166534', letterSpacing: '0.2px' }}>
+                              DUE COLLECTED: ₹{(visit.received || 0).toLocaleString('en-IN')}
+                            </span>
+                            <span style={{ fontSize: '10px', fontWeight: 600, color: '#15803D' }}>
+                              {visit.reference || 'Payment Settled'}
+                            </span>
+                          </div>
+                        ) : complaints === '-' ? (
                           <span style={styles.nilText}>-</span>
                         ) : (
                           <span style={styles.complaintText}>{complaints}</span>
@@ -882,7 +930,11 @@ export const RecentHistory = ({
 
                       {/* 6. Prescription */}
                       <td style={styles.tdMeds}>
-                        {rxMeds.length === 0 ? (
+                        {isDueCollection ? (
+                          <span style={{ fontSize: '11px', color: '#047857', fontWeight: 600 }}>
+                            Due Payment Receipt
+                          </span>
+                        ) : rxMeds.length === 0 ? (
                           <span style={styles.nilText}>-</span>
                         ) : (
                           <div style={styles.medsList}>
@@ -928,7 +980,24 @@ export const RecentHistory = ({
 
                       {/* 9. Due (₹) - Strictly for this particular case record */}
                       <td style={styles.tdDue}>
-                        {caseDue > 0 ? (
+                        {isDueCollection ? (
+                          <span
+                            style={{
+                              backgroundColor: '#DCFCE7',
+                              color: '#166534',
+                              border: '1px solid #86EFAC',
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                              fontSize: '11px',
+                              fontWeight: 800,
+                              display: 'inline-block',
+                              whiteSpace: 'nowrap',
+                            }}
+                            title={`Due Collected: ₹${visit.received || 0}`}
+                          >
+                            ₹{(visit.received || 0).toLocaleString('en-IN')} Paid
+                          </span>
+                        ) : caseDue > 0 ? (
                           <span
                             style={{
                               ...styles.dueText,
