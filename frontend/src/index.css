@@ -83,11 +83,11 @@ input:focus, select:focus, textarea:focus {
   }
 }
 
-/* Print Optimization for Prescriptions, Reports, and Medical Certificates (A5 Formatted) */
+/* Print Optimization for Prescriptions, Reports, and Medical Certificates (Exact A5 Formatted: 148mm x 210mm) */
 @media print {
   @page {
-    margin: 5mm 6mm;
     size: A5 portrait;
+    margin: 0;
   }
 
   *, *::before, *::after {
@@ -104,10 +104,12 @@ input:focus, select:focus, textarea:focus {
     padding: 0 !important;
     background: #FFFFFF !important;
     color: #000000 !important;
-    height: auto !important;
-    min-height: 100% !important;
-    overflow: visible !important;
     width: 148mm !important;
+    height: 210mm !important;
+    max-width: 148mm !important;
+    max-height: 210mm !important;
+    overflow: hidden !important;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
   }
 
   body * {
@@ -175,22 +177,33 @@ input:focus, select:focus, textarea:focus {
     z-index: 99999999 !important;
   }
 
+  /* =========================================================
+     EXACT A5 PRESCRIPTION SHEET (#printable-rx: 148mm x 210mm)
+     ========================================================= */
   #printable-rx {
-    display: block !important;
+    display: flex !important;
+    flex-direction: column !important;
     position: absolute !important;
     left: 0 !important;
     top: 0 !important;
     width: 148mm !important;
     max-width: 148mm !important;
+    height: 210mm !important;
+    max-height: 210mm !important;
     margin: 0 !important;
-    padding: 4mm 6mm !important;
+    padding: 5mm 7mm 4mm 7mm !important;
     background: #FFFFFF !important;
     color: #000000 !important;
     box-shadow: none !important;
     z-index: 99999999 !important;
     box-sizing: border-box !important;
-    font-size: 11px !important;
-    contain: content !important;
+    font-size: 10px !important;
+    line-height: 1.25 !important;
+    overflow: hidden !important;
+    page-break-after: avoid !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    contain: strict !important;
   }
 
   /* Support for Pre-printed Stationery Pad Feed */
@@ -204,18 +217,130 @@ input:focus, select:focus, textarea:focus {
     visibility: hidden !important;
   }
 
+  /* Doctor Letterhead Header Scaled for A5 */
+  #printable-rx .letterpadDocName,
+  #printable-rx [style*="letterpadDocName"] {
+    font-size: 19px !important;
+    line-height: 1.15 !important;
+    font-weight: 900 !important;
+  }
+  #printable-rx .letterpadDocSpecialty,
+  #printable-rx [style*="letterpadDocSpecialty"] {
+    font-size: 10px !important;
+    font-weight: 800 !important;
+  }
+  #printable-rx .letterpadDocDegree,
+  #printable-rx [style*="letterpadDocDegree"] {
+    font-size: 9.5px !important;
+  }
+  #printable-rx .letterpadContactLine,
+  #printable-rx [style*="letterpadContactLine"] {
+    font-size: 10px !important;
+  }
+  #printable-rx .letterpadAddressBar,
+  #printable-rx [style*="letterpadAddressBar"],
+  #printable-rx [style*="rhAddressBar"] {
+    font-size: 8.5px !important;
+    padding: 2px 4px !important;
+    margin: 2px 0 3px 0 !important;
+    line-height: 1.2 !important;
+  }
+  #printable-rx .letterpadForDateRow,
+  #printable-rx [style*="letterpadForDateRow"],
+  #printable-rx [style*="rhForDateRow"] {
+    font-size: 10px !important;
+    padding: 1px 0 2px 0 !important;
+  }
+
+  /* Patient Demographics Block Scaled for A5 */
+  #printable-rx .photoPatientInfoBlock,
+  #printable-rx .rhPatientInfoBlock,
+  #printable-rx [style*="photoPatientInfoBlock"],
+  #printable-rx [style*="rhPatientInfoBlock"] {
+    margin: 2px 0 3px 0 !important;
+    gap: 1.5px !important;
+    font-size: 10px !important;
+  }
+
+  /* Watermark Scale for A5 */
+  #printable-rx .letterpad-watermark,
+  #printable-rx [style*="opacity: 0.08"] {
+    width: 200px !important;
+    height: 200px !important;
+  }
+  #printable-rx .letterpad-watermark svg,
+  #printable-rx [style*="opacity: 0.08"] svg {
+    width: 200px !important;
+    height: 200px !important;
+  }
+
+  /* Prescription Table on A5 */
   #printable-rx table {
+    width: 100% !important;
     color: #000000 !important;
+    border-collapse: collapse !important;
   }
-
-  #printable-rx th,
+  #printable-rx th {
+    padding: 2.5px 3.5px !important;
+    font-size: 9.5px !important;
+    font-weight: 700 !important;
+    border-bottom: 1.5px solid #000000 !important;
+  }
   #printable-rx td {
-    color: #000000 !important;
+    padding: 2.5px 3.5px !important;
+    font-size: 10px !important;
+    border-bottom: 0.5px solid #E2E8F0 !important;
   }
 
-  #printable-rx .clean-dietary-box {
-    border-color: #000000 !important;
+  /* Dose Mini-Grid Table on A5 */
+  #printable-rx .photoDoseMiniTable,
+  #printable-rx .rhDoseMiniTable,
+  #printable-rx [style*="photoDoseMiniTable"],
+  #printable-rx [style*="rhDoseMiniTable"] {
+    border: 1px solid #000000 !important;
+    font-size: 7.5px !important;
+  }
+  #printable-rx .photoDoseMiniTh,
+  #printable-rx .rhDoseMiniTh,
+  #printable-rx [style*="photoDoseMiniTh"],
+  #printable-rx [style*="rhDoseMiniTh"] {
+    padding: 1px 2px !important;
+    font-size: 7.5px !important;
+    border-right: 1px solid #000000 !important;
+    border-bottom: 1px solid #000000 !important;
+  }
+  #printable-rx .photoDoseMiniTd,
+  #printable-rx .rhDoseMiniTd,
+  #printable-rx [style*="photoDoseMiniTd"],
+  #printable-rx [style*="rhDoseMiniTd"] {
+    padding: 1px 2px !important;
+    font-size: 8px !important;
+    font-weight: 800 !important;
+    border-right: 1px solid #000000 !important;
+  }
+
+  /* Dietary Advice Box on A5 */
+  #printable-rx .photoAdviceBox,
+  #printable-rx .rhAdviceBox,
+  #printable-rx [style*="photoAdviceBox"],
+  #printable-rx [style*="rhAdviceBox"] {
+    margin-top: auto !important;
+    margin-bottom: 3px !important;
+    padding: 2.5px 5px !important;
+    font-size: 9px !important;
+    line-height: 1.25 !important;
+    border: 1px solid #000000 !important;
     background-color: transparent !important;
+  }
+
+  /* Pharmacy Footer on A5 */
+  #printable-rx .photoPharmacyBar,
+  #printable-rx .rhPharmacyFooter,
+  #printable-rx [style*="photoPharmacyBar"],
+  #printable-rx [style*="rhPharmacyFooter"] {
+    font-size: 9.5px !important;
+    font-weight: 700 !important;
+    padding: 2px 0 0 0 !important;
   }
 }
 

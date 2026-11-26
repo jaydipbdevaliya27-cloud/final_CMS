@@ -971,6 +971,7 @@ export const RecentHistory = ({
             <div style={styles.printMemoSheet} id="printable-rx">
               {/* WATERMARK: DR. CHIRAG PAGHDAL SEAL */}
               <div
+                className="letterpad-watermark"
                 style={{
                   position: 'absolute',
                   top: '52%',
@@ -1016,36 +1017,36 @@ export const RecentHistory = ({
               </div>
 
               {/* 1. DOCTOR LETTERPAD HEADER */}
-              <div style={styles.rhLetterpadHeader}>
+              <div className="letterpad-preprinted-header rhLetterpadHeader" style={styles.rhLetterpadHeader}>
                 <div style={styles.rhHeaderTopRow}>
                   <div>
-                    <div style={styles.rhDocName}>
+                    <div className="letterpadDocName" style={styles.rhDocName}>
                       {doctor?.name || 'Dr. Chirag Paghdal'}
-                      <span style={styles.rhDocDegree}> ({doctor?.degree || 'B.H.M.S.'})</span>
+                      <span className="letterpadDocDegree" style={styles.rhDocDegree}> ({doctor?.degree || 'B.H.M.S.'})</span>
                     </div>
-                    <div style={styles.rhDocSpecialty}>
+                    <div className="letterpadDocSpecialty" style={styles.rhDocSpecialty}>
                       {doctor?.specialization?.includes('B.H.M.S') ? 'FAMILY PHYSICIAN' : (doctor?.specialization || 'FAMILY PHYSICIAN')}
                     </div>
                   </div>
 
                   <div style={styles.rhRightContact}>
-                    <div>Mo.: <strong>{doctor?.phone || '98793 80508'}</strong></div>
-                    <div>Reg. No. <strong>{doctor?.regNo || 'G-9035'}</strong></div>
+                    <div className="letterpadContactLine">Mo.: <strong>{doctor?.phone || '98793 80508'}</strong></div>
+                    <div className="letterpadContactLine">Reg. No. <strong>{doctor?.regNo || 'G-9035'}</strong></div>
                   </div>
                 </div>
 
-                <div style={styles.rhAddressBar}>
+                <div className="letterpadAddressBar" style={styles.rhAddressBar}>
                   {doctor?.clinicName || 'Dhyey Clinic & Nursing Home'} : {doctor?.address || 'Shop No. 1, Mahavir Heights, New Kosad Road, Amroli, Surat.'}
                 </div>
 
-                <div style={styles.rhForDateRow}>
+                <div className="letterpadForDateRow" style={styles.rhForDateRow}>
                   <span style={{ fontWeight: 800, fontSize: '13px', color: '#000000' }}>FOR,</span>
                   <span style={{ fontWeight: 800, fontSize: '13px', color: '#000000' }}>DATE :</span>
                 </div>
               </div>
 
               {/* 2. PATIENT INFO BLOCK */}
-              <div style={styles.rhPatientInfoBlock}>
+              <div className="rhPatientInfoBlock" style={styles.rhPatientInfoBlock}>
                 <div style={styles.rhPatientRow}>
                   <div style={{ width: '58%', display: 'flex', gap: '4px' }}>
                     <span style={{ fontWeight: 700 }}>Patient:</span>{' '}
@@ -1105,7 +1106,7 @@ export const RecentHistory = ({
                 &#8478;
               </div>
 
-              <table style={styles.rhRxTable}>
+              <table className="rhRxTable" style={styles.rhRxTable}>
                 <thead>
                   <tr>
                     <th style={{ width: '42%', textAlign: 'left', padding: '4px 6px', borderBottom: '1.5px solid #000', fontWeight: 700, fontSize: '11px' }}>Medicine Name</th>
@@ -1177,7 +1178,7 @@ export const RecentHistory = ({
               </table>
 
               {/* 4. ADVICE BOX */}
-              <div style={styles.rhAdviceBox}>
+              <div className="rhAdviceBox" style={styles.rhAdviceBox}>
                 <span style={{ fontWeight: 800, textDecoration: 'underline' }}>
                   સૂચન / પરહેજ (ADVICE):{' '}
                 </span>
@@ -1192,7 +1193,7 @@ export const RecentHistory = ({
               <div style={{ height: '1px', backgroundColor: '#CBD5E1', width: '100%', margin: '12px 0 6px' }} />
 
               {/* 5. FOOTER */}
-              <div style={styles.rhPharmacyFooter}>
+              <div className="letterpad-preprinted-footer rhPharmacyFooter" style={styles.rhPharmacyFooter}>
                 <span style={{ fontSize: '18px', fontWeight: 900, color: '#0F172A' }}>✚</span>
                 <span style={styles.rhPharmacyText}>
                   {doctor?.medicalStore || 'Harsh Medical & General Stores'}

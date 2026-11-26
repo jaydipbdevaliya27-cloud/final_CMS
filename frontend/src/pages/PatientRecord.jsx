@@ -4620,21 +4620,21 @@ export const PatientRecord = ({
                 >
                   <div style={styles.letterpadTopRow}>
                     <div>
-                      <div style={styles.letterpadDocName}>
+                      <div className="letterpadDocName" style={styles.letterpadDocName}>
                         {doctor?.name || 'Dr. Chirag Paghdal'}
-                        <span style={styles.letterpadDocDegree}> ({doctor?.degree || 'B.H.M.S.'})</span>
+                        <span className="letterpadDocDegree" style={styles.letterpadDocDegree}> ({doctor?.degree || 'B.H.M.S.'})</span>
                       </div>
-                      <div style={styles.letterpadDocSpecialty}>
+                      <div className="letterpadDocSpecialty" style={styles.letterpadDocSpecialty}>
                         {doctor?.specialization?.includes('B.H.M.S') ? 'FAMILY PHYSICIAN' : (doctor?.specialization || 'FAMILY PHYSICIAN')}
                       </div>
                     </div>
 
                     <div style={styles.letterpadRightContact}>
-                      <div style={styles.letterpadContactLine}>
+                      <div className="letterpadContactLine" style={styles.letterpadContactLine}>
                         <span>Mo.: </span>
                         <strong>{doctor?.phone || '98793 80508'}</strong>
                       </div>
-                      <div style={styles.letterpadContactLine}>
+                      <div className="letterpadContactLine" style={styles.letterpadContactLine}>
                         <span>Reg. No. </span>
                         <strong>{doctor?.regNo || 'G-9035'}</strong>
                       </div>
@@ -4642,19 +4642,19 @@ export const PatientRecord = ({
                   </div>
 
                   {/* Sleek Grey Clinic Address Banner */}
-                  <div style={styles.letterpadAddressBar}>
+                  <div className="letterpadAddressBar" style={styles.letterpadAddressBar}>
                     {doctor?.clinicName || 'Dhyey Clinic & Nursing Home'} : {doctor?.address || 'Shop No. 1, Mahavir Heights, New Kosad Road, Amroli, Surat.'}
                   </div>
 
                   {/* Subheader: FOR, _________________ DATE : ______________ */}
-                  <div style={styles.letterpadForDateRow}>
+                  <div className="letterpadForDateRow" style={styles.letterpadForDateRow}>
                     <span style={{ fontWeight: 800, fontSize: '13px', color: '#000000' }}>FOR,</span>
                     <span style={{ fontWeight: 800, fontSize: '13px', color: '#000000' }}>DATE :</span>
                   </div>
                 </div>
 
                 {/* 2. PATIENT INFO BLOCK (EXACT MATCH TO USER PHOTO) */}
-                <div style={styles.photoPatientInfoBlock}>
+                <div className="photoPatientInfoBlock" style={styles.photoPatientInfoBlock}>
                   <div style={styles.photoPatientInfoRow}>
                     <div style={styles.photoPatientColLeft}>
                       <span style={styles.photoPatientLabel}>{t.patientLabel || 'Patient:'}</span>{' '}
@@ -4734,7 +4734,7 @@ export const PatientRecord = ({
                   <span style={styles.photoRxSymbol}>&#8478;</span>
                 </div>
 
-                <table style={styles.photoRxTable}>
+                <table className="photoRxTable" style={styles.photoRxTable}>
                   <thead>
                     <tr>
                       <th style={{ ...styles.photoRxTh, width: '42%', textAlign: 'left' }}>{t.colMedicine || 'Medicine Name'}</th>
@@ -4827,7 +4827,7 @@ export const PatientRecord = ({
                 </table>
 
                 {/* 4. ADVICE BOX (સૂચન / પરહેજ (ADVICE)) */}
-                <div style={styles.photoAdviceBox}>
+                <div className="photoAdviceBox" style={styles.photoAdviceBox}>
                   <span style={styles.photoAdviceTitle}>
                     {t.adviceTitle || 'સૂચન / પરહેજ (ADVICE):'}{' '}
                   </span>
@@ -4843,7 +4843,7 @@ export const PatientRecord = ({
 
                 {/* 5. PHARMACY FOOTER: + Harsh Medical & General Stores + */}
                 <div
-                  className="letterpad-preprinted-footer"
+                  className="letterpad-preprinted-footer photoPharmacyBar"
                   style={{
                     ...styles.photoPharmacyBar,
                     visibility: printMode === 'padOnly' ? 'hidden' : 'visible',
