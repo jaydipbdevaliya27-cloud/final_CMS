@@ -1292,7 +1292,7 @@ export const RecentHistory = ({
                 className="letterpad-preprinted-header rhLetterpadHeader"
                 style={{
                   ...styles.rhLetterpadHeader,
-                  visibility: printMode === 'padOnly' ? 'hidden' : 'visible',
+                  display: printMode === 'padOnly' ? 'none' : 'block',
                 }}
               >
                 <div style={styles.rhHeaderTopRow}>
@@ -1454,26 +1454,27 @@ export const RecentHistory = ({
                 </tbody>
               </table>
 
-              {/* 4. ADVICE BOX */}
-              <div className="rhAdviceBox" style={styles.rhAdviceBox}>
-                <span style={{ fontWeight: 800, textDecoration: 'underline' }}>
-                  સૂચન / પરહેજ (ADVICE):{' '}
-                </span>
-                <span style={{ fontWeight: 700 }}>
-                  {visitToPrint.dietary && visitToPrint.dietary.trim()
-                    ? visitToPrint.dietary
-                    : '---અનાજ [ રોટલી , ભાખરી , રોટલો ] , બટાકા , દૂધ ના લેવુ----- --- દાળ ભાત, ખીચડી , છાશ, દહીં, લીંબુ પાણી, મોસંબી નુ જ્યુસ, પાઈનેપલ નુ જ્યુસ, લસ્સી વધારે લેવી'}
-                </span>
-              </div>
+              {/* 4. ADVICE BOX - ONLY IF GIVEN */}
+              {Boolean(visitToPrint.dietary && visitToPrint.dietary.trim()) && (
+                <div className="rhAdviceBox" style={styles.rhAdviceBox}>
+                  <span style={{ fontWeight: 800, textDecoration: 'underline' }}>
+                    સૂચન / પરહેજ (ADVICE):{' '}
+                  </span>
+                  <span style={{ fontWeight: 700 }}>
+                    {visitToPrint.dietary.trim()}
+                  </span>
+                </div>
+              )}
 
               {/* Separator line */}
               <div
+                className="photoFooterDivider"
                 style={{
                   height: '1px',
                   backgroundColor: '#CBD5E1',
                   width: '100%',
                   margin: '12px 0 6px',
-                  visibility: printMode === 'padOnly' ? 'hidden' : 'visible',
+                  display: printMode === 'padOnly' ? 'none' : 'block',
                 }}
               />
 
@@ -1482,7 +1483,7 @@ export const RecentHistory = ({
                 className="letterpad-preprinted-footer rhPharmacyFooter"
                 style={{
                   ...styles.rhPharmacyFooter,
-                  visibility: printMode === 'padOnly' ? 'hidden' : 'visible',
+                  display: printMode === 'padOnly' ? 'none' : 'flex',
                 }}
               >
                 <span style={{ fontSize: '18px', fontWeight: 900, color: '#0F172A' }}>✚</span>

@@ -4788,7 +4788,7 @@ export const PatientRecord = ({
                   style={{
                     position: 'relative',
                     zIndex: 1,
-                    visibility: printMode === 'padOnly' ? 'hidden' : 'visible',
+                    display: printMode === 'padOnly' ? 'none' : 'block',
                     marginBottom: '4px',
                   }}
                 >
@@ -5000,27 +5000,33 @@ export const PatientRecord = ({
                   </tbody>
                 </table>
 
-                {/* 4. ADVICE BOX (સૂચન / પરહેજ (ADVICE)) */}
-                <div className="photoAdviceBox" style={styles.photoAdviceBox}>
-                  <span style={styles.photoAdviceTitle}>
-                    {t.adviceTitle || 'સૂચન / પરહેજ (ADVICE):'}{' '}
-                  </span>
-                  <span style={styles.photoAdviceText}>
-                    {printDietary && printDietary.trim()
-                      ? printDietary
-                      : (t.defaultAdvice || '---અનાજ [ રોટલી , ભાખરી , રોટલો ] , બટાકા , દૂધ ના લેવુ----- --- દાળ ભાત, ખીચડી , છાશ, દહીં, લીંબુ પાણી, મોસંબી નુ જ્યુસ, પાઈનેપલ નુ જ્યુસ, લસ્સી વધારે લેવી')}
-                  </span>
-                </div>
+                {/* 4. ADVICE BOX (સૂચન / પરહેજ (ADVICE)) - ONLY IF GIVEN */}
+                {Boolean(printDietary && printDietary.trim()) && (
+                  <div className="photoAdviceBox" style={styles.photoAdviceBox}>
+                    <span style={styles.photoAdviceTitle}>
+                      {t.adviceTitle || 'સૂચન / પરહેજ (ADVICE):'}{' '}
+                    </span>
+                    <span style={styles.photoAdviceText}>
+                      {printDietary.trim()}
+                    </span>
+                  </div>
+                )}
 
                 {/* Separator line above footer */}
-                <div style={styles.photoFooterDivider} />
+                <div
+                  className="photoFooterDivider"
+                  style={{
+                    ...styles.photoFooterDivider,
+                    display: printMode === 'padOnly' ? 'none' : 'block',
+                  }}
+                />
 
                 {/* 5. PHARMACY FOOTER: + Harsh Medical & General Stores + */}
                 <div
                   className="letterpad-preprinted-footer photoPharmacyBar"
                   style={{
                     ...styles.photoPharmacyBar,
-                    visibility: printMode === 'padOnly' ? 'hidden' : 'visible',
+                    display: printMode === 'padOnly' ? 'none' : 'flex',
                   }}
                 >
                   <span style={styles.photoPharmacyPlus}>+</span>
