@@ -1998,10 +1998,16 @@ export const PatientRecord = ({
       };
 
       let res;
-      if (editingId) {
+      // If editing a visit, but that visit was recorded on a PREVIOUS date (not today),
+      // create a NEW visit entry for today so past historical records are not overwritten and a fresh entry is made!
+      const isPastDateVisit = editingVisit?.visitDate && editingVisit.visitDate !== getTodayDateStr();
+      if (editingId && !isPastDateVisit) {
         res = await visitAPI.update(editingId, payload);
       } else {
-        res = await visitAPI.create(payload);
+        res = await visitAPI.create({
+          ...payload,
+          visitDate: getTodayDateStr(), // ensure today's date for the new entry
+        });
       }
 
       if (res.success) {
@@ -2009,8 +2015,13 @@ export const PatientRecord = ({
           localStorage.removeItem(DRAFT_KEY);
         } catch (e) { }
 
+        // Clear Recent History cache and trigger live refresh across all components
+        try {
+          window.dispatchEvent(new CustomEvent('cms_visit_saved', { detail: res.visit }));
+        } catch (e) { }
+
         showToast(
-          editingId
+          editingId && !isPastDateVisit
             ? 'Visit record updated successfully!'
             : 'New visit saved successfully and dues updated!'
         );

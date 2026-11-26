@@ -24,6 +24,9 @@ import {
 
 // In-memory cache for ultra-fast instant tab switching
 let recentVisitsCache = null;
+export const clearRecentVisitsCache = () => {
+  recentVisitsCache = null;
+};
 
 export const RecentHistory = ({
   onNavigateToNewCase,
@@ -93,6 +96,16 @@ export const RecentHistory = ({
 
   useEffect(() => {
     fetchRecentVisits();
+  }, [debouncedSearch, selectedPeriod, selectedDate]);
+
+  // Synchronize live with any visit saved, updated, or paid from anywhere in the application
+  useEffect(() => {
+    const handleLiveVisitSync = () => {
+      recentVisitsCache = null;
+      fetchRecentVisits();
+    };
+    window.addEventListener('cms_visit_saved', handleLiveVisitSync);
+    return () => window.removeEventListener('cms_visit_saved', handleLiveVisitSync);
   }, [debouncedSearch, selectedPeriod, selectedDate]);
 
   // Handle open delete modal
@@ -173,9 +186,10 @@ export const RecentHistory = ({
     }
 
     let timeStr = '';
-    if (visit.createdAt) {
+    const timeSource = visit.updatedAt || visit.createdAt;
+    if (timeSource) {
       try {
-        const d = new Date(visit.createdAt);
+        const d = new Date(timeSource);
         timeStr = d.toLocaleTimeString('en-US', {
           hour: '2-digit',
           minute: '2-digit',

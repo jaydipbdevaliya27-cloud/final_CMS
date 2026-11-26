@@ -127,6 +127,11 @@ export const Reports = ({ onNavigateToPatient }) => {
           totalOutstandingDue: Math.max(0, (prev.totalOutstandingDue || 0) - num),
         }));
 
+        // Trigger live refresh in Recent History
+        try {
+          window.dispatchEvent(new CustomEvent('cms_visit_saved', { detail: res?.visit }));
+        } catch (e) {}
+
         setCollectModalOpen(false);
         const collectedPatName = patientToCollect.name;
         setPatientToCollect(null);

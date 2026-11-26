@@ -408,6 +408,7 @@ export const updateVisit = async (req, res) => {
       }
     }
 
+    visit.updatedAt = new Date();
     await visit.save();
 
     // Recalculate dues
@@ -608,12 +609,23 @@ export const getRecentVisits = async (req, res) => {
     const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 
     if (period === 'today') {
-      query.visitDate = todayStr;
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+      query.$or = [
+        { visitDate: todayStr },
+        { updatedAt: { $gte: startOfToday } },
+        { createdAt: { $gte: startOfToday } },
+      ];
     } else if (period === 'yesterday') {
       const yDate = new Date();
       yDate.setDate(yDate.getDate() - 1);
       const yStr = `${yDate.getFullYear()}-${pad(yDate.getMonth() + 1)}-${pad(yDate.getDate())}`;
-      query.visitDate = yStr;
+      const startOfYesterday = new Date(yDate.getFullYear(), yDate.getMonth(), yDate.getDate(), 0, 0, 0, 0);
+      const endOfYesterday = new Date(yDate.getFullYear(), yDate.getMonth(), yDate.getDate(), 23, 59, 59, 999);
+      query.$or = [
+        { visitDate: yStr },
+        { updatedAt: { $gte: startOfYesterday, $lte: endOfYesterday } },
+        { createdAt: { $gte: startOfYesterday, $lte: endOfYesterday } },
+      ];
     } else if (period === 'custom' && date) {
       query.visitDate = date;
     }
@@ -624,18 +636,26 @@ export const getRecentVisits = async (req, res) => {
       const escaped = s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const regex = new RegExp(escaped, 'i');
 
-      query.$or = [
+      const searchConditions = [
         { patientName: regex },
         { patientId: regex },
         { complaint: regex },
         { reference: regex },
         { investigation: regex },
       ];
+
+      if (query.$or) {
+        // Combine period $or filter and search $or conditions cleanly with $and
+        query.$and = [{ $or: query.$or }, { $or: searchConditions }];
+        delete query.$or;
+      } else {
+        query.$or = searchConditions;
+      }
     }
 
     const visits = await Visit.find(query)
-      .select('patientId familyId patientName visitDate createdAt complaint ipdDetails treatments prescriptions bp sugar other reference charge received due allergies investigation labReport labReportId dietary')
-      .sort({ createdAt: -1 })
+      .select('patientId familyId patientName visitDate createdAt updatedAt complaint ipdDetails treatments prescriptions bp sugar other reference charge received due allergies investigation labReport labReportId dietary')
+      .sort({ updatedAt: -1, createdAt: -1 })
       .limit(Math.min(250, Number(limit) || 100))
       .lean();
 
