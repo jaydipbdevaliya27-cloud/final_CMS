@@ -108,25 +108,34 @@ export const RecentHistory = ({
     return () => window.removeEventListener('cms_visit_saved', handleLiveVisitSync);
   }, [debouncedSearch, selectedPeriod, selectedDate]);
 
-  // Instant synchronous in-memory filter across loaded visits for 0ms typing response
+  // Instant synchronous in-memory filter across loaded visits with latest edited cases ranked at the top
   const displayedVisits = useMemo(() => {
-    if (!searchQuery || !searchQuery.trim()) return visits;
-    const q = searchQuery.trim().toLowerCase();
-    return visits.filter((v) => {
-      const pName = (v.patientName || '').toLowerCase();
-      const pId = (v.patientId || '').toLowerCase();
-      const fId = (v.familyId || '').toLowerCase();
-      const comp = (v.complaint || '').toLowerCase();
-      const phone = String(v.phone || '').toLowerCase();
-      const area = (v.area || '').toLowerCase();
-      return (
-        pName.includes(q) ||
-        pId.includes(q) ||
-        fId.includes(q) ||
-        comp.includes(q) ||
-        phone.includes(q) ||
-        area.includes(q)
-      );
+    let list = visits;
+    if (searchQuery && searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      list = visits.filter((v) => {
+        const pName = (v.patientName || '').toLowerCase();
+        const pId = (v.patientId || '').toLowerCase();
+        const fId = (v.familyId || '').toLowerCase();
+        const comp = (v.complaint || '').toLowerCase();
+        const phone = String(v.phone || '').toLowerCase();
+        const area = (v.area || '').toLowerCase();
+        return (
+          pName.includes(q) ||
+          pId.includes(q) ||
+          fId.includes(q) ||
+          comp.includes(q) ||
+          phone.includes(q) ||
+          area.includes(q)
+        );
+      });
+    }
+
+    // Always sort by latest updatedAt / createdAt so edited cases immediately move to the top
+    return [...list].sort((a, b) => {
+      const aTime = new Date(a.updatedAt || a.createdAt || a.visitDate || 0).getTime();
+      const bTime = new Date(b.updatedAt || b.createdAt || b.visitDate || 0).getTime();
+      return bTime - aTime;
     });
   }, [visits, searchQuery]);
 
@@ -643,7 +652,20 @@ export const RecentHistory = ({
                       {/* 1. Date & Time */}
                       <td style={styles.tdDateTime}>
                         <div style={styles.dateText}>{dateStr}</div>
-                        <div style={styles.timeBadge}>{timeStr}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '2px', flexWrap: 'wrap' }}>
+                          <span style={styles.timeBadge}>{timeStr}</span>
+                          {Boolean(
+                            visit.isEdited ||
+                            (visit.updatedAt && visit.createdAt && new Date(visit.updatedAt).getTime() - new Date(visit.createdAt).getTime() > 2000)
+                          ) && (
+                            <span
+                              style={styles.editedBadge}
+                              title={visit.editedAt ? `Edited: ${new Date(visit.editedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Case Updated'}
+                            >
+                              EDITED
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       {/* 2. Patient Name & Highlighted Allergies Only */}
@@ -1430,6 +1452,20 @@ const styles = {
     fontWeight: '600',
     color: '#0284C7',
     marginTop: '2px',
+  },
+  editedBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    padding: '1px 5px',
+    backgroundColor: '#FEF3C7',
+    color: '#92400E',
+    border: '1px solid #FDE68A',
+    borderRadius: '4px',
+    fontSize: '9.5px',
+    fontWeight: '800',
+    letterSpacing: '0.4px',
+    lineHeight: 1.2,
+    textTransform: 'uppercase',
   },
   tdPatient: {
     padding: '8px 10px',

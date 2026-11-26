@@ -517,6 +517,8 @@ export const updateVisit = async (req, res) => {
       }
     }
 
+    visit.isEdited = true;
+    visit.editedAt = new Date();
     visit.updatedAt = new Date();
     await visit.save();
 
@@ -760,7 +762,7 @@ export const getRecentVisits = async (req, res) => {
     }
 
     const visits = await Visit.find(query)
-      .select('patientId familyId patientName visitDate createdAt updatedAt complaint complaintList ipdDetails treatments prescriptions bp sugar other reference charge received due allergies investigation investigationList labReport labReportId dietary')
+      .select('patientId familyId patientName visitDate createdAt updatedAt isEdited editedAt complaint complaintList ipdDetails treatments prescriptions bp sugar other reference charge received due allergies investigation investigationList labReport labReportId dietary')
       .sort({ updatedAt: -1, createdAt: -1 })
       .limit(Math.min(250, Number(limit) || 100))
       .lean();

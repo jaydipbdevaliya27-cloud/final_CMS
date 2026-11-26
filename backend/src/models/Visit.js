@@ -134,6 +134,14 @@ const visitSchema = new mongoose.Schema(
       ref: 'LabReport',
       default: null,
     },
+    isEdited: {
+      type: Boolean,
+      default: false,
+    },
+    editedAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,
@@ -142,6 +150,7 @@ const visitSchema = new mongoose.Schema(
 
 // Performance indexes for rapid search, sort, and history loading
 visitSchema.index({ createdAt: -1 });
+visitSchema.index({ updatedAt: -1 });
 visitSchema.index({ visitDate: -1, createdAt: -1 });
 visitSchema.index({ patientName: 1 });
 visitSchema.index({ patientId: 1, createdAt: -1 });

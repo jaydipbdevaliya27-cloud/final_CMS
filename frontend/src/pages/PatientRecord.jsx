@@ -1895,15 +1895,13 @@ export const PatientRecord = ({
       };
 
       let res;
-      // If editing a visit, but that visit was recorded on a PREVIOUS date (not today),
-      // create a NEW visit entry for today so past historical records are not overwritten and a fresh entry is made!
-      const isPastDateVisit = editingVisit?.visitDate && editingVisit.visitDate !== getTodayDateStr();
-      if (editingId && !isPastDateVisit) {
+      // When editing an existing visit, update that case directly in-place without creating a duplicate/redundant copy
+      if (editingId) {
         res = await visitAPI.update(editingId, payload);
       } else {
         res = await visitAPI.create({
           ...payload,
-          visitDate: getTodayDateStr(), // ensure today's date for the new entry
+          visitDate: form.visitDate || getTodayDateStr(),
         });
       }
 
@@ -1914,7 +1912,7 @@ export const PatientRecord = ({
         } catch (e) { }
 
         showToast(
-          editingId && !isPastDateVisit
+          editingId
             ? 'Visit record updated successfully!'
             : 'New visit saved successfully and dues updated!'
         );
