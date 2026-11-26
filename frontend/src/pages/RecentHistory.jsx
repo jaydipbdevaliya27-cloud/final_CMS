@@ -210,85 +210,9 @@ export const RecentHistory = ({
     return { dateStr, timeStr };
   };
 
-  // Helper: Generate Alert Badges
+  // Helper: Generate Alert Badges (Strictly Lab Investigations & Attached Lab Reports - No Emojis)
   const getLabAlerts = (visit) => {
     const alerts = [];
-
-    // Due collection check
-    if (visit.reference && visit.reference.toUpperCase().includes('DUE COLLECTION')) {
-      alerts.push({
-        type: 'collection',
-        text: `DUE COLLECTION (₹${visit.received || 0})`,
-        variant: 'green',
-      });
-      return alerts;
-    }
-
-    // IPD Details Highlight Alert
-    let ipdItemsForAlert = [];
-    if (Array.isArray(visit.ipdDetails)) {
-      ipdItemsForAlert = visit.ipdDetails
-        .map((i) => (typeof i === 'string' ? i.trim() : (i?.item || '').trim()))
-        .filter(Boolean);
-    } else if (typeof visit.ipdDetails === 'string' && visit.ipdDetails.trim()) {
-      ipdItemsForAlert = visit.ipdDetails.split(',').map((s) => s.trim()).filter(Boolean);
-    }
-    if (ipdItemsForAlert.length > 0) {
-      alerts.push({
-        type: 'ipd',
-        text: `🏥 IPD: ${ipdItemsForAlert.slice(0, 2).join(', ')}${ipdItemsForAlert.length > 2 ? ` (+${ipdItemsForAlert.length - 2})` : ''}`,
-        variant: 'orange',
-      });
-    }
-
-    // BP Alert: Check range or contains '*'
-    if (visit.bp && visit.bp.trim()) {
-      const bpStr = visit.bp.trim();
-      const hasStar = bpStr.includes('*');
-      const match = bpStr.match(/(\d+)\s*\/\s*(\d+)/);
-      let isOut = hasStar;
-      if (match) {
-        const sys = parseInt(match[1], 10);
-        const dia = parseInt(match[2], 10);
-        if (sys >= 135 || sys < 90 || dia >= 88 || dia < 60) {
-          isOut = true;
-        }
-      }
-      if (isOut) {
-        alerts.push({
-          type: 'bp',
-          text: `${hasStar ? '🚩 ' : ''}BP: ${bpStr}`,
-          variant: 'red',
-        });
-      }
-    }
-
-    // Sugar Alert: Normal random < 140
-    if (visit.sugar && visit.sugar.trim()) {
-      const sStr = visit.sugar.trim();
-      const hasStar = sStr.includes('*');
-      const num = parseFloat(sStr.replace(/[^0-9.]/g, ''));
-      if (hasStar || (!isNaN(num) && (num >= 140 || num < 70))) {
-        alerts.push({
-          type: 'sugar',
-          text: `🚩 SUGAR: ${sStr}`,
-          variant: 'red',
-        });
-      }
-    }
-
-    // Other notes (e.g. 'OTHERS: 6TH MONTH', Spo2, etc.)
-    if (visit.other && visit.other.trim()) {
-      const oStr = visit.other.trim();
-      const hasStar = oStr.includes('*');
-      if (hasStar || oStr.toLowerCase().includes('month') || oStr.toLowerCase().includes('spo2')) {
-        alerts.push({
-          type: 'other',
-          text: `${hasStar ? '🚩 ' : ''}${oStr.toUpperCase()}`,
-          variant: hasStar ? 'red' : 'orange',
-        });
-      }
-    }
 
     // Lab Investigations & Radiology (e.g. 'CBC', 'WIDAL', 'URINE RM', 'X-RAY', 'USG')
     if (visit.investigation && visit.investigation.trim()) {
@@ -299,7 +223,7 @@ export const RecentHistory = ({
         if (hasStar) {
           alerts.push({
             type: 'lab',
-            text: `🚩 ${upper}`,
+            text: upper,
             variant: 'red',
           });
         } else if (
@@ -313,13 +237,13 @@ export const RecentHistory = ({
         ) {
           alerts.push({
             type: 'radiology',
-            text: `📷 ${upper}`,
+            text: upper,
             variant: 'blue',
           });
         } else {
           alerts.push({
             type: 'lab',
-            text: `🧪 ${upper}`,
+            text: upper,
             variant: 'purple',
           });
         }
@@ -334,21 +258,21 @@ export const RecentHistory = ({
       if (h.hb) {
         const num = parseFloat(h.hb);
         if (h.hb.includes('*') || (!isNaN(num) && (num < 11.5 || num > 16.5))) {
-          alerts.push({ type: 'lab', text: `🚩 Hb: ${h.hb}`, variant: 'red' });
+          alerts.push({ type: 'lab', text: `Hb: ${h.hb}`, variant: 'red' });
           reportAlertTriggered = true;
         }
       }
       if (h.wbc) {
         const num = parseFloat(h.wbc);
         if (h.wbc.includes('*') || (!isNaN(num) && (num < 4000 || num > 11000))) {
-          alerts.push({ type: 'lab', text: `🚩 WBC: ${h.wbc}`, variant: 'red' });
+          alerts.push({ type: 'lab', text: `WBC: ${h.wbc}`, variant: 'red' });
           reportAlertTriggered = true;
         }
       }
       if (h.platelet) {
         const num = parseFloat(h.platelet);
         if (h.platelet.includes('*') || (!isNaN(num) && (num < 150000 || num > 450000))) {
-          alerts.push({ type: 'lab', text: `🚩 Plat: ${h.platelet}`, variant: 'red' });
+          alerts.push({ type: 'lab', text: `Plat: ${h.platelet}`, variant: 'red' });
           reportAlertTriggered = true;
         }
       }
@@ -356,14 +280,14 @@ export const RecentHistory = ({
       if (g.screatinin) {
         const num = parseFloat(g.screatinin);
         if (g.screatinin.includes('*') || (!isNaN(num) && (num > 1.2 || num < 0.6))) {
-          alerts.push({ type: 'lab', text: `🚩 S.CREAT: ${g.screatinin}`, variant: 'red' });
+          alerts.push({ type: 'lab', text: `S.CREAT: ${g.screatinin}`, variant: 'red' });
           reportAlertTriggered = true;
         }
       }
       if (g.rbs) {
         const num = parseFloat(g.rbs);
         if (g.rbs.includes('*') || (!isNaN(num) && num > 140)) {
-          alerts.push({ type: 'lab', text: `🚩 RBS: ${g.rbs}`, variant: 'red' });
+          alerts.push({ type: 'lab', text: `RBS: ${g.rbs}`, variant: 'red' });
           reportAlertTriggered = true;
         }
       }
@@ -371,14 +295,14 @@ export const RecentHistory = ({
       if (t.tsh) {
         const num = parseFloat(t.tsh);
         if (t.tsh.includes('*') || (!isNaN(num) && (num < 0.35 || num > 4.94))) {
-          alerts.push({ type: 'lab', text: `🚩 TSH: ${t.tsh}`, variant: 'red' });
+          alerts.push({ type: 'lab', text: `TSH: ${t.tsh}`, variant: 'red' });
           reportAlertTriggered = true;
         }
       }
       if (Array.isArray(rep.specialFindings)) {
         rep.specialFindings.forEach((sf) => {
           if (sf.notes && sf.notes.includes('*')) {
-            alerts.push({ type: 'lab', text: `🚩 ${sf.title}: ${sf.notes}`, variant: 'red' });
+            alerts.push({ type: 'lab', text: `${sf.title}: ${sf.notes}`, variant: 'red' });
             reportAlertTriggered = true;
           }
         });
@@ -388,14 +312,14 @@ export const RecentHistory = ({
         const repName = rep.title || rep.reportType || 'REPORT ATTACHED';
         alerts.push({
           type: 'labReport',
-          text: `📋 ${repName.toUpperCase()}`,
+          text: repName.toUpperCase(),
           variant: 'purple',
         });
       }
     } else if (visit.labReportId) {
       alerts.push({
         type: 'labReport',
-        text: '📋 LAB REPORT',
+        text: 'LAB REPORT',
         variant: 'purple',
       });
     }

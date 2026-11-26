@@ -44,6 +44,7 @@ import {
   FlaskConical,
   ShieldAlert,
   Clock,
+  Eye,
 } from 'lucide-react';
 
 // Format human-readable dosage instructions in selected language
@@ -98,7 +99,7 @@ const RX_TRANSLATIONS = {
   en: {
     langKey: 'en',
     langName: 'English',
-    flag: '🇬🇧',
+    flag: '',
     patientLabel: 'Patient:',
     dateLabel: 'Date:',
     ageLabel: 'Age:',
@@ -128,7 +129,7 @@ const RX_TRANSLATIONS = {
   hi: {
     langKey: 'hi',
     langName: 'हिंदी',
-    flag: '🇮🇳',
+    flag: '',
     patientLabel: 'मरीज़ का नाम:',
     dateLabel: 'दिनांक:',
     ageLabel: 'उम्र:',
@@ -158,7 +159,7 @@ const RX_TRANSLATIONS = {
   gu: {
     langKey: 'gu',
     langName: 'ગુજરાતી',
-    flag: '🇮🇳',
+    flag: '',
     patientLabel: 'દર્દીનું નામ:',
     dateLabel: 'તારીખ:',
     ageLabel: 'ઉંમર:',
@@ -3919,7 +3920,7 @@ export const PatientRecord = ({
                             title="Click to View Diagnostic Lab Report"
                           >
                             <FileText size={12} color="#0F766E" />
-                            <span>🔬 Lab Report</span>
+                            <span>Lab Report</span>
                           </button>
                         )}
 
@@ -4415,7 +4416,8 @@ export const PatientRecord = ({
                   gap: 4,
                 }}
               >
-                <span>👁️ Preview On Screen First</span>
+                <Eye size={13} style={{ marginRight: 4 }} />
+                <span>Preview On Screen First</span>
               </button>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontSize: '11px', color: '#64748B' }}>
@@ -4500,9 +4502,9 @@ export const PatientRecord = ({
                   </div>
                   <div style={styles.langPillsGroup}>
                     {[
-                      { key: 'en', label: 'English', flag: '🇬🇧' },
-                      { key: 'hi', label: 'हिंदी (Hindi)', flag: '🇮🇳' },
-                      { key: 'gu', label: 'ગુજરાતી (Gujarati)', flag: '🇮🇳' },
+                      { key: 'en', label: 'English' },
+                      { key: 'hi', label: 'हिंदी (Hindi)' },
+                      { key: 'gu', label: 'ગુજરાતી (Gujarati)' },
                     ].map((lang) => {
                       const isActive = printLanguage === lang.key;
                       return (
@@ -4519,7 +4521,6 @@ export const PatientRecord = ({
                             boxShadow: isActive ? '0 2px 6px rgba(20, 107, 92, 0.25)' : 'none',
                           }}
                         >
-                          <span>{lang.flag}</span>
                           <span>{lang.label}</span>
                         </button>
                       );
@@ -4546,7 +4547,8 @@ export const PatientRecord = ({
                       }}
                       title="Prints full Dr. Chirag Paghdal letterhead with address, Caduceus watermark & medical store footer"
                     >
-                      <span>📄 Full Letterhead (Plain Paper / PDF)</span>
+                      <FileText size={14} style={{ marginRight: 5, verticalAlign: 'middle' }} />
+                      <span>Full Letterhead (Plain Paper / PDF)</span>
                     </button>
                     <button
                       type="button"
@@ -4560,7 +4562,8 @@ export const PatientRecord = ({
                       }}
                       title="Hides printed letterhead graphics so you can feed your physical clinic letterpad into the printer"
                     >
-                      <span>🖨️ Feed Pre-Printed Pad (Stationery Mode)</span>
+                      <Printer size={14} style={{ marginRight: 5, verticalAlign: 'middle' }} />
+                      <span>Feed Pre-Printed Pad (Stationery Mode)</span>
                     </button>
                   </div>
                 </div>
@@ -4652,7 +4655,7 @@ export const PatientRecord = ({
                   {printMode === 'full' ? (
                     <span>ℹ️ <strong>Full Letterhead Mode</strong>: Prints complete <strong>Dr. Chirag Paghdal</strong> letterpad with watermark, patient details, converted Rx dosage, dietary advice & Harsh Medical footer.</span>
                   ) : (
-                    <span>🖨️ <strong>Pre-Printed Pad Mode</strong>: Letterhead graphics are hidden during print so you can insert your <strong>physical printed paper pad</strong> directly into printer!</span>
+                    <span><strong>Pre-Printed Pad Mode</strong>: Letterhead graphics are hidden during print so you can insert your <strong>physical printed paper pad</strong> directly into printer!</span>
                   )}
                 </div> */}
               </div>
@@ -5317,7 +5320,7 @@ export const PatientRecord = ({
                         color: familyDueTab === 'members' ? '#FFFFFF' : '#475569',
                       }}
                     >
-                      👥 Member Dues ({familyData?.members?.length || 0})
+                      Member Dues ({familyData?.members?.length || 0})
                     </button>
                     <button
                       type="button"
@@ -5328,7 +5331,7 @@ export const PatientRecord = ({
                         color: familyDueTab === 'visits' ? '#FFFFFF' : '#475569',
                       }}
                     >
-                      📋 Visits with Pending Due ({familyVisits.filter((v) => (v.due || 0) > 0).length})
+                      Visits with Pending Due ({familyVisits.filter((v) => (v.due || 0) > 0).length})
                     </button>
                   </div>
                   <span style={{ fontSize: 11, color: '#64748B' }}>
@@ -5372,7 +5375,7 @@ export const PatientRecord = ({
                                     </span>
                                   )}
                                 </div>
-                                {m.phone && <div style={{ fontSize: 10, color: '#64748B' }}>📞 {m.phone}</div>}
+                                {m.phone && <div style={{ fontSize: 10, color: '#64748B' }}>{m.phone}</div>}
                               </td>
                               <td style={styles.dueTd}>
                                 <span style={styles.dropdownItemBadge}>{m.patientId}</span>
