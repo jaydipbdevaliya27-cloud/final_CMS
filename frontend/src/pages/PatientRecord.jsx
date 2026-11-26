@@ -198,6 +198,36 @@ const formatRxDate = (dateVal) => {
   }
 };
 
+const PRINT_LANGUAGES = [
+  {
+    key: 'gu',
+    title: 'ગુજરાતી (Gujarati)',
+    sub: 'સવાર-બપોર-સાંજ-રાત, જમ્યા પહેલા / જમ્યા પછી, પરહેજ',
+    code: 'IN',
+    color: '#166534',
+    bg: '#F0FDF4',
+    border: '#86EFAC',
+  },
+  {
+    key: 'hi',
+    title: 'हिंदी (Hindi)',
+    sub: 'सुबह-दोपहर-शाम-रात, खाने से पहले / खाने के बाद, परहेज़',
+    code: 'IN',
+    color: '#9A3412',
+    bg: '#FFF7ED',
+    border: '#FED7AA',
+  },
+  {
+    key: 'en',
+    title: 'English',
+    sub: 'Morning-Noon-Evening-Night, Before/After Food, Advice',
+    code: 'GB',
+    color: '#1E40AF',
+    bg: '#EFF6FF',
+    border: '#BFDBFE',
+  },
+];
+
 export const PatientRecord = ({
   selectedPatientId,
   onNavigateToAddMember,
@@ -268,6 +298,7 @@ export const PatientRecord = ({
   const [printVisit, setPrintVisit] = useState(null);
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [showLanguageModal, setShowLanguageModal] = useState(false);
+  const [languageHighlightIndex, setLanguageHighlightIndex] = useState(0);
   const [pendingPrintVisit, setPendingPrintVisit] = useState(null);
   const [printLanguage, setPrintLanguage] = useState(() => {
     try {
@@ -276,6 +307,14 @@ export const PatientRecord = ({
       return 'gu';
     }
   });
+
+  // Keep keyboard highlight index synchronized with current active language when modal opens
+  useEffect(() => {
+    if (showLanguageModal) {
+      const idx = PRINT_LANGUAGES.findIndex((l) => l.key === printLanguage);
+      setLanguageHighlightIndex(idx >= 0 ? idx : 0);
+    }
+  }, [showLanguageModal, printLanguage]);
   const [printMode, setPrintMode] = useState('full'); // 'full' (plain paper/PDF with letterhead) | 'padOnly' (physical pre-printed letterpad)
   const [printDietary, setPrintDietary] = useState('');
   const [masterDietaryList, setMasterDietaryList] = useState([]);
@@ -679,6 +718,48 @@ export const PatientRecord = ({
   // --- Global Keyboard Shortcuts: Alt+N/F3 for New Case, Ctrl+S for Save Case, Ctrl+Enter for Save & Print ---
   useEffect(() => {
     const handleGlobalShortcuts = (e) => {
+      // 0. Language Modal Keyboard Navigation: Up, Down, Enter, Esc, 1, 2, 3
+      if (showLanguageModal) {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          e.stopPropagation();
+          setLanguageHighlightIndex((prev) => (prev + 1) % PRINT_LANGUAGES.length);
+          return;
+        }
+        if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          e.stopPropagation();
+          setLanguageHighlightIndex((prev) => (prev - 1 + PRINT_LANGUAGES.length) % PRINT_LANGUAGES.length);
+          return;
+        }
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          e.stopPropagation();
+          const selected = PRINT_LANGUAGES[languageHighlightIndex] || PRINT_LANGUAGES[0];
+          if (selected) {
+            triggerPrintInLanguage(selected.key, true);
+          }
+          return;
+        }
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          e.stopPropagation();
+          setShowLanguageModal(false);
+          return;
+        }
+        if (e.key === '1' || e.key === '2' || e.key === '3') {
+          e.preventDefault();
+          e.stopPropagation();
+          const numIdx = parseInt(e.key, 10) - 1;
+          const chosen = PRINT_LANGUAGES[numIdx];
+          if (chosen) {
+            triggerPrintInLanguage(chosen.key, true);
+          }
+          return;
+        }
+        return;
+      }
+
       // If print modal is open, let Escape close it
       if (showPrintModal && e.key === 'Escape') {
         e.preventDefault();
@@ -687,7 +768,7 @@ export const PatientRecord = ({
       }
 
       // Don't intercept if an overlay modal is open
-      if (showAddReportModal || showTotalDueModal || showFamilyDueModal || showPrintModal) {
+      if (showAddReportModal || showTotalDueModal || showFamilyDueModal || showPrintModal || showLanguageModal) {
         return;
       }
 
@@ -751,7 +832,7 @@ export const PatientRecord = ({
 
     window.addEventListener('keydown', handleGlobalShortcuts);
     return () => window.removeEventListener('keydown', handleGlobalShortcuts);
-  }, [showAddReportModal, showTotalDueModal, showFamilyDueModal, showPrintModal]);
+  }, [showAddReportModal, showTotalDueModal, showFamilyDueModal, showPrintModal, showLanguageModal, languageHighlightIndex]);
 
   // --- 1. Load Initial / Pre-selected Patient ---
   useEffect(() => {
@@ -4202,8 +4283,8 @@ export const PatientRecord = ({
                   <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: '#166534' }}>
                     Select Prescription Language
                   </h3>
-                  <span style={{ fontSize: '11px', color: '#16A34A', fontWeight: 500 }}>
-                    Click language to print prescription & dosage advice
+                  <span style={{ fontSize: '11px', color: '#16A34A', fontWeight: 600 }}>
+                    Use ↑ / ↓ arrow keys & Enter to select & print (or press Esc)
                   </span>
                 </div>
               </div>
@@ -4211,77 +4292,64 @@ export const PatientRecord = ({
                 type="button"
                 onClick={() => setShowLanguageModal(false)}
                 style={styles.closeModalBtn}
-                title="Cancel"
+                title="Cancel (Esc)"
               >
                 <X size={16} />
               </button>
             </div>
 
-            {/* Language Choice Cards */}
+            {/* Language Choice Cards with Keyboard Navigation */}
             <div style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {[
-                {
-                  key: 'gu',
-                  title: 'ગુજરાતી (Gujarati)',
-                  sub: 'સવાર-બપોર-સાંજ-રાત, જમ્યા પહેલા / જમ્યા પછી, પરહેજ',
-                  flag: '🇮🇳',
-                  color: '#166534',
-                  bg: '#F0FDF4',
-                  border: '#86EFAC',
-                },
-                {
-                  key: 'hi',
-                  title: 'हिंदी (Hindi)',
-                  sub: 'सुबह-दोपहर-शाम-रात, खाने से पहले / खाने के बाद, परहेज़',
-                  flag: '🇮🇳',
-                  color: '#9A3412',
-                  bg: '#FFF7ED',
-                  border: '#FED7AA',
-                },
-                {
-                  key: 'en',
-                  title: 'English',
-                  sub: 'Morning-Noon-Evening-Night, Before/After Food, Advice',
-                  flag: '🇬🇧',
-                  color: '#1E40AF',
-                  bg: '#EFF6FF',
-                  border: '#BFDBFE',
-                },
-              ].map((lang) => {
+              {PRINT_LANGUAGES.map((lang, idx) => {
                 const isCurrent = printLanguage === lang.key;
+                const isHighlighted = idx === languageHighlightIndex;
+
                 return (
                   <button
                     key={lang.key}
                     type="button"
                     onClick={() => triggerPrintInLanguage(lang.key, true)}
+                    onMouseEnter={() => setLanguageHighlightIndex(idx)}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       padding: '12px 16px',
-                      backgroundColor: lang.bg,
-                      border: isCurrent ? `2px solid ${lang.color}` : `1.5px solid ${lang.border}`,
+                      backgroundColor: isHighlighted ? '#FFFFFF' : lang.bg,
+                      border: isHighlighted
+                        ? `2.5px solid ${lang.color}`
+                        : isCurrent
+                        ? `2px solid ${lang.color}`
+                        : `1.5px solid ${lang.border}`,
                       borderRadius: '8px',
                       cursor: 'pointer',
-                      transition: 'all 0.15s ease',
+                      transition: 'all 0.12s ease',
                       textAlign: 'left',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'translateY(-1px)';
-                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'none';
-                      e.currentTarget.style.boxShadow = 'none';
+                      boxShadow: isHighlighted ? '0 6px 18px rgba(0,0,0,0.12)' : 'none',
+                      transform: isHighlighted ? 'translateY(-2px)' : 'none',
+                      outline: isHighlighted ? `2px solid ${lang.color}40` : 'none',
+                      position: 'relative',
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <span style={{ fontSize: '24px' }}>{lang.flag}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                      <span
+                        style={{
+                          fontSize: '15px',
+                          fontWeight: 900,
+                          color: '#0F172A',
+                          letterSpacing: '0.5px',
+                          fontFamily: 'monospace',
+                          width: '28px',
+                          textAlign: 'center',
+                        }}
+                      >
+                        {lang.code}
+                      </span>
                       <div>
                         <div style={{ fontWeight: 800, fontSize: '14px', color: lang.color, display: 'flex', alignItems: 'center', gap: 6 }}>
                           <span>{lang.title}</span>
                           {isCurrent && (
-                            <span style={{ fontSize: '10px', backgroundColor: lang.color, color: '#FFFFFF', padding: '1px 5px', borderRadius: 4 }}>
+                            <span style={{ fontSize: '10px', backgroundColor: lang.color, color: '#FFFFFF', padding: '1px 6px', borderRadius: 4, fontWeight: 700 }}>
                               Default
                             </span>
                           )}
@@ -4291,13 +4359,33 @@ export const PatientRecord = ({
                         </div>
                       </div>
                     </div>
-                    <Printer size={16} color={lang.color} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      {isHighlighted && (
+                        <span
+                          style={{
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            color: lang.color,
+                            backgroundColor: lang.bg,
+                            border: `1px solid ${lang.border}`,
+                            padding: '2px 8px',
+                            borderRadius: '4px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                          }}
+                        >
+                          <span>↵ Press Enter</span>
+                        </span>
+                      )}
+                      <Printer size={18} color={lang.color} />
+                    </div>
                   </button>
                 );
               })}
             </div>
 
-            {/* Bottom Footer with Preview Option */}
+            {/* Bottom Footer with Preview Option & Key Hints */}
             <div
               style={{
                 padding: '12px 18px',
@@ -4310,7 +4398,10 @@ export const PatientRecord = ({
             >
               <button
                 type="button"
-                onClick={() => triggerPrintInLanguage(printLanguage || 'gu', false)}
+                onClick={() => {
+                  const targetLang = PRINT_LANGUAGES[languageHighlightIndex]?.key || printLanguage || 'gu';
+                  triggerPrintInLanguage(targetLang, false);
+                }}
                 style={{
                   background: 'none',
                   border: 'none',
@@ -4326,22 +4417,27 @@ export const PatientRecord = ({
               >
                 <span>👁️ Preview On Screen First</span>
               </button>
-              <button
-                type="button"
-                onClick={() => setShowLanguageModal(false)}
-                style={{
-                  padding: '6px 14px',
-                  backgroundColor: '#FFFFFF',
-                  border: '1px solid #CBD5E1',
-                  borderRadius: '6px',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  color: '#475569',
-                  cursor: 'pointer',
-                }}
-              >
-                Cancel
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: '11px', color: '#64748B' }}>
+                  <kbd style={{ padding: '1px 5px', backgroundColor: '#FFFFFF', border: '1px solid #CBD5E1', borderRadius: '3px', fontWeight: 700 }}>1</kbd> Guj &bull; <kbd style={{ padding: '1px 5px', backgroundColor: '#FFFFFF', border: '1px solid #CBD5E1', borderRadius: '3px', fontWeight: 700 }}>2</kbd> Hin &bull; <kbd style={{ padding: '1px 5px', backgroundColor: '#FFFFFF', border: '1px solid #CBD5E1', borderRadius: '3px', fontWeight: 700 }}>3</kbd> Eng
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowLanguageModal(false)}
+                  style={{
+                    padding: '6px 14px',
+                    backgroundColor: '#FFFFFF',
+                    border: '1px solid #CBD5E1',
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    color: '#475569',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           </div>
         </div>
