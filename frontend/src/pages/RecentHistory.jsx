@@ -243,77 +243,108 @@ export const RecentHistory = ({
       });
     }
 
-    // Attached Lab Report parameter checks
+    // Attached Lab Report - Comprehensive out-of-range parameter highlighting
     const rep = visit.labReport;
     if (rep && typeof rep === 'object') {
-      let reportAlertTriggered = false;
-      const h = rep.hematology || {};
-      if (h.hb) {
-        const num = parseFloat(h.hb);
-        if (h.hb.includes('*') || (!isNaN(num) && (num < 11.5 || num > 16.5))) {
-          alerts.push({ type: 'lab', text: `Hb: ${h.hb}`, variant: 'red' });
-          reportAlertTriggered = true;
+      const paramLimits = [
+        // Hematology
+        { section: 'hematology', key: 'hb', label: 'Hb', min: 12.0, max: 16.0 },
+        { section: 'hematology', key: 'rbc', label: 'RBC', min: 4.2, max: 5.4 },
+        { section: 'hematology', key: 'wbc', label: 'WBC', min: 4000, max: 10000 },
+        { section: 'hematology', key: 'platelet', label: 'Plat', min: 150000, max: 400000 },
+        { section: 'hematology', key: 'esr', label: 'ESR', min: 2, max: 20 },
+        // Blood Glucose & Renal Profile
+        { section: 'bloodGlucoseRenal', key: 'rbs', label: 'RBS', min: 70, max: 140 },
+        { section: 'bloodGlucoseRenal', key: 'fbs', label: 'FBS', min: 70, max: 100 },
+        { section: 'bloodGlucoseRenal', key: 'ppbs', label: 'PPBS', min: 70, max: 140 },
+        { section: 'bloodGlucoseRenal', key: 'screatinin', label: 'S.Creat', min: 0.5, max: 1.5 },
+        { section: 'bloodGlucoseRenal', key: 'vitb12', label: 'Vit B12', min: 200, max: 900 },
+        // Differential WBC
+        { section: 'differentialWbc', key: 'bandCell', label: 'Band Cell', min: 0, max: 6 },
+        { section: 'differentialWbc', key: 'neutrophils', label: 'Neutrophils', min: 55, max: 70 },
+        { section: 'differentialWbc', key: 'lymphocytes', label: 'Lymphocytes', min: 20, max: 40 },
+        { section: 'differentialWbc', key: 'eosinophils', label: 'Eosinophils', min: 1, max: 6 },
+        { section: 'differentialWbc', key: 'monocytes', label: 'Monocytes', min: 2, max: 8 },
+        { section: 'differentialWbc', key: 'basophils', label: 'Basophils', min: 0, max: 1 },
+        // Thyroid Function
+        { section: 'thyroid', key: 't3', label: 'T3', min: 82, max: 200 },
+        { section: 'thyroid', key: 't4', label: 'T4', min: 4.5, max: 12.5 },
+        { section: 'thyroid', key: 'tsh', label: 'TSH', min: 0.4, max: 6.0 },
+      ];
+
+      paramLimits.forEach((rule) => {
+        const sec = rep[rule.section] || {};
+        const rawVal = sec[rule.key];
+        if (rawVal !== undefined && rawVal !== null && String(rawVal).trim() !== '') {
+          const valStr = String(rawVal).trim();
+          const hasStar = valStr.includes('*');
+          const cleanStr = valStr.replace(/\*/g, '').replace(/,/g, '').trim();
+          const num = parseFloat(cleanStr);
+
+          if (hasStar) {
+            alerts.push({ type: 'lab', text: `${rule.label}: ${valStr}`, variant: 'red' });
+          } else if (!isNaN(num)) {
+            if (num < rule.min) {
+              alerts.push({ type: 'lab', text: `${rule.label}: ${valStr} (Low)`, variant: 'red' });
+            } else if (num > rule.max) {
+              alerts.push({ type: 'lab', text: `${rule.label}: ${valStr} (High)`, variant: 'red' });
+            }
+          }
+        }
+      });
+
+      // Differential WBC - Parasites
+      const diff = rep.differentialWbc || {};
+      if (diff.parasites && String(diff.parasites).trim() !== '') {
+        const pStr = String(diff.parasites).trim();
+        const pLower = pStr.toLowerCase();
+        if (
+          pLower.includes('*') ||
+          pLower.includes('pos') ||
+          pLower.includes('seen') ||
+          pLower.includes('pres') ||
+          pLower.includes('+')
+        ) {
+          alerts.push({ type: 'lab', text: `Parasites: ${pStr}`, variant: 'red' });
         }
       }
-      if (h.wbc) {
-        const num = parseFloat(h.wbc);
-        if (h.wbc.includes('*') || (!isNaN(num) && (num < 4000 || num > 11000))) {
-          alerts.push({ type: 'lab', text: `WBC: ${h.wbc}`, variant: 'red' });
-          reportAlertTriggered = true;
-        }
-      }
-      if (h.platelet) {
-        const num = parseFloat(h.platelet);
-        if (h.platelet.includes('*') || (!isNaN(num) && (num < 150000 || num > 450000))) {
-          alerts.push({ type: 'lab', text: `Plat: ${h.platelet}`, variant: 'red' });
-          reportAlertTriggered = true;
-        }
-      }
-      const g = rep.bloodGlucoseRenal || {};
-      if (g.screatinin) {
-        const num = parseFloat(g.screatinin);
-        if (g.screatinin.includes('*') || (!isNaN(num) && (num > 1.2 || num < 0.6))) {
-          alerts.push({ type: 'lab', text: `S.CREAT: ${g.screatinin}`, variant: 'red' });
-          reportAlertTriggered = true;
-        }
-      }
-      if (g.rbs) {
-        const num = parseFloat(g.rbs);
-        if (g.rbs.includes('*') || (!isNaN(num) && num > 140)) {
-          alerts.push({ type: 'lab', text: `RBS: ${g.rbs}`, variant: 'red' });
-          reportAlertTriggered = true;
-        }
-      }
-      const t = rep.thyroid || {};
-      if (t.tsh) {
-        const num = parseFloat(t.tsh);
-        if (t.tsh.includes('*') || (!isNaN(num) && (num < 0.35 || num > 4.94))) {
-          alerts.push({ type: 'lab', text: `TSH: ${t.tsh}`, variant: 'red' });
-          reportAlertTriggered = true;
-        }
-      }
+
+      // Special Findings (e.g. Widal, Dengue, Urine, USG, Radiology)
       if (Array.isArray(rep.specialFindings)) {
         rep.specialFindings.forEach((sf) => {
-          if (sf.notes && sf.notes.includes('*')) {
-            alerts.push({ type: 'lab', text: `${sf.title}: ${sf.notes}`, variant: 'red' });
-            reportAlertTriggered = true;
+          if (sf && sf.notes && String(sf.notes).trim() !== '') {
+            const nStr = String(sf.notes).trim();
+            const lower = nStr.toLowerCase();
+            const isNormal = ['normal', 'negative', 'non-reactive', 'nil', 'not seen', 'absent', 'clear', 'wnl', 'nad'].includes(lower);
+            const isAbnormal =
+              nStr.includes('*') ||
+              lower.includes('pos') ||
+              lower.includes('react') ||
+              lower.includes('abnormal') ||
+              lower.includes('high') ||
+              lower.includes('low') ||
+              lower.includes('present') ||
+              lower.includes('+');
+
+            if (isAbnormal || (!isNormal && nStr.length > 0)) {
+              alerts.push({ type: 'lab', text: `${sf.title || 'Finding'}: ${nStr}`, variant: 'red' });
+            }
           }
         });
       }
+    }
 
-      if (!reportAlertTriggered) {
-        const repName = rep.title || rep.reportType || 'REPORT ATTACHED';
-        alerts.push({
-          type: 'labReport',
-          text: repName.toUpperCase(),
-          variant: 'purple',
-        });
-      }
-    } else if (visit.labReportId) {
-      alerts.push({
-        type: 'labReport',
-        text: 'LAB REPORT',
-        variant: 'purple',
+    // Custom investigationList entries from Patient Record
+    if (Array.isArray(visit.investigationList)) {
+      visit.investigationList.forEach((inv) => {
+        if (inv && (inv.testName || inv.name)) {
+          const name = (inv.testName || inv.name || '').trim();
+          const res = inv.result ? String(inv.result).trim() : '';
+          const isAbnormal = inv.isAbnormal || res.includes('*');
+          if (isAbnormal) {
+            alerts.push({ type: 'lab', text: `${name}: ${res || 'Abnormal'}`, variant: 'red' });
+          }
+        }
       });
     }
 

@@ -752,13 +752,41 @@ export const getRecentVisits = async (req, res) => {
       patMap[p.patientId] = p;
     });
 
+    // Attach complete lab reports if visit has labReportId or linked LabReport but no embedded parameters
+    const visitsNeedingReport = visits.filter(
+      (v) => (!v.labReport || Object.keys(v.labReport).length === 0) && (v.labReportId || v._id)
+    );
+    const labReportMap = {};
+    if (visitsNeedingReport.length > 0) {
+      const repIds = visitsNeedingReport.map((v) => v.labReportId).filter(Boolean);
+      const vIds = visitsNeedingReport.map((v) => v._id).filter(Boolean);
+      const orConditions = [];
+      if (repIds.length > 0) orConditions.push({ reportId: { $in: repIds } });
+      if (vIds.length > 0) orConditions.push({ visitId: { $in: vIds } });
+
+      if (orConditions.length > 0) {
+        const foundReports = await LabReport.find({ $or: orConditions }).lean();
+        foundReports.forEach((r) => {
+          if (r.reportId) labReportMap[r.reportId] = r;
+          if (r._id) labReportMap[String(r._id)] = r;
+          if (r.visitId) labReportMap[String(r.visitId)] = r;
+        });
+      }
+    }
+
     const enriched = visits.map((v) => {
       const pat = patMap[v.patientId];
       const combinedAllergies = (pat?.allergies && pat.allergies.length > 0)
         ? pat.allergies
         : (v.allergies || []);
+
+      const attachedReport = (v.labReport && Object.keys(v.labReport).length > 0)
+        ? v.labReport
+        : (v.labReportId ? labReportMap[v.labReportId] : null) || labReportMap[String(v._id)] || null;
+
       return {
         ...v,
+        labReport: attachedReport,
         allergies: combinedAllergies,
       };
     });
