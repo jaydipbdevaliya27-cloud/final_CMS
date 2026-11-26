@@ -108,6 +108,38 @@ export const RecentHistory = ({
     }
   };
 
+  // Dedicated manual refresh handler ensuring cache clearance, instant spin, and user feedback
+  const handleManualRefresh = async () => {
+    recentVisitsCache = null;
+    setLoading(true);
+    try {
+      const params = {
+        search: (searchQuery || '').trim(),
+        period: selectedPeriod,
+        limit: 150,
+      };
+      if (selectedPeriod === 'custom' && selectedDate) {
+        params.date = selectedDate;
+      }
+      const res = await visitAPI.getRecent(params);
+      if (res?.success) {
+        const fetched = res.visits || [];
+        setVisits(fetched);
+        if (selectedPeriod === 'all' && !searchQuery.trim()) {
+          recentVisitsCache = fetched;
+        }
+        showToast('Recent history refreshed successfully', 'success');
+      } else {
+        showToast(res?.message || 'Failed to refresh records', 'error');
+      }
+    } catch (err) {
+      console.error('Error refreshing visits:', err);
+      showToast('Error refreshing records: ' + (err.message || 'Server error'), 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchRecentVisits();
   }, [debouncedSearch, selectedPeriod, selectedDate]);
@@ -259,32 +291,86 @@ export const RecentHistory = ({
     setPrintModalOpen(true);
   };
 
-  // Helper: Format Date & Time matching screenshot e.g. 24-11-2026\n01:23 PM
+  // Helper: Format Date & Time consistently and extract edited date/time
   const formatDateTime = (visit) => {
-    let dateStr = visit.visitDate || '';
-    if (dateStr && dateStr.includes('-')) {
-      const parts = dateStr.split('-');
+    // 1. Visit Date: format clean DD-MM-YYYY
+    let rawDate = (visit.visitDate || '').split('T')[0].trim();
+    let dateStr = '';
+    if (rawDate && rawDate.includes('-')) {
+      const parts = rawDate.split('-');
       if (parts.length === 3) {
-        dateStr = `${parts[2]}-${parts[1]}-${parts[0]}`;
+        if (parts[0].length === 4) {
+          dateStr = `${parts[2]}-${parts[1]}-${parts[0]}`; // YYYY-MM-DD -> DD-MM-YYYY
+        } else {
+          dateStr = rawDate;
+        }
+      } else {
+        dateStr = rawDate;
+      }
+    } else if (visit.createdAt) {
+      try {
+        const cd = new Date(visit.createdAt);
+        const pad = (n) => String(n).padStart(2, '0');
+        dateStr = `${pad(cd.getDate())}-${pad(cd.getMonth() + 1)}-${cd.getFullYear()}`;
+      } catch (e) {
+        dateStr = '-';
+      }
+    } else {
+      dateStr = '-';
+    }
+
+    // 2. Original Consultation Visit Time: derived strictly from createdAt
+    let timeStr = '';
+    const visitTimeSource = visit.createdAt || visit.visitDate;
+    if (visitTimeSource) {
+      try {
+        const d = new Date(visitTimeSource);
+        if (!isNaN(d.getTime())) {
+          timeStr = d.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true,
+          });
+        }
+      } catch (e) {}
+    }
+    if (!timeStr) {
+      timeStr = '-';
+    }
+
+    // 3. Edited Status and Edited Date/Time
+    const isEdited = Boolean(
+      visit.isEdited ||
+      (visit.updatedAt && visit.createdAt && new Date(visit.updatedAt).getTime() - new Date(visit.createdAt).getTime() > 2000)
+    );
+
+    let editedDateStr = '';
+    let editedTimeStr = '';
+    if (isEdited) {
+      const editSource = visit.editedAt || visit.updatedAt;
+      if (editSource) {
+        try {
+          const ed = new Date(editSource);
+          if (!isNaN(ed.getTime())) {
+            const pad = (n) => String(n).padStart(2, '0');
+            editedDateStr = `${pad(ed.getDate())}-${pad(ed.getMonth() + 1)}-${ed.getFullYear()}`;
+            editedTimeStr = ed.toLocaleTimeString('en-US', {
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: true,
+            });
+          }
+        } catch (e) {}
       }
     }
 
-    let timeStr = '';
-    const timeSource = visit.updatedAt || visit.createdAt;
-    if (timeSource) {
-      try {
-        const d = new Date(timeSource);
-        timeStr = d.toLocaleTimeString('en-US', {
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: true,
-        });
-      } catch (e) {}
-    } else {
-      timeStr = '12:00 PM';
-    }
-
-    return { dateStr, timeStr };
+    return {
+      dateStr,
+      timeStr,
+      isEdited,
+      editedDateStr,
+      editedTimeStr,
+    };
   };
 
   // Helper: Generate Alert Badges (Strictly Lab Investigations & Attached Lab Reports - No Emojis)
@@ -558,12 +644,13 @@ export const RecentHistory = ({
 
           <button
             type="button"
-            onClick={fetchRecentVisits}
+            onClick={handleManualRefresh}
             style={styles.refreshBtn}
             title="Refresh recent visits"
+            disabled={loading}
           >
             <RefreshCw size={14} className={loading ? 'spin' : ''} />
-            <span>Refresh</span>
+            <span>{loading ? 'Refreshing...' : 'Refresh'}</span>
           </button>
 
           <button
@@ -636,7 +723,13 @@ export const RecentHistory = ({
                 </tr>
               ) : (
                 displayedVisits.map((visit, idx) => {
-                  const { dateStr, timeStr } = formatDateTime(visit);
+                  const {
+                    dateStr,
+                    timeStr,
+                    isEdited,
+                    editedDateStr,
+                    editedTimeStr,
+                  } = formatDateTime(visit);
                   const isDueCollection =
                     visit.reference &&
                     visit.reference.toUpperCase().includes('DUE COLLECTION');
@@ -705,20 +798,18 @@ export const RecentHistory = ({
                       {/* 1. Date & Time */}
                       <td style={styles.tdDateTime}>
                         <div style={styles.dateText}>{dateStr}</div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '2px', flexWrap: 'wrap' }}>
+                        <div style={{ marginTop: '2px' }}>
                           <span style={styles.timeBadge}>{timeStr}</span>
-                          {Boolean(
-                            visit.isEdited ||
-                            (visit.updatedAt && visit.createdAt && new Date(visit.updatedAt).getTime() - new Date(visit.createdAt).getTime() > 2000)
-                          ) && (
-                            <span
-                              style={styles.editedBadge}
-                              title={visit.editedAt ? `Edited: ${new Date(visit.editedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Case Updated'}
-                            >
-                              EDITED
-                            </span>
-                          )}
                         </div>
+                        {isEdited && (
+                          <div style={styles.editedInfoBox}>
+                            <span style={styles.editedBadge}>EDITED</span>
+                            <div style={styles.editedDateTimeText}>
+                              {editedDateStr && <span>{editedDateStr}</span>}
+                              {editedTimeStr && <span>{editedTimeStr}</span>}
+                            </div>
+                          </div>
+                        )}
                       </td>
 
                       {/* 2. Patient Name & Highlighted Allergies Only */}
@@ -1600,6 +1691,25 @@ const styles = {
     letterSpacing: '0.4px',
     lineHeight: 1.2,
     textTransform: 'uppercase',
+  },
+  editedInfoBox: {
+    display: 'inline-flex',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: '2px',
+    marginTop: '4px',
+    padding: '3px 6px',
+    backgroundColor: '#FFFBEB',
+    border: '1px solid #FDE68A',
+    borderRadius: '4px',
+  },
+  editedDateTimeText: {
+    fontSize: '9.5px',
+    fontWeight: '700',
+    color: '#B45309',
+    lineHeight: 1.25,
+    display: 'flex',
+    flexDirection: 'column',
   },
   tdPatient: {
     padding: '8px 10px',
