@@ -816,10 +816,25 @@ export const getRecentVisits = async (req, res) => {
       };
     });
 
+    // Deduplicate: If an edit or prior duplicate created multiple entries for the same patient on the same visitDate,
+    // only return the latest updated/edited entry so Recent History displays ONLY the single latest edited entry.
+    const deduplicated = [];
+    const seenCases = new Set();
+    for (const v of enriched) {
+      const pKey = v.patientId ? String(v.patientId) : (v.patientName ? String(v.patientName).trim().toLowerCase() : String(v._id));
+      const dateKey = (v.visitDate || '').split('T')[0] || (v.createdAt ? new Date(v.createdAt).toISOString().split('T')[0] : '');
+      const caseKey = `${pKey}_${dateKey}`;
+      if (seenCases.has(caseKey)) {
+        continue;
+      }
+      seenCases.add(caseKey);
+      deduplicated.push(v);
+    }
+
     return res.status(200).json({
       success: true,
-      count: enriched.length,
-      visits: enriched,
+      count: deduplicated.length,
+      visits: deduplicated,
     });
   } catch (error) {
     console.error('Error fetching recent visits:', error);

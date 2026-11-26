@@ -300,6 +300,7 @@ export const PatientRecord = ({
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [languageHighlightIndex, setLanguageHighlightIndex] = useState(0);
+  const languageHighlightIndexRef = useRef(0);
   const [pendingPrintVisit, setPendingPrintVisit] = useState(null);
   const [printLanguage, setPrintLanguage] = useState(() => {
     try {
@@ -313,7 +314,13 @@ export const PatientRecord = ({
   useEffect(() => {
     if (showLanguageModal) {
       const idx = PRINT_LANGUAGES.findIndex((l) => l.key === printLanguage);
-      setLanguageHighlightIndex(idx >= 0 ? idx : 0);
+      const chosenIdx = idx >= 0 ? idx : 0;
+      setLanguageHighlightIndex(chosenIdx);
+      languageHighlightIndexRef.current = chosenIdx;
+      // Blur any active element so arrow keys & Enter navigate the modal immediately without input interference
+      if (document.activeElement && typeof document.activeElement.blur === 'function') {
+        document.activeElement.blur();
+      }
     }
   }, [showLanguageModal, printLanguage]);
   const [printMode, setPrintMode] = useState('full'); // 'full' (plain paper/PDF with letterhead) | 'padOnly' (physical pre-printed letterpad)
@@ -640,26 +647,45 @@ export const PatientRecord = ({
   // --- Global Keyboard Shortcuts: Alt+N/F3 for New Case, Ctrl+S for Save Case, Ctrl+Enter for Save & Print ---
   useEffect(() => {
     const handleGlobalShortcuts = (e) => {
-      // 0. Language Modal Keyboard Navigation: Up, Down, Enter, Esc, 1, 2, 3
+      // 0. Language Modal Keyboard Navigation: Up, Down, Enter, Esc, 1, 2, 3, P (preview)
       if (showLanguageModal) {
         if (e.key === 'ArrowDown') {
           e.preventDefault();
           e.stopPropagation();
-          setLanguageHighlightIndex((prev) => (prev + 1) % PRINT_LANGUAGES.length);
+          setLanguageHighlightIndex((prev) => {
+            const next = (prev + 1) % PRINT_LANGUAGES.length;
+            languageHighlightIndexRef.current = next;
+            return next;
+          });
           return;
         }
         if (e.key === 'ArrowUp') {
           e.preventDefault();
           e.stopPropagation();
-          setLanguageHighlightIndex((prev) => (prev - 1 + PRINT_LANGUAGES.length) % PRINT_LANGUAGES.length);
+          setLanguageHighlightIndex((prev) => {
+            const next = (prev - 1 + PRINT_LANGUAGES.length) % PRINT_LANGUAGES.length;
+            languageHighlightIndexRef.current = next;
+            return next;
+          });
           return;
         }
         if (e.key === 'Enter') {
           e.preventDefault();
           e.stopPropagation();
-          const selected = PRINT_LANGUAGES[languageHighlightIndex] || PRINT_LANGUAGES[0];
+          const currentIdx = languageHighlightIndexRef.current;
+          const selected = PRINT_LANGUAGES[currentIdx] || PRINT_LANGUAGES[0];
           if (selected) {
             triggerPrintInLanguage(selected.key, true);
+          }
+          return;
+        }
+        if (e.key === 'p' || e.key === 'P') {
+          e.preventDefault();
+          e.stopPropagation();
+          const currentIdx = languageHighlightIndexRef.current;
+          const selected = PRINT_LANGUAGES[currentIdx] || PRINT_LANGUAGES[0];
+          if (selected) {
+            triggerPrintInLanguage(selected.key, false);
           }
           return;
         }
@@ -675,6 +701,7 @@ export const PatientRecord = ({
           const numIdx = parseInt(e.key, 10) - 1;
           const chosen = PRINT_LANGUAGES[numIdx];
           if (chosen) {
+            languageHighlightIndexRef.current = numIdx;
             triggerPrintInLanguage(chosen.key, true);
           }
           return;
@@ -4204,7 +4231,10 @@ export const PatientRecord = ({
                     key={lang.key}
                     type="button"
                     onClick={() => triggerPrintInLanguage(lang.key, true)}
-                    onMouseEnter={() => setLanguageHighlightIndex(idx)}
+                    onMouseEnter={() => {
+                      setLanguageHighlightIndex(idx);
+                      languageHighlightIndexRef.current = idx;
+                    }}
                     style={{
                       display: 'flex',
                       alignItems: 'center',

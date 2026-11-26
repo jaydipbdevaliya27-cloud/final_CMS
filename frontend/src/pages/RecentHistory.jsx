@@ -132,12 +132,51 @@ export const RecentHistory = ({
     }
 
     // Always sort by latest updatedAt / createdAt so edited cases immediately move to the top
-    return [...list].sort((a, b) => {
+    const sorted = [...list].sort((a, b) => {
       const aTime = new Date(a.updatedAt || a.createdAt || a.visitDate || 0).getTime();
       const bTime = new Date(b.updatedAt || b.createdAt || b.visitDate || 0).getTime();
       return bTime - aTime;
     });
+
+    // Deduplicate: If an entry was edited or multiple records exist for the same patient on that visit date,
+    // show ONLY the single latest edited entry with the EDITED label, NEVER both old and new.
+    const deduplicated = [];
+    const seenPatientCases = new Set();
+    for (const v of sorted) {
+      const pKey = v.patientId ? String(v.patientId) : (v.patientName ? String(v.patientName).trim().toLowerCase() : String(v._id));
+      const dateKey = (v.visitDate || '').split('T')[0] || (v.createdAt ? new Date(v.createdAt).toISOString().split('T')[0] : '');
+      const caseKey = `${pKey}_${dateKey}`;
+      if (seenPatientCases.has(caseKey)) {
+        continue; // Drop older redundant pre-edit entry
+      }
+      seenPatientCases.add(caseKey);
+      deduplicated.push(v);
+    }
+
+    return deduplicated;
   }, [visits, searchQuery]);
+
+  // Keyboard accessibility for modals in Recent History (Enter to print, Esc to close)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (printModalOpen) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          window.print();
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          setPrintModalOpen(false);
+        }
+      } else if (deleteModalOpen) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          setDeleteModalOpen(false);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [printModalOpen, deleteModalOpen]);
 
   // Handle open delete modal
   const handleOpenDelete = (visit) => {
