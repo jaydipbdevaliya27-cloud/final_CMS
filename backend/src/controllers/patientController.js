@@ -215,13 +215,14 @@ export const getPatients = async (req, res) => {
       familyMap[f.familyId] = f;
     });
 
-    // Enrich with the last 2 to 3 case records for each matching patient
+    // Enrich with the last 2 to 3 case records for each matching patient (targeted search only)
     const patientIds = [...new Set(patients.map((p) => p.patientId).filter(Boolean))];
     const visitsByPatient = {};
-    if (patientIds.length > 0) {
+    if (search && search.trim() && patientIds.length > 0 && patientIds.length <= 50) {
       const recentVisits = await Visit.find({ patientId: { $in: patientIds } })
         .select('patientId visitDate complaint treatments prescriptions investigation labReport allergies bp sugar other charge received due createdAt')
         .sort({ visitDate: -1, createdAt: -1 })
+        .limit(150)
         .lean();
 
       recentVisits.forEach((v) => {

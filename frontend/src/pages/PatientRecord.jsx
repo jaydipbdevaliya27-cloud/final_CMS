@@ -1029,13 +1029,10 @@ export const PatientRecord = ({
     };
   }, [debouncedSearch]);
 
-  // Fetch missing recent visits for displayed search results (top 8)
+  // Populate already attached recentVisits for displayed search results without firing redundant network requests
   useEffect(() => {
     if (!showSearchDropdown || !Array.isArray(searchResults) || searchResults.length === 0) return;
-    let active = true;
-
     const targets = searchResults.slice(0, 8);
-    // Populate any already attached recentVisits
     targets.forEach((p) => {
       if (p.patientId && Array.isArray(p.recentVisits) && p.recentVisits.length > 0 && !dropdownVisitsMap[p.patientId]) {
         setDropdownVisitsMap((prev) => ({
@@ -1044,30 +1041,6 @@ export const PatientRecord = ({
         }));
       }
     });
-
-    const needFetch = targets.filter(
-      (p) => p.patientId && p.patientId !== 'NEW' && (!p.recentVisits || p.recentVisits.length === 0) && !dropdownVisitsMap[p.patientId]
-    );
-
-    if (needFetch.length > 0) {
-      needFetch.forEach(async (p) => {
-        try {
-          const res = await visitAPI.getByPatient(p.patientId, { limit: 3 });
-          if (active && res?.success && Array.isArray(res.data)) {
-            setDropdownVisitsMap((prev) => ({
-              ...prev,
-              [p.patientId]: res.data,
-            }));
-          }
-        } catch (e) {
-          // ignore
-        }
-      });
-    }
-
-    return () => {
-      active = false;
-    };
   }, [searchResults, showSearchDropdown]);
 
   useEffect(() => {
@@ -1948,33 +1921,7 @@ export const PatientRecord = ({
 
         addToRecentSearched(patient);
 
-        setCurrentPatient((prev) => ({
-          ...prev,
-          patientId: res.visit?.patientId || prev?.patientId,
-          familyId: res.visit?.familyId || prev?.familyId,
-          isNewPatient: false,
-          totalDue: res.totalDue !== undefined ? res.totalDue : prev?.totalDue,
-          deposit: res.deposit !== undefined ? res.deposit : (prev?.deposit || 0),
-          allergies: cleanAllergies,
-          family: prev?.family
-            ? {
-              ...prev.family,
-              familyId: res.visit?.familyId || prev.family.familyId,
-              headName: patient.name,
-              familyDue:
-                res.familyDue !== undefined ? res.familyDue : prev.family.familyDue,
-              familyDeposit:
-                res.familyDeposit !== undefined ? res.familyDeposit : (prev.family.familyDeposit || 0),
-            }
-            : {
-              familyId: res.visit?.familyId || prev?.familyId,
-              headName: patient.name,
-              familyDue: res.familyDue || 0,
-              familyDeposit: res.familyDeposit || 0,
-            },
-        }));
-
-        // Update cached patient directly in memory
+        // Update cached patient directly in memory with new due / deposit balances
         if (patient) {
           updateCachedPatient({
             ...patient,
@@ -1998,7 +1945,7 @@ export const PatientRecord = ({
           setShowLanguageModal(true);
         }
 
-        // Reset ALL form fields and clear active patient so next entry is completely clean
+        // Cleanly reset form fields and active patient in one synchronous batch for 0ms response
         setCurrentPatient(null);
         currentPatientRef.current = null;
         setPatientSearch('');

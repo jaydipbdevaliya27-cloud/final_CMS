@@ -7,26 +7,53 @@ import { autoSaveMasterItem } from './masterDataController.js';
 import { getNextReportId, generateLabSummary } from './labReportController.js';
 import { getNextFamilyIdValue } from './familyController.js';
 
-// Helper to recalculate dues and deposits for patient & family concurrently
-export const recalculateDues = async (patientId, familyId) => {
+// Helper to recalculate dues and deposits for patient & family concurrently using fast aggregation
+export const recalculateDues = async (patientId, familyId, additionalPatientUpdates = {}) => {
   try {
-    const [patientVisits, familyVisits] = await Promise.all([
-      Visit.find({ patientId }).select('charge received').lean(),
-      Visit.find({ familyId }).select('charge received').lean(),
+    const [patientAgg, familyAgg] = await Promise.all([
+      Visit.aggregate([
+        { $match: { patientId } },
+        { $group: { _id: null, totalCharge: { $sum: '$charge' }, totalReceived: { $sum: '$received' } } },
+      ]),
+      familyId
+        ? Visit.aggregate([
+            { $match: { familyId } },
+            { $group: { _id: null, totalCharge: { $sum: '$charge' }, totalReceived: { $sum: '$received' } } },
+          ])
+        : Promise.resolve([]),
     ]);
 
-    const rawPatientDue = (patientVisits || []).reduce((acc, v) => acc + (v.charge || 0) - (v.received || 0), 0);
+    const pCharge = patientAgg[0]?.totalCharge || 0;
+    const pReceived = patientAgg[0]?.totalReceived || 0;
+    const rawPatientDue = pCharge - pReceived;
     const patientDue = rawPatientDue > 0 ? rawPatientDue : 0;
     const patientDeposit = rawPatientDue < 0 ? Math.abs(rawPatientDue) : 0;
 
-    const rawFamDue = (familyVisits || []).reduce((acc, v) => acc + (v.charge || 0) - (v.received || 0), 0);
+    const fCharge = familyAgg[0]?.totalCharge || 0;
+    const fReceived = familyAgg[0]?.totalReceived || 0;
+    const rawFamDue = fCharge - fReceived;
     const famDue = rawFamDue > 0 ? rawFamDue : 0;
     const famDeposit = rawFamDue < 0 ? Math.abs(rawFamDue) : 0;
 
-    await Promise.all([
-      Patient.findOneAndUpdate({ patientId }, { totalDue: patientDue, deposit: patientDeposit }),
-      Family.findOneAndUpdate({ familyId }, { familyDue: famDue, familyDeposit: famDeposit }),
-    ]);
+    const patientUpdatePayload = {
+      totalDue: patientDue,
+      deposit: patientDeposit,
+      ...additionalPatientUpdates,
+    };
+
+    const updatePromises = [
+      Patient.findOneAndUpdate({ patientId }, patientUpdatePayload),
+    ];
+    if (familyId) {
+      updatePromises.push(
+        Family.findOneAndUpdate(
+          { familyId },
+          { familyDue: famDue, familyDeposit: famDeposit }
+        )
+      );
+    }
+
+    await Promise.all(updatePromises);
 
     return { patientDue, patientDeposit, famDue, famDeposit };
   } catch (err) {
@@ -37,46 +64,48 @@ export const recalculateDues = async (patientId, familyId) => {
 
 // Background helper to auto-save terms to Master Data without blocking HTTP response
 const dispatchAutoSaveMasterData = (complaint, investigation, cleanPrescriptions, cleanTreatments, ipdDetails, dietary, reqBody, allergies) => {
-  try {
-    const tasks = [];
-    if (complaint && typeof complaint === 'string') {
-      complaint.split(',').forEach((c) => { if (c.trim()) tasks.push(autoSaveMasterItem('complaint', c.trim())); });
+  setImmediate(() => {
+    try {
+      const tasks = [];
+      if (complaint && typeof complaint === 'string') {
+        complaint.split(',').forEach((c) => { if (c.trim()) tasks.push(autoSaveMasterItem('complaint', c.trim())); });
+      }
+      if (investigation && typeof investigation === 'string') {
+        investigation.split(',').forEach((i) => { if (i.trim()) tasks.push(autoSaveMasterItem('investigation', i.trim())); });
+      }
+      if (Array.isArray(cleanPrescriptions)) {
+        cleanPrescriptions.forEach((rx) => { if (rx.medicine) tasks.push(autoSaveMasterItem('medicine', rx.medicine)); });
+      }
+      if (Array.isArray(cleanTreatments)) {
+        cleanTreatments.forEach((tr) => { if (tr.item) tasks.push(autoSaveMasterItem('medicine', tr.item)); });
+      }
+      if (Array.isArray(ipdDetails)) {
+        ipdDetails.forEach((ipdItem) => {
+          const itemVal = typeof ipdItem === 'string' ? ipdItem : ipdItem?.item;
+          if (itemVal && itemVal.trim()) tasks.push(autoSaveMasterItem('medicine', itemVal.trim()));
+        });
+      }
+      if (dietary && typeof dietary === 'string') {
+        dietary.split(',').forEach((d) => { if (d.trim()) tasks.push(autoSaveMasterItem('dietary', d.trim())); });
+      }
+      if (reqBody.society && typeof reqBody.society === 'string' && reqBody.society.trim()) {
+        tasks.push(autoSaveMasterItem('society', reqBody.society.trim()));
+      }
+      if (reqBody.area && typeof reqBody.area === 'string' && reqBody.area.trim()) {
+        tasks.push(autoSaveMasterItem('area', reqBody.area.trim()));
+      }
+      if (Array.isArray(allergies)) {
+        allergies.forEach((alg) => {
+          if (typeof alg === 'string' && alg.trim()) tasks.push(autoSaveMasterItem('allergy', alg.trim()));
+        });
+      }
+      if (tasks.length > 0) {
+        Promise.allSettled(tasks).catch(() => {});
+      }
+    } catch (e) {
+      // Non-critical background task
     }
-    if (investigation && typeof investigation === 'string') {
-      investigation.split(',').forEach((i) => { if (i.trim()) tasks.push(autoSaveMasterItem('investigation', i.trim())); });
-    }
-    if (Array.isArray(cleanPrescriptions)) {
-      cleanPrescriptions.forEach((rx) => { if (rx.medicine) tasks.push(autoSaveMasterItem('medicine', rx.medicine)); });
-    }
-    if (Array.isArray(cleanTreatments)) {
-      cleanTreatments.forEach((tr) => { if (tr.item) tasks.push(autoSaveMasterItem('medicine', tr.item)); });
-    }
-    if (Array.isArray(ipdDetails)) {
-      ipdDetails.forEach((ipdItem) => {
-        const itemVal = typeof ipdItem === 'string' ? ipdItem : ipdItem?.item;
-        if (itemVal && itemVal.trim()) tasks.push(autoSaveMasterItem('medicine', itemVal.trim()));
-      });
-    }
-    if (dietary && typeof dietary === 'string') {
-      dietary.split(',').forEach((d) => { if (d.trim()) tasks.push(autoSaveMasterItem('dietary', d.trim())); });
-    }
-    if (reqBody.society && typeof reqBody.society === 'string' && reqBody.society.trim()) {
-      tasks.push(autoSaveMasterItem('society', reqBody.society.trim()));
-    }
-    if (reqBody.area && typeof reqBody.area === 'string' && reqBody.area.trim()) {
-      tasks.push(autoSaveMasterItem('area', reqBody.area.trim()));
-    }
-    if (Array.isArray(allergies)) {
-      allergies.forEach((alg) => {
-        if (typeof alg === 'string' && alg.trim()) tasks.push(autoSaveMasterItem('allergy', alg.trim()));
-      });
-    }
-    if (tasks.length > 0) {
-      Promise.allSettled(tasks).catch(() => {});
-    }
-  } catch (e) {
-    // Non-critical background task
-  }
+  });
 };
 
 // @desc    Record a new Patient Visit & Prescription
@@ -262,12 +291,6 @@ export const recordVisit = async (req, res) => {
       await savedLabReport.save();
     }
 
-    // Recalculate dues & deposits
-    const { patientDue, patientDeposit, famDue, famDeposit } = await recalculateDues(finalPatientId, finalFamilyId);
-
-    // Auto-save individual terms to Master Data in background without blocking HTTP response
-    dispatchAutoSaveMasterData(complaint, investigation, cleanPrescriptions, cleanTreatments, ipdDetails, dietary, req.body, allergies);
-
     // Sync patient demographic updates (dob, age, phone, society, area, allergies)
     const patUpdates = {};
     if (req.body.phone !== undefined) patUpdates.phone = req.body.phone;
@@ -276,9 +299,12 @@ export const recordVisit = async (req, res) => {
     if (req.body.society !== undefined) patUpdates.society = req.body.society;
     if (req.body.area !== undefined) patUpdates.area = req.body.area;
     if (Array.isArray(allergies)) patUpdates.allergies = allergies;
-    if (Object.keys(patUpdates).length > 0) {
-      await Patient.findOneAndUpdate({ patientId: visit.patientId }, patUpdates);
-    }
+
+    // Recalculate dues & deposits + update patient in ONE atomic parallel aggregation
+    const { patientDue, patientDeposit, famDue, famDeposit } = await recalculateDues(finalPatientId, finalFamilyId, patUpdates);
+
+    // Auto-save individual terms to Master Data in background without blocking HTTP response
+    dispatchAutoSaveMasterData(complaint, investigation, cleanPrescriptions, cleanTreatments, ipdDetails, dietary, req.body, allergies);
 
     return res.status(201).json({
       success: true,
@@ -494,12 +520,6 @@ export const updateVisit = async (req, res) => {
     visit.updatedAt = new Date();
     await visit.save();
 
-    // Recalculate dues
-    const { patientDue, patientDeposit, famDue, famDeposit } = await recalculateDues(visit.patientId, visit.familyId);
-
-    // Auto-save individual terms to Master Data in background without blocking HTTP response
-    dispatchAutoSaveMasterData(complaint, investigation, cleanPrescriptions, cleanTreatments, ipdDetails, dietary, req.body, allergies);
-
     // Sync patient demographic updates (dob, age, phone, society, area, allergies)
     const patUpdates = {};
     if (req.body.phone !== undefined) patUpdates.phone = req.body.phone;
@@ -508,9 +528,12 @@ export const updateVisit = async (req, res) => {
     if (req.body.society !== undefined) patUpdates.society = req.body.society;
     if (req.body.area !== undefined) patUpdates.area = req.body.area;
     if (Array.isArray(allergies)) patUpdates.allergies = allergies;
-    if (Object.keys(patUpdates).length > 0) {
-      await Patient.findOneAndUpdate({ patientId: visit.patientId }, patUpdates);
-    }
+
+    // Recalculate dues + update patient in ONE atomic parallel aggregation
+    const { patientDue, patientDeposit, famDue, famDeposit } = await recalculateDues(visit.patientId, visit.familyId, patUpdates);
+
+    // Auto-save individual terms to Master Data in background without blocking HTTP response
+    dispatchAutoSaveMasterData(complaint, investigation, cleanPrescriptions, cleanTreatments, ipdDetails, dietary, req.body, allergies);
 
     return res.status(200).json({
       success: true,

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { visitAPI, patientAPI } from '../services/api';
 import { useDebounce } from '../hooks/useDebounce';
@@ -107,6 +107,28 @@ export const RecentHistory = ({
     window.addEventListener('cms_visit_saved', handleLiveVisitSync);
     return () => window.removeEventListener('cms_visit_saved', handleLiveVisitSync);
   }, [debouncedSearch, selectedPeriod, selectedDate]);
+
+  // Instant synchronous in-memory filter across loaded visits for 0ms typing response
+  const displayedVisits = useMemo(() => {
+    if (!searchQuery || !searchQuery.trim()) return visits;
+    const q = searchQuery.trim().toLowerCase();
+    return visits.filter((v) => {
+      const pName = (v.patientName || '').toLowerCase();
+      const pId = (v.patientId || '').toLowerCase();
+      const fId = (v.familyId || '').toLowerCase();
+      const comp = (v.complaint || '').toLowerCase();
+      const phone = String(v.phone || '').toLowerCase();
+      const area = (v.area || '').toLowerCase();
+      return (
+        pName.includes(q) ||
+        pId.includes(q) ||
+        fId.includes(q) ||
+        comp.includes(q) ||
+        phone.includes(q) ||
+        area.includes(q)
+      );
+    });
+  }, [visits, searchQuery]);
 
   // Handle open delete modal
   const handleOpenDelete = (visit) => {
@@ -469,7 +491,7 @@ export const RecentHistory = ({
         {/* Right Action: Record Count & Add Patient button */}
         <div style={styles.searchStripRight}>
           <div style={styles.recordCountBadge}>
-            {loading ? 'Loading...' : `${visits.length} Cases Found`}
+            {loading ? 'Loading...' : `${displayedVisits.length} Cases Found`}
           </div>
 
           <button
@@ -538,7 +560,7 @@ export const RecentHistory = ({
                     <span>Loading recent history...</span>
                   </td>
                 </tr>
-              ) : visits.length === 0 ? (
+              ) : displayedVisits.length === 0 ? (
                 <tr>
                   <td colSpan={10} style={styles.emptyCell}>
                     <Clock size={28} color="#94A3B8" style={{ marginBottom: 6 }} />
@@ -551,7 +573,7 @@ export const RecentHistory = ({
                   </td>
                 </tr>
               ) : (
-                visits.map((visit, idx) => {
+                displayedVisits.map((visit, idx) => {
                   const { dateStr, timeStr } = formatDateTime(visit);
                   const isDueCollection =
                     visit.reference &&
