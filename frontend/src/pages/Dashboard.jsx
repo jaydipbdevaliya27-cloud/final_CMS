@@ -934,7 +934,6 @@ export const Dashboard = () => {
               }}
               onNavigateToEditCase={(visit) => {
                 setVisitToEdit({ ...visit, _navTs: Date.now() });
-                setSelectedPatientId(visit.patientId || '');
                 setActiveTab('patient-record');
               }}
               onNavigateToAddPatient={(prefilledName = '') => {

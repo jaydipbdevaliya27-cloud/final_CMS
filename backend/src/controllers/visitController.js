@@ -349,22 +349,20 @@ export const getPatientVisits = async (req, res) => {
     }
     const rawVisits = await queryBuilder.lean();
 
-    // Deduplicate by consultation date: if an entry was edited or multiple records exist for that date,
-    // only return the latest updated/edited version so past cases remain 100% consistent across the system.
-    const deduplicated = [];
-    const seenDates = new Set();
+    // Return all visits of this patient sorted by updatedAt/createdAt descending
+    const uniqueVisits = [];
+    const seenIds = new Set();
     for (const v of rawVisits) {
-      const dateKey = (v.visitDate || '').split('T')[0] || (v.createdAt ? new Date(v.createdAt).toISOString().split('T')[0] : '');
-      const caseKey = `${v.patientId || ''}_${dateKey}`;
-      if (seenDates.has(caseKey)) continue;
-      seenDates.add(caseKey);
-      deduplicated.push(v);
+      const idKey = String(v._id);
+      if (seenIds.has(idKey)) continue;
+      seenIds.add(idKey);
+      uniqueVisits.push(v);
     }
 
     return res.status(200).json({
       success: true,
-      count: deduplicated.length,
-      data: deduplicated,
+      count: uniqueVisits.length,
+      data: uniqueVisits,
     });
   } catch (error) {
     return res.status(500).json({
@@ -828,25 +826,20 @@ export const getRecentVisits = async (req, res) => {
       };
     });
 
-    // Deduplicate: If an edit or prior duplicate created multiple entries for the same patient on the same visitDate,
-    // only return the latest updated/edited entry so Recent History displays ONLY the single latest edited entry.
-    const deduplicated = [];
-    const seenCases = new Set();
+    // Return all case entries so all patient visits are shown in Recent History
+    const uniqueVisits = [];
+    const seenIds = new Set();
     for (const v of enriched) {
-      const pKey = v.patientId ? String(v.patientId) : (v.patientName ? String(v.patientName).trim().toLowerCase() : String(v._id));
-      const dateKey = (v.visitDate || '').split('T')[0] || (v.createdAt ? new Date(v.createdAt).toISOString().split('T')[0] : '');
-      const caseKey = `${pKey}_${dateKey}`;
-      if (seenCases.has(caseKey)) {
-        continue;
-      }
-      seenCases.add(caseKey);
-      deduplicated.push(v);
+      const idKey = String(v._id);
+      if (seenIds.has(idKey)) continue;
+      seenIds.add(idKey);
+      uniqueVisits.push(v);
     }
 
     return res.status(200).json({
       success: true,
-      count: deduplicated.length,
-      visits: deduplicated,
+      count: uniqueVisits.length,
+      visits: uniqueVisits,
     });
   } catch (error) {
     console.error('Error fetching recent visits:', error);

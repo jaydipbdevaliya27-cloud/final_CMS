@@ -800,8 +800,8 @@ export const PatientRecord = ({
   useEffect(() => {
     const initPatient = async () => {
       try {
-        if (initialPatientForNewCase || initialVisitToEdit) {
-          return; // Managed by dedicated navigation effects
+        if (initialPatientForNewCase || initialVisitToEdit || editingVisitIdRef.current) {
+          return; // Managed by dedicated navigation / edit effects
         }
         if (selectedPatientId) {
           const res = await patientAPI.getById(selectedPatientId);
@@ -871,11 +871,12 @@ export const PatientRecord = ({
         handleStartEditVisit(visit);
         if (onClearNavigationCase) onClearNavigationCase();
 
-        // 2. Background non-blocking fetch to enrich patient demographics
+        // 2. Background non-blocking fetch to enrich patient demographics without resetting editing mode
         if (visit.patientId) {
           patientAPI.getById(visit.patientId).then((res) => {
             if (res?.success && res.patient) {
               setCurrentPatient(res.patient);
+              currentPatientRef.current = res.patient;
               if (res.patient.dob) setPatientDob(res.patient.dob);
               if (res.patient.age !== undefined && res.patient.age !== null) setPatientAge(String(res.patient.age));
               if (res.patient.phone) setPatientPhone(res.patient.phone);
@@ -2174,6 +2175,51 @@ export const PatientRecord = ({
             </div>
 
             <div style={styles.photoCardBody}>
+              {/* EDITING CASE ACTIVE BANNER */}
+              {editingVisitId && (
+                <div style={{
+                  backgroundColor: '#FEF3C7',
+                  border: '1px solid #F59E0B',
+                  borderRadius: '6px',
+                  padding: '7px 12px',
+                  marginBottom: '10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '8px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <span style={{ backgroundColor: '#D97706', color: '#FFFFFF', padding: '2px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 800, letterSpacing: '0.5px' }}>
+                      EDITING RECORDED CASE
+                    </span>
+                    <span style={{ fontSize: '11.5px', fontWeight: 700, color: '#92400E' }}>
+                      Updating consultation of {visitForm.visitDate || 'past visit'} - Changes will directly update this case with EDITED label (no new case will be built)
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleOpenNewCase(currentPatient);
+                      showToast('Cancelled case edit. Now in new consultation mode.');
+                    }}
+                    style={{
+                      padding: '3px 8px',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      backgroundColor: '#FFFFFF',
+                      color: '#B45309',
+                      border: '1px solid #D97706',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap'
+                    }}
+                    title="Exit edit mode and start a brand new consultation"
+                  >
+                    Cancel Edit (New Case)
+                  </button>
+                </div>
+              )}
+
               {/* Row 1: Entry Date & Patient Full Name */}
               <div style={styles.photoRow2Col}>
                 <div style={{ ...styles.photoFieldGroup, width: '110px', flex: '0 0 110px' }}>
@@ -2346,17 +2392,16 @@ export const PatientRecord = ({
                               return bTime - aTime;
                             });
 
-                            // 2. Deduplicate: if an entry was edited or multiple records exist for that consultation date,
-                            // show ONLY the single latest edited entry, NEVER duplicate / empty copies for the same date!
-                            const deduplicatedVisits = [];
-                            const seenDates = new Set();
+                            // Show up to 3 most recent visits for this patient
+                            const uniqueVisits = [];
+                            const seenVisitIds = new Set();
                             for (const v of sortedVisits) {
-                              const dateKey = (v.visitDate || '').split('T')[0] || (v.createdAt ? new Date(v.createdAt).toISOString().split('T')[0] : '');
-                              if (seenDates.has(dateKey)) continue;
-                              seenDates.add(dateKey);
-                              deduplicatedVisits.push(v);
+                              const vId = String(v._id || '');
+                              if (vId && seenVisitIds.has(vId)) continue;
+                              if (vId) seenVisitIds.add(vId);
+                              uniqueVisits.push(v);
                             }
-                            const displayedPastVisits = deduplicatedVisits.slice(0, 3);
+                            const displayedPastVisits = uniqueVisits.slice(0, 3);
 
                             // Gender validation: omit "Not Specified", "-", "Unknown"
                             const genderVal = p.gender && !['NOT SPECIFIED', 'UNKNOWN', '-', 'NOT_SPECIFIED'].includes(String(p.gender).trim().toUpperCase())
@@ -2481,6 +2526,11 @@ export const PatientRecord = ({
                                         return (
                                           <div
                                             key={v._id || vIdx}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleSelectPatient(p, false);
+                                              handleStartEditVisit(v);
+                                            }}
                                             style={{
                                               display: 'flex',
                                               flexDirection: 'column',
@@ -2491,10 +2541,14 @@ export const PatientRecord = ({
                                               borderRadius: 6,
                                               border: '1px solid #E2E8F0',
                                               boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
+                                              cursor: 'pointer',
+                                              transition: 'all 0.15s ease',
                                             }}
+                                            title="Click to edit this recorded consultation"
                                           >
-                                            {/* Top Row: Date, Time, Edited Badge, Vitals (BP, Sugar) */}
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                            {/* Top Row: Date, Time, Edited Badge, Vitals (BP, Sugar), and Edit Action Pill */}
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, flexWrap: 'wrap' }}>
+                                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                                               <span style={{ fontWeight: 700, color: '#0D5C4E', backgroundColor: '#E6F4F1', padding: '1px 7px', borderRadius: 4, border: '1px solid #B2DFDB', fontSize: 10 }}>
                                                 Date: {formattedDate}
                                               </span>
@@ -2522,6 +2576,11 @@ export const PatientRecord = ({
                                                   Sugar: {v.sugar}
                                                 </span>
                                               )}
+                                              </div>
+
+                                              <span style={{ fontSize: 10, fontWeight: 700, color: '#D97706', backgroundColor: '#FEF3C7', border: '1px solid #FDE68A', padding: '1px 6px', borderRadius: 4, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                                                <Edit3 size={10} /> Edit
+                                              </span>
                                             </div>
 
                                             {/* Clinical Details Rows */}
@@ -3836,22 +3895,28 @@ export const PatientRecord = ({
               type="button"
               onClick={() => handleSaveVisit(false)}
               disabled={isSavingVisit}
-              style={styles.photoSaveActionBtn}
-              title="Save clinical case (Ctrl+S / Alt+S)"
+              style={{
+                ...styles.photoSaveActionBtn,
+                backgroundColor: editingVisitId ? '#D97706' : styles.photoSaveActionBtn.backgroundColor,
+              }}
+              title={editingVisitId ? "Update existing case (Ctrl+S / Alt+S)" : "Save clinical case (Ctrl+S / Alt+S)"}
             >
               <Save size={15} />
-              <span>{isSavingVisit ? 'SAVING...' : 'SAVE'}</span>
+              <span>{isSavingVisit ? (editingVisitId ? 'UPDATING...' : 'SAVING...') : (editingVisitId ? 'UPDATE CASE' : 'SAVE')}</span>
             </button>
 
             <button
               type="button"
               onClick={() => handleSaveVisit(true)}
               disabled={isSavingVisit}
-              style={styles.photoSavePrintActionBtn}
-              title="Save case and open printable prescription (Ctrl+Enter / Alt+P)"
+              style={{
+                ...styles.photoSavePrintActionBtn,
+                backgroundColor: editingVisitId ? '#B45309' : styles.photoSavePrintActionBtn.backgroundColor,
+              }}
+              title={editingVisitId ? "Update existing case and print prescription" : "Save case and open printable prescription"}
             >
               <Printer size={15} />
-              <span>{isSavingVisit ? 'SAVING...' : 'SAVE & PRINT'}</span>
+              <span>{isSavingVisit ? (editingVisitId ? 'UPDATING...' : 'SAVING...') : (editingVisitId ? 'UPDATE & PRINT' : 'SAVE & PRINT')}</span>
             </button>
           </div>
         </div>

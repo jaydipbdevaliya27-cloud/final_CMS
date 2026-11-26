@@ -230,14 +230,8 @@ export const getPatients = async (req, res) => {
           visitsByPatient[v.patientId] = [];
         }
 
-        // Deduplicate by visitDate: keep ONLY the latest updated/edited entry per consultation date
-        const dateKey = (v.visitDate || '').split('T')[0] || (v.createdAt ? new Date(v.createdAt).toISOString().split('T')[0] : '');
-        const alreadyHasDate = visitsByPatient[v.patientId].some((existing) => {
-          const exDate = (existing.visitDate || '').split('T')[0] || (existing.createdAt ? new Date(existing.createdAt).toISOString().split('T')[0] : '');
-          return exDate && exDate === dateKey;
-        });
-
-        if (!alreadyHasDate && visitsByPatient[v.patientId].length < 3) {
+        // Show up to 3 most recent visits for this patient
+        if (visitsByPatient[v.patientId].length < 3) {
           const ipdList = Array.isArray(v.ipdDetails)
             ? v.ipdDetails.map((i) => (typeof i === 'string' ? i.trim() : (i?.item || '').trim())).filter(Boolean)
             : (typeof v.ipdDetails === 'string' && v.ipdDetails.trim() ? v.ipdDetails.split(',').map((s) => s.trim()).filter(Boolean) : []);

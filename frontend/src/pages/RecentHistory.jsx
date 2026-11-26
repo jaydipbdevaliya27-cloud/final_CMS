@@ -184,22 +184,20 @@ export const RecentHistory = ({
       return bTime - aTime;
     });
 
-    // Deduplicate: If an entry was edited or multiple records exist for the same patient on that visit date,
-    // show ONLY the single latest edited entry with the EDITED label, NEVER both old and new.
-    const deduplicated = [];
-    const seenPatientCases = new Set();
+    // Return all case entries so all patient visits are shown in Recent History
+    // Sorted by latest updatedAt / createdAt descending so edited cases immediately move to top
+    const uniqueVisits = [];
+    const seenIds = new Set();
     for (const v of sorted) {
-      const pKey = v.patientId ? String(v.patientId) : (v.patientName ? String(v.patientName).trim().toLowerCase() : String(v._id));
-      const dateKey = (v.visitDate || '').split('T')[0] || (v.createdAt ? new Date(v.createdAt).toISOString().split('T')[0] : '');
-      const caseKey = `${pKey}_${dateKey}`;
-      if (seenPatientCases.has(caseKey)) {
-        continue; // Drop older redundant pre-edit entry
+      const idKey = String(v._id || v.id);
+      if (seenIds.has(idKey)) {
+        continue;
       }
-      seenPatientCases.add(caseKey);
-      deduplicated.push(v);
+      seenIds.add(idKey);
+      uniqueVisits.push(v);
     }
 
-    return deduplicated;
+    return uniqueVisits;
   }, [visits, searchQuery]);
 
   // Keyboard accessibility for modals in Recent History (Enter to print, Esc to close)
