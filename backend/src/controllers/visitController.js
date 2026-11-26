@@ -94,7 +94,9 @@ export const recordVisit = async (req, res) => {
       other,
       reference,
       investigation,
+      investigationList,
       complaint,
+      complaintList,
       treatments,
       prescriptions,
       dietary,
@@ -156,6 +158,41 @@ export const recordVisit = async (req, res) => {
     const numReceived = Math.max(0, Number(received) || 0);
     const numDue = Math.max(0, numCharge - numReceived);
 
+    // Format clean investigation list and summary string
+    const cleanInvList = Array.isArray(investigationList) && investigationList.length > 0
+      ? investigationList
+          .filter((i) => i && (i.reportType || typeof i === 'string'))
+          .map((i) => ({
+            id: String(i.id || Date.now() + '-' + Math.random()),
+            reportType: String(i.reportType || i).trim().toUpperCase(),
+            labName: String(i.labName || 'CARE').trim().toUpperCase(),
+          }))
+      : (investigation && typeof investigation === 'string'
+          ? investigation.split(',').map((s, idx) => ({ id: `${Date.now()}-${idx}`, reportType: s.trim().toUpperCase(), labName: 'CARE' })).filter((i) => i.reportType)
+          : []);
+
+    const cleanInvString = investigation && investigation.trim()
+      ? investigation.trim().toUpperCase()
+      : cleanInvList.map((i) => i.reportType).join(', ');
+
+    // Format clean complaint list and summary string
+    const cleanCompList = Array.isArray(complaintList) && complaintList.length > 0
+      ? complaintList.map((c) => String(c).trim().toUpperCase()).filter(Boolean)
+      : (complaint && typeof complaint === 'string'
+          ? complaint.split(',').map((c) => c.trim().toUpperCase()).filter(Boolean)
+          : []);
+
+    const cleanCompString = complaint && complaint.trim()
+      ? complaint.trim().toUpperCase()
+      : cleanCompList.join(', ');
+
+    // Format clean IPD details (injections, IV bottles, procedures)
+    const cleanIpdList = Array.isArray(ipdDetails)
+      ? ipdDetails.map((i) => (typeof i === 'string' ? i.trim() : (i?.item || '').trim())).filter(Boolean)
+      : (typeof ipdDetails === 'string' && ipdDetails.trim()
+          ? ipdDetails.split(',').map((s) => s.trim()).filter(Boolean)
+          : []);
+
     // Format clean treatments and prescriptions arrays
     const cleanTreatments = Array.isArray(treatments)
       ? treatments.filter((t) => t.item && t.item.trim())
@@ -204,12 +241,14 @@ export const recordVisit = async (req, res) => {
       sugar: sugar ? sugar.trim() : '',
       other: other ? other.trim() : '',
       reference: reference ? reference.trim() : '',
-      investigation: investigation ? investigation.trim() : '',
-      complaint: complaint ? complaint.trim() : '',
+      investigation: cleanInvString,
+      investigationList: cleanInvList,
+      complaint: cleanCompString,
+      complaintList: cleanCompList,
       treatments: cleanTreatments,
       prescriptions: cleanPrescriptions,
       dietary: dietary ? dietary.trim() : '',
-      ipdDetails: Array.isArray(ipdDetails) ? ipdDetails : (ipdDetails ? [ipdDetails] : []),
+      ipdDetails: cleanIpdList,
       allergies: Array.isArray(allergies) ? allergies : (allergies ? [allergies] : []),
       charge: numCharge,
       received: numReceived,
@@ -311,7 +350,9 @@ export const updateVisit = async (req, res) => {
       other,
       reference,
       investigation,
+      investigationList,
       complaint,
+      complaintList,
       treatments,
       prescriptions,
       dietary,
@@ -353,21 +394,62 @@ export const updateVisit = async (req, res) => {
           }))
       : [];
 
+    // Format clean investigation list and summary string
+    const cleanInvList = Array.isArray(investigationList) && investigationList.length > 0
+      ? investigationList
+          .filter((i) => i && (i.reportType || typeof i === 'string'))
+          .map((i) => ({
+            id: String(i.id || Date.now() + '-' + Math.random()),
+            reportType: String(i.reportType || i).trim().toUpperCase(),
+            labName: String(i.labName || 'CARE').trim().toUpperCase(),
+          }))
+      : (investigation && typeof investigation === 'string'
+          ? investigation.split(',').map((s, idx) => ({ id: `${Date.now()}-${idx}`, reportType: s.trim().toUpperCase(), labName: 'CARE' })).filter((i) => i.reportType)
+          : (visit.investigationList || []));
+
+    const cleanInvString = investigation && investigation.trim()
+      ? investigation.trim().toUpperCase()
+      : (cleanInvList.length > 0 ? cleanInvList.map((i) => i.reportType).join(', ') : visit.investigation);
+
+    // Format clean complaint list and summary string
+    const cleanCompList = Array.isArray(complaintList) && complaintList.length > 0
+      ? complaintList.map((c) => String(c).trim().toUpperCase()).filter(Boolean)
+      : (complaint && typeof complaint === 'string'
+          ? complaint.split(',').map((c) => c.trim().toUpperCase()).filter(Boolean)
+          : (visit.complaintList || []));
+
+    const cleanCompString = complaint && complaint.trim()
+      ? complaint.trim().toUpperCase()
+      : (cleanCompList.length > 0 ? cleanCompList.join(', ') : visit.complaint);
+
+    // Format clean IPD details
+    const cleanIpdList = Array.isArray(ipdDetails)
+      ? ipdDetails.map((i) => (typeof i === 'string' ? i.trim() : (i?.item || '').trim())).filter(Boolean)
+      : (typeof ipdDetails === 'string' && ipdDetails.trim()
+          ? ipdDetails.split(',').map((s) => s.trim()).filter(Boolean)
+          : (visit.ipdDetails || []));
+
     visit.visitDate = visitDate || visit.visitDate;
     visit.bp = bp !== undefined ? bp : visit.bp;
     visit.sugar = sugar !== undefined ? sugar : visit.sugar;
     visit.other = other !== undefined ? other : visit.other;
     visit.reference = reference !== undefined ? reference : visit.reference;
-    visit.investigation = investigation !== undefined ? investigation : visit.investigation;
-    visit.complaint = complaint !== undefined ? complaint : visit.complaint;
+    visit.investigation = cleanInvString;
+    visit.investigationList = cleanInvList;
+    visit.markModified('investigationList');
+    visit.complaint = cleanCompString;
+    visit.complaintList = cleanCompList;
+    visit.markModified('complaintList');
     visit.treatments = cleanTreatments;
+    visit.markModified('treatments');
     visit.prescriptions = cleanPrescriptions;
+    visit.markModified('prescriptions');
     if (dietary !== undefined) visit.dietary = dietary ? dietary.trim() : '';
-    if (ipdDetails !== undefined) {
-      visit.ipdDetails = Array.isArray(ipdDetails) ? ipdDetails : (ipdDetails ? [ipdDetails] : []);
-    }
+    visit.ipdDetails = cleanIpdList;
+    visit.markModified('ipdDetails');
     if (allergies !== undefined) {
       visit.allergies = Array.isArray(allergies) ? allergies : (allergies ? [allergies] : []);
+      visit.markModified('allergies');
     }
     visit.charge = numCharge;
     visit.received = numReceived;
@@ -375,6 +457,7 @@ export const updateVisit = async (req, res) => {
 
     if (labReport !== undefined) {
       visit.labReport = labReport;
+      visit.markModified('labReport');
       if (labReport && typeof labReport === 'object' && Object.keys(labReport).length > 0) {
         if (visit.labReportId) {
           await LabReport.findByIdAndUpdate(visit.labReportId, {
@@ -654,7 +737,7 @@ export const getRecentVisits = async (req, res) => {
     }
 
     const visits = await Visit.find(query)
-      .select('patientId familyId patientName visitDate createdAt updatedAt complaint ipdDetails treatments prescriptions bp sugar other reference charge received due allergies investigation labReport labReportId dietary')
+      .select('patientId familyId patientName visitDate createdAt updatedAt complaint complaintList ipdDetails treatments prescriptions bp sugar other reference charge received due allergies investigation investigationList labReport labReportId dietary')
       .sort({ updatedAt: -1, createdAt: -1 })
       .limit(Math.min(250, Number(limit) || 100))
       .lean();

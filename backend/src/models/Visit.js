@@ -22,6 +22,15 @@ const prescriptionItemSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const investigationItemSchema = new mongoose.Schema(
+  {
+    id: { type: String, default: '' },
+    reportType: { type: String, trim: true, default: '' },
+    labName: { type: String, trim: true, default: 'CARE' },
+  },
+  { _id: false }
+);
+
 const visitSchema = new mongoose.Schema(
   {
     patientId: {
@@ -70,10 +79,18 @@ const visitSchema = new mongoose.Schema(
       trim: true,
       default: '',
     },
+    investigationList: {
+      type: [investigationItemSchema],
+      default: [],
+    },
     complaint: {
       type: String,
       trim: true,
       default: '',
+    },
+    complaintList: {
+      type: [String],
+      default: [],
     },
     treatments: {
       type: [treatmentItemSchema],

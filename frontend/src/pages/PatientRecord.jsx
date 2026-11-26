@@ -600,91 +600,12 @@ export const PatientRecord = ({
     showNewCaseFormRef.current = showNewCaseForm;
   }, [showNewCaseForm]);
 
-  // --- Draft Persistence: Keep typed data safe across tab switches and refreshes ---
-  const DRAFT_KEY = 'cms_patient_record_draft';
-  const isInitialDraftLoaded = useRef(false);
-  const hasJustSavedRef = useRef(false);
-
+  // --- Ensure no drafts or clinical data are stored in localStorage; all clinical data resides strictly in MongoDB ---
   useEffect(() => {
-    if (isInitialDraftLoaded.current) return;
-    isInitialDraftLoaded.current = true;
     try {
-      const raw = localStorage.getItem(DRAFT_KEY);
-      if (raw) {
-        const d = JSON.parse(raw);
-        // ONLY restore draft if there is a valid patient selected
-        if (d.currentPatient && d.currentPatient.name) {
-          setCurrentPatient(d.currentPatient);
-          currentPatientRef.current = d.currentPatient;
-          if (d.visitForm) {
-            setVisitForm(d.visitForm);
-            visitFormRef.current = d.visitForm;
-          }
-          if (d.patientDob !== undefined) setPatientDob(d.patientDob);
-          if (d.patientAge !== undefined) setPatientAge(d.patientAge);
-          if (d.patientPhone !== undefined) setPatientPhone(d.patientPhone);
-          if (d.patientHouseNo !== undefined) setPatientHouseNo(d.patientHouseNo);
-          if (d.patientSociety !== undefined) setPatientSociety(d.patientSociety);
-          if (d.patientArea !== undefined) setPatientArea(d.patientArea);
-        } else {
-          // No active patient in draft - clean up orphan storage
-          localStorage.removeItem(DRAFT_KEY);
-        }
-      }
-    } catch (e) {
-      console.warn('Could not restore draft:', e);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!isInitialDraftLoaded.current) return;
-    if (hasJustSavedRef.current) {
-      hasJustSavedRef.current = false;
-      try {
-        localStorage.removeItem(DRAFT_KEY);
-      } catch (e) { }
-      return;
-    }
-    // NEVER persist drafts without an active patient selected
-    if (!currentPatient || !currentPatient.name) {
-      try {
-        localStorage.removeItem(DRAFT_KEY);
-      } catch (e) { }
-      return;
-    }
-
-    const hasData =
-      visitForm.bp ||
-      visitForm.sugar ||
-      visitForm.complaint ||
-      (visitForm.treatments || []).length > 0 ||
-      (visitForm.prescriptions || []).length > 0 ||
-      (visitForm.allergyList || []).length > 0 ||
-      (visitForm.complaintList || []).length > 0 ||
-      (visitForm.ipdDetails || []).length > 0;
-
-    if (!hasData) {
-      try {
-        localStorage.removeItem(DRAFT_KEY);
-      } catch (e) { }
-      return;
-    }
-    try {
-      localStorage.setItem(
-        DRAFT_KEY,
-        JSON.stringify({
-          currentPatient,
-          visitForm,
-          patientDob,
-          patientAge,
-          patientPhone,
-          patientHouseNo,
-          patientSociety,
-          patientArea,
-        })
-      );
+      localStorage.removeItem('cms_patient_record_draft');
     } catch (e) { }
-  }, [currentPatient, visitForm, patientDob, patientAge, patientPhone, patientHouseNo, patientSociety, patientArea]);
+  }, []);
 
   const handleSaveVisitRef = useRef();
   const isSavingVisitRef = useRef(false);
@@ -1270,9 +1191,6 @@ export const PatientRecord = ({
     };
     setVisitForm(cleanForm);
     visitFormRef.current = cleanForm;
-    try {
-      localStorage.removeItem(DRAFT_KEY);
-    } catch (e) { }
   };
 
   // --- Open Family Due Details Modal ---
@@ -1814,21 +1732,25 @@ export const PatientRecord = ({
     editingVisitIdRef.current = visit._id;
     setEditingVisit(visit);
     editingVisitRef.current = visit;
-    const compList = visit.complaint
-      ? visit.complaint.split(',').map((c) => c.trim().toUpperCase()).filter(Boolean)
-      : [];
-    const invList = visit.investigation
-      ? visit.investigation.split(',').map((i, idx) => ({
-        id: `${Date.now()}-${idx}`,
-        reportType: i.trim().toUpperCase(),
-        labName: 'CARE',
-      }))
-      : [];
+    const compList = Array.isArray(visit.complaintList) && visit.complaintList.length > 0
+      ? visit.complaintList
+      : (visit.complaint
+          ? visit.complaint.split(',').map((c) => c.trim().toUpperCase()).filter(Boolean)
+          : []);
+    const invList = Array.isArray(visit.investigationList) && visit.investigationList.length > 0
+      ? visit.investigationList
+      : (visit.investigation
+          ? visit.investigation.split(',').map((i, idx) => ({
+            id: `${Date.now()}-${idx}`,
+            reportType: i.trim().toUpperCase(),
+            labName: 'CARE',
+          }))
+          : []);
     const ipdList = Array.isArray(visit.ipdDetails)
-      ? visit.ipdDetails
-      : visit.ipdDetails
-        ? [visit.ipdDetails]
-        : [];
+      ? visit.ipdDetails.map((i) => (typeof i === 'string' ? i : i?.item || '')).filter(Boolean)
+      : (typeof visit.ipdDetails === 'string' && visit.ipdDetails.trim()
+          ? visit.ipdDetails.split(',').map((s) => s.trim()).filter(Boolean)
+          : []);
     const algList = Array.isArray(visit.allergies) && visit.allergies.length > 0
       ? visit.allergies
       : Array.isArray(currentPatient?.allergies)
@@ -1986,7 +1908,9 @@ export const PatientRecord = ({
         other: form.other || '',
         reference: form.reference || '',
         investigation: cleanInvestigations,
+        investigationList: form.investigationList || [],
         complaint: cleanComplaints,
+        complaintList: form.complaintList || [],
         allergies: cleanAllergies,
         ipdDetails: cleanIpd,
         treatments: validTreatments,
@@ -2011,10 +1935,6 @@ export const PatientRecord = ({
       }
 
       if (res.success) {
-        try {
-          localStorage.removeItem(DRAFT_KEY);
-        } catch (e) { }
-
         // Clear Recent History cache and trigger live refresh across all components
         try {
           window.dispatchEvent(new CustomEvent('cms_visit_saved', { detail: res.visit }));
@@ -2079,11 +1999,6 @@ export const PatientRecord = ({
         }
 
         // Reset ALL form fields and clear active patient so next entry is completely clean
-        try {
-          localStorage.removeItem(DRAFT_KEY);
-        } catch (e) { }
-
-        hasJustSavedRef.current = true;
         setCurrentPatient(null);
         currentPatientRef.current = null;
         setPatientSearch('');
