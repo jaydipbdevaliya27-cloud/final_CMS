@@ -2321,177 +2321,243 @@ export const PatientRecord = ({
                           </div>
 
                           {searchResults.map((p, idx) => {
-                        const isHighlighted = idx === patientHighlightIndex;
-                        const visits = (p.recentVisits && p.recentVisits.length > 0)
-                          ? p.recentVisits
-                          : (dropdownVisitsMap[p.patientId] || []);
+                            const isHighlighted = idx === patientHighlightIndex;
+                            const rawVisits = (p.recentVisits && p.recentVisits.length > 0)
+                              ? p.recentVisits
+                              : (dropdownVisitsMap[p.patientId] || []);
 
-                        // Gender validation: omit "Not Specified", "-", "Unknown"
-                        const genderVal = p.gender && !['NOT SPECIFIED', 'UNKNOWN', '-', 'NOT_SPECIFIED'].includes(String(p.gender).trim().toUpperCase())
-                          ? String(p.gender).trim()
-                          : null;
+                            // 1. Sort visits so latest updated / edited consultation is ALWAYS first at the top
+                            const sortedVisits = [...rawVisits].sort((a, b) => {
+                              const aTime = new Date(a.updatedAt || a.createdAt || a.visitDate || 0).getTime();
+                              const bTime = new Date(b.updatedAt || b.createdAt || b.visitDate || 0).getTime();
+                              return bTime - aTime;
+                            });
 
-                        // Demographics: only written, non-empty data
-                        const demoItems = [];
-                        if (p.age && String(p.age).trim() && String(p.age).trim() !== '-') demoItems.push(`Age ${p.age}`);
-                        if (p.phone && String(p.phone).trim() && String(p.phone).trim() !== '-') demoItems.push(String(p.phone).trim());
-                        const areaStr = p.area || p.family?.area || p.society || '';
-                        if (areaStr && areaStr.trim() && areaStr.trim() !== '-') demoItems.push(areaStr.trim());
+                            // 2. Deduplicate: if an entry was edited or multiple records exist for that consultation date,
+                            // show ONLY the single latest edited entry, NEVER duplicate / empty copies for the same date!
+                            const deduplicatedVisits = [];
+                            const seenDates = new Set();
+                            for (const v of sortedVisits) {
+                              const dateKey = (v.visitDate || '').split('T')[0] || (v.createdAt ? new Date(v.createdAt).toISOString().split('T')[0] : '');
+                              if (seenDates.has(dateKey)) continue;
+                              seenDates.add(dateKey);
+                              deduplicatedVisits.push(v);
+                            }
+                            const displayedPastVisits = deduplicatedVisits.slice(0, 3);
 
-                        // Real allergies (ignore NONE, NIL, NO)
-                        const realAllergies = (Array.isArray(p.allergies) ? p.allergies : [])
-                          .filter((a) => a && typeof a === 'string' && a.trim() && !['NONE', 'NIL', 'NO', 'NO ALLERGIES', 'NA'].includes(a.trim().toUpperCase()));
+                            // Gender validation: omit "Not Specified", "-", "Unknown"
+                            const genderVal = p.gender && !['NOT SPECIFIED', 'UNKNOWN', '-', 'NOT_SPECIFIED'].includes(String(p.gender).trim().toUpperCase())
+                              ? String(p.gender).trim()
+                              : null;
 
-                        return (
-                          <div
-                            key={p._id || p.patientId}
-                            onClick={() => handleSelectPatient(p)}
-                            onMouseEnter={() => setPatientHighlightIndex(idx)}
-                            style={{
-                              ...styles.photoDropdownItem,
-                              backgroundColor: isHighlighted ? '#F0FDF4' : '#FFFFFF',
-                              borderLeft: isHighlighted ? '4px solid #0D5C4E' : '4px solid transparent',
-                              transition: 'all 0.15s ease',
-                            }}
-                          >
-                            {/* Patient Top Row: Name, ID, Badges, Dues, Visit Count */}
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                                <span style={{ fontWeight: 800, fontSize: 14, color: '#0F172A', letterSpacing: '-0.2px' }}>
-                                  {p.name}
-                                </span>
-                                <span style={styles.photoMiniBadge}>{p.patientId}</span>
-                                {p.isHead && <span style={styles.photoHeadBadge}>HEAD</span>}
-                                {genderVal && (
-                                  <span style={{ fontSize: 10, color: '#475569', fontWeight: 600, backgroundColor: '#F1F5F9', padding: '1px 6px', borderRadius: 4, border: '1px solid #E2E8F0' }}>
-                                    {genderVal}
-                                  </span>
-                                )}
-                              </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                                {Number(p.totalDue || 0) > 0 && (
-                                  <span style={{ fontSize: 11, fontWeight: 800, color: '#DC2626', backgroundColor: '#FEE2E2', padding: '2px 8px', borderRadius: 5, border: '1px solid #FECACA' }}>
-                                    Due: ₹{p.totalDue}
-                                  </span>
-                                )}
-                                <span style={{ fontSize: 10, color: '#0D5C4E', fontWeight: 700, backgroundColor: '#E6F4F1', padding: '2px 8px', borderRadius: 5, border: '1px solid #B2DFDB' }}>
-                                  {visits.length > 0 ? `${visits.length} Visit${visits.length > 1 ? 's' : ''}` : 'New Patient'}
-                                </span>
-                              </div>
-                            </div>
+                            // Demographics: only written, non-empty data
+                            const demoItems = [];
+                            if (p.age && String(p.age).trim() && String(p.age).trim() !== '-') demoItems.push(`Age ${p.age}`);
+                            if (p.phone && String(p.phone).trim() && String(p.phone).trim() !== '-') demoItems.push(String(p.phone).trim());
+                            const areaStr = p.area || p.family?.area || p.society || '';
+                            if (areaStr && areaStr.trim() && areaStr.trim() !== '-') demoItems.push(areaStr.trim());
 
-                            {/* Demographics Row: Only written data */}
-                            {demoItems.length > 0 && (
-                              <div style={{ fontSize: 11, color: '#64748B', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 3 }}>
-                                {demoItems.map((item, dIdx) => (
-                                  <React.Fragment key={dIdx}>
-                                    {dIdx > 0 && <span style={{ color: '#CBD5E1' }}>&bull;</span>}
-                                    <span>{item}</span>
-                                  </React.Fragment>
-                                ))}
-                              </div>
-                            )}
+                            // Real allergies (ignore NONE, NIL, NO)
+                            const realAllergies = (Array.isArray(p.allergies) ? p.allergies : [])
+                              .filter((a) => a && typeof a === 'string' && a.trim() && !['NONE', 'NIL', 'NO', 'NO ALLERGIES', 'NA'].includes(a.trim().toUpperCase()));
 
-                            {/* Allergies Badge: Sleek high-contrast warning pill */}
-                            {realAllergies.length > 0 && (
-                              <div style={{ marginTop: 4, display: 'inline-flex', alignItems: 'center', gap: 6, backgroundColor: '#FEF2F2', border: '1px solid #FCA5A5', padding: '2px 8px', borderRadius: 4 }}>
-                                <span style={{ fontSize: 9, fontWeight: 800, color: '#DC2626', letterSpacing: '0.4px' }}>ALLERGY:</span>
-                                <span style={{ fontSize: 11, color: '#991B1B', fontWeight: 700 }}>{realAllergies.join(', ')}</span>
-                              </div>
-                            )}
-
-                            {/* Past 2 to 3 Case Records Preview: Modern Timeline Box */}
-                            <div style={{ marginTop: 6, padding: '7px 10px', backgroundColor: isHighlighted ? '#FFFFFF' : '#F8FAFC', borderRadius: 8, border: '1px solid #E2E8F0' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
-                                <span style={{ fontSize: 10, fontWeight: 800, color: '#0D5C4E', letterSpacing: '0.3px', textTransform: 'uppercase' }}>
-                                  Past Consultations {visits.length > 0 ? `(${Math.min(visits.length, 3)})` : ''}
-                                </span>
-                                <span style={{ fontSize: 10, color: '#64748B', fontWeight: 500 }}>
-                                  {visits.length > 0 ? 'Click to select patient' : 'No past visits recorded'}
-                                </span>
-                              </div>
-
-                              {visits.length === 0 ? (
-                                <div style={{ fontSize: 11, color: '#64748B', padding: '4px 0', display: 'flex', alignItems: 'center', gap: 6 }}>
-                                  <span style={{ color: '#0D9488', fontWeight: 800 }}>•</span>
-                                  <span>First Consultation (New Case)</span>
+                            return (
+                              <div
+                                key={p._id || p.patientId}
+                                onClick={() => handleSelectPatient(p)}
+                                onMouseEnter={() => setPatientHighlightIndex(idx)}
+                                style={{
+                                  ...styles.photoDropdownItem,
+                                  backgroundColor: isHighlighted ? '#F0FDF4' : '#FFFFFF',
+                                  borderLeft: isHighlighted ? '4px solid #0D5C4E' : '4px solid transparent',
+                                  transition: 'all 0.15s ease',
+                                }}
+                              >
+                                {/* Patient Top Row: Name, ID, Badges, Dues, Visit Count */}
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                    <span style={{ fontWeight: 800, fontSize: 14, color: '#0F172A', letterSpacing: '-0.2px' }}>
+                                      {p.name}
+                                    </span>
+                                    <span style={styles.photoMiniBadge}>{p.patientId}</span>
+                                    {p.isHead && <span style={styles.photoHeadBadge}>HEAD</span>}
+                                    {genderVal && (
+                                      <span style={{ fontSize: 10, color: '#475569', fontWeight: 600, backgroundColor: '#F1F5F9', padding: '1px 6px', borderRadius: 4, border: '1px solid #E2E8F0' }}>
+                                        {genderVal}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                                    {Number(p.totalDue || 0) > 0 && (
+                                      <span style={{ fontSize: 11, fontWeight: 800, color: '#DC2626', backgroundColor: '#FEE2E2', padding: '2px 8px', borderRadius: 5, border: '1px solid #FECACA' }}>
+                                        Due: ₹{p.totalDue}
+                                      </span>
+                                    )}
+                                    <span style={{ fontSize: 10, color: '#0D5C4E', fontWeight: 700, backgroundColor: '#E6F4F1', padding: '2px 8px', borderRadius: 5, border: '1px solid #B2DFDB' }}>
+                                      {displayedPastVisits.length > 0 ? `${displayedPastVisits.length} Visit${displayedPastVisits.length > 1 ? 's' : ''}` : 'New Patient'}
+                                    </span>
+                                  </div>
                                 </div>
-                              ) : (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                                  {visits.slice(0, 3).map((v, vIdx) => {
-                                    const clinicMeds = (v.treatments || []).map((t) => t.medicine).filter(Boolean);
-                                    const rxMeds = (v.prescriptions || []).map((rx) => rx.medicine).filter(Boolean);
-                                    const visitAllergies = (Array.isArray(v.allergies) ? v.allergies : [])
-                                      .filter((a) => a && typeof a === 'string' && a.trim() && !['NONE', 'NIL', 'NO', 'NA'].includes(a.trim().toUpperCase()));
-                                    const labInfo = v.investigation || (typeof v.labReport === 'string' ? v.labReport : (v.labReport?.reportType || v.labReport?.title || ''));
 
-                                    const formattedDate = v.visitDate
-                                      ? (v.visitDate.includes('-')
-                                        ? v.visitDate.split('-').reverse().join('-')
-                                        : new Date(v.visitDate).toLocaleDateString('en-GB'))
-                                      : '-';
+                                {/* Demographics Row: Only written data */}
+                                {demoItems.length > 0 && (
+                                  <div style={{ fontSize: 11, color: '#64748B', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 3 }}>
+                                    {demoItems.map((item, dIdx) => (
+                                      <React.Fragment key={dIdx}>
+                                        {dIdx > 0 && <span style={{ color: '#CBD5E1' }}>&bull;</span>}
+                                        <span>{item}</span>
+                                      </React.Fragment>
+                                    ))}
+                                  </div>
+                                )}
 
-                                    return (
-                                      <div
-                                        key={v._id || vIdx}
-                                        style={{
-                                          display: 'flex',
-                                          flexDirection: 'column',
-                                          gap: 4,
-                                          fontSize: 11,
-                                          backgroundColor: '#FFFFFF',
-                                          padding: '5px 8px',
-                                          borderRadius: 6,
-                                          border: '1px solid #E2E8F0',
-                                          boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
-                                        }}
-                                      >
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                                          <span style={{ fontWeight: 700, color: '#0D5C4E', backgroundColor: '#E6F4F1', padding: '1px 7px', borderRadius: 4, border: '1px solid #B2DFDB', fontSize: 10 }}>
-                                            Date: {formattedDate}
-                                          </span>
+                                {/* Allergies Badge: Sleek high-contrast warning pill */}
+                                {realAllergies.length > 0 && (
+                                  <div style={{ marginTop: 4, display: 'inline-flex', alignItems: 'center', gap: 6, backgroundColor: '#FEF2F2', border: '1px solid #FCA5A5', padding: '2px 8px', borderRadius: 4 }}>
+                                    <span style={{ fontSize: 9, fontWeight: 800, color: '#DC2626', letterSpacing: '0.4px' }}>ALLERGY:</span>
+                                    <span style={{ fontSize: 11, color: '#991B1B', fontWeight: 700 }}>{realAllergies.join(', ')}</span>
+                                  </div>
+                                )}
 
-                                          {visitAllergies.length > 0 && (
-                                            <span style={{ fontWeight: 700, color: '#B91C1C', backgroundColor: '#FEF2F2', padding: '1px 6px', borderRadius: 4, border: '1px solid #FECACA', fontSize: 10 }}>
-                                              Allergy: {visitAllergies.join(', ')}
-                                            </span>
-                                          )}
+                                {/* Past 2 to 3 Case Records Preview: Modern Consistent Timeline Box */}
+                                <div style={{ marginTop: 6, padding: '7px 10px', backgroundColor: isHighlighted ? '#FFFFFF' : '#F8FAFC', borderRadius: 8, border: '1px solid #E2E8F0' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
+                                    <span style={{ fontSize: 10, fontWeight: 800, color: '#0D5C4E', letterSpacing: '0.3px', textTransform: 'uppercase' }}>
+                                      Past Consultations {displayedPastVisits.length > 0 ? `(${displayedPastVisits.length})` : ''}
+                                    </span>
+                                    <span style={{ fontSize: 10, color: '#64748B', fontWeight: 500 }}>
+                                      {displayedPastVisits.length > 0 ? 'Click to select patient' : 'No past visits recorded'}
+                                    </span>
+                                  </div>
 
-                                          {labInfo && (
-                                            <span style={{ fontWeight: 600, color: '#92400E', backgroundColor: '#FEF3C7', padding: '1px 6px', borderRadius: 4, border: '1px solid #FDE68A', fontSize: 10 }}>
-                                              Lab: {labInfo}
-                                            </span>
-                                          )}
-                                        </div>
+                                  {displayedPastVisits.length === 0 ? (
+                                    <div style={{ fontSize: 11, color: '#64748B', padding: '4px 0', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                      <span style={{ color: '#0D9488', fontWeight: 800 }}>•</span>
+                                      <span>First Consultation (New Case)</span>
+                                    </div>
+                                  ) : (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                      {displayedPastVisits.map((v, vIdx) => {
+                                        const clinicMeds = (v.treatments || [])
+                                          .map((t) => (typeof t === 'string' ? t.trim() : (t?.item || t?.medicine || '').trim()))
+                                          .filter(Boolean);
+                                        const rxMeds = (v.prescriptions || [])
+                                          .map((rx) => (typeof rx === 'string' ? rx.trim() : (rx?.medicine || rx?.item || '').trim()))
+                                          .filter(Boolean);
+                                        const ipdMeds = (Array.isArray(v.ipdDetails) ? v.ipdDetails : (typeof v.ipdDetails === 'string' ? v.ipdDetails.split(',') : []))
+                                          .map((i) => (typeof i === 'string' ? i.trim() : (i?.item || '').trim()))
+                                          .filter(Boolean);
+                                        const labInfo = v.investigation || (typeof v.labReport === 'string' ? v.labReport : (v.labReport?.reportType || v.labReport?.title || ''));
+                                        const complaintText = (v.complaint || '').trim();
 
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                                          {clinicMeds.length > 0 && (
-                                            <span style={{ color: '#0F766E' }}>
-                                              <strong style={{ color: '#0D5C4E' }}>Clinic Medicine:</strong> {clinicMeds.join(', ')}
-                                            </span>
-                                          )}
+                                        const formattedDate = v.visitDate
+                                          ? (v.visitDate.includes('-')
+                                            ? v.visitDate.split('-').reverse().join('-')
+                                            : new Date(v.visitDate).toLocaleDateString('en-GB'))
+                                          : '-';
 
-                                          {rxMeds.length > 0 && (
-                                            <span style={{ color: '#1E40AF' }}>
-                                              <strong style={{ color: '#1E3A8A' }}>Prescription:</strong> {rxMeds.join(', ')}
-                                            </span>
-                                          )}
+                                        const timeStr = (v.createdAt || v.updatedAt)
+                                          ? new Date(v.createdAt || v.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })
+                                          : null;
 
-                                          {clinicMeds.length === 0 && rxMeds.length === 0 && !labInfo && (
-                                            <span style={{ color: '#64748B', fontStyle: 'italic' }}>
-                                              {v.complaint ? `Complaint: ${v.complaint}` : 'Consultation / Advice given'}
-                                            </span>
-                                          )}
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
+                                        const isEdited = Boolean(
+                                          v.isEdited ||
+                                          (v.updatedAt && v.createdAt && new Date(v.updatedAt).getTime() - new Date(v.createdAt).getTime() > 2000)
+                                        );
+
+                                        return (
+                                          <div
+                                            key={v._id || vIdx}
+                                            style={{
+                                              display: 'flex',
+                                              flexDirection: 'column',
+                                              gap: 3,
+                                              fontSize: 11,
+                                              backgroundColor: '#FFFFFF',
+                                              padding: '6px 9px',
+                                              borderRadius: 6,
+                                              border: '1px solid #E2E8F0',
+                                              boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
+                                            }}
+                                          >
+                                            {/* Top Row: Date, Time, Edited Badge, Vitals (BP, Sugar) */}
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                              <span style={{ fontWeight: 700, color: '#0D5C4E', backgroundColor: '#E6F4F1', padding: '1px 7px', borderRadius: 4, border: '1px solid #B2DFDB', fontSize: 10 }}>
+                                                Date: {formattedDate}
+                                              </span>
+
+                                              {timeStr && (
+                                                <span style={{ fontSize: 9.5, color: '#0284C7', backgroundColor: '#F0F9FF', border: '1px solid #BAE6FD', padding: '1px 5px', borderRadius: 4, fontWeight: 700 }}>
+                                                  {timeStr}
+                                                </span>
+                                              )}
+
+                                              {isEdited && (
+                                                <span style={styles.editedBadge} title="Case Edited / Updated">
+                                                  EDITED
+                                                </span>
+                                              )}
+
+                                              {v.bp && (
+                                                <span style={{ fontSize: 9.5, fontWeight: 700, color: '#0369A1', backgroundColor: '#F0F9FF', border: '1px solid #BAE6FD', padding: '1px 5px', borderRadius: 4 }}>
+                                                  BP: {v.bp}
+                                                </span>
+                                              )}
+
+                                              {v.sugar && (
+                                                <span style={{ fontSize: 9.5, fontWeight: 700, color: '#B45309', backgroundColor: '#FFFBEB', border: '1px solid #FDE68A', padding: '1px 5px', borderRadius: 4 }}>
+                                                  Sugar: {v.sugar}
+                                                </span>
+                                              )}
+                                            </div>
+
+                                            {/* Clinical Details Rows */}
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 2 }}>
+                                              {complaintText && (
+                                                <div style={{ color: '#1E293B', lineHeight: 1.35 }}>
+                                                  <strong style={{ color: '#0F766E' }}>Complaint:</strong> {complaintText}
+                                                </div>
+                                              )}
+
+                                              {labInfo && (
+                                                <div style={{ color: '#1E293B', lineHeight: 1.35 }}>
+                                                  <strong style={{ color: '#92400E' }}>Lab:</strong> {labInfo}
+                                                </div>
+                                              )}
+
+                                              {ipdMeds.length > 0 && (
+                                                <div style={{ color: '#1E293B', lineHeight: 1.35 }}>
+                                                  <strong style={{ color: '#C2410C' }}>IPD:</strong> {ipdMeds.join(', ')}
+                                                </div>
+                                              )}
+
+                                              {clinicMeds.length > 0 && (
+                                                <div style={{ color: '#1E293B', lineHeight: 1.35 }}>
+                                                  <strong style={{ color: '#0D5C4E' }}>Clinic Medicine:</strong> {clinicMeds.join(', ')}
+                                                </div>
+                                              )}
+
+                                              {rxMeds.length > 0 && (
+                                                <div style={{ color: '#1E293B', lineHeight: 1.35 }}>
+                                                  <strong style={{ color: '#1E3A8A' }}>Prescription:</strong> {rxMeds.join(', ')}
+                                                </div>
+                                              )}
+
+                                              {!complaintText && !labInfo && ipdMeds.length === 0 && clinicMeds.length === 0 && rxMeds.length === 0 && (
+                                                <div style={{ color: '#64748B', fontStyle: 'italic', fontSize: 10.5 }}>
+                                                  {v.dietary && v.dietary.trim() ? `Advice: ${v.dietary.trim()}` : 'Routine Consultation / Checkup'}
+                                                </div>
+                                              )}
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
                                 </div>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
+                              </div>
+                            );
+                          })}
                         </>
                       )}
                     </div>
@@ -5455,6 +5521,20 @@ export const PatientRecord = ({
 
 // --- HIGH DENSITY COMPACT STYLES OBJECT ---
 const styles = {
+  editedBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    padding: '1px 5px',
+    backgroundColor: '#FEF3C7',
+    color: '#92400E',
+    border: '1px solid #FDE68A',
+    borderRadius: '4px',
+    fontSize: '9.5px',
+    fontWeight: '800',
+    letterSpacing: '0.4px',
+    lineHeight: 1.2,
+    textTransform: 'uppercase',
+  },
   container: {
     display: 'flex',
     flexDirection: 'column',

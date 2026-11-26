@@ -343,16 +343,28 @@ export const getPatientVisits = async (req, res) => {
     }
     if (familyId) query.familyId = familyId.trim();
 
-    let queryBuilder = Visit.find(query).sort({ visitDate: -1, createdAt: -1 });
+    let queryBuilder = Visit.find(query).sort({ updatedAt: -1, createdAt: -1 });
     if (limit) {
       queryBuilder = queryBuilder.limit(parseInt(limit, 10));
     }
-    const visits = await queryBuilder.lean();
+    const rawVisits = await queryBuilder.lean();
+
+    // Deduplicate by consultation date: if an entry was edited or multiple records exist for that date,
+    // only return the latest updated/edited version so past cases remain 100% consistent across the system.
+    const deduplicated = [];
+    const seenDates = new Set();
+    for (const v of rawVisits) {
+      const dateKey = (v.visitDate || '').split('T')[0] || (v.createdAt ? new Date(v.createdAt).toISOString().split('T')[0] : '');
+      const caseKey = `${v.patientId || ''}_${dateKey}`;
+      if (seenDates.has(caseKey)) continue;
+      seenDates.add(caseKey);
+      deduplicated.push(v);
+    }
 
     return res.status(200).json({
       success: true,
-      count: visits.length,
-      data: visits,
+      count: deduplicated.length,
+      data: deduplicated,
     });
   } catch (error) {
     return res.status(500).json({

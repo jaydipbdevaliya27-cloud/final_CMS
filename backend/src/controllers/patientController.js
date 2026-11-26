@@ -220,8 +220,8 @@ export const getPatients = async (req, res) => {
     const visitsByPatient = {};
     if (search && search.trim() && patientIds.length > 0 && patientIds.length <= 50) {
       const recentVisits = await Visit.find({ patientId: { $in: patientIds } })
-        .select('patientId visitDate complaint treatments prescriptions investigation labReport allergies bp sugar other charge received due createdAt')
-        .sort({ visitDate: -1, createdAt: -1 })
+        .select('patientId visitDate complaint complaintList treatments prescriptions investigation investigationList ipdDetails dietary labReport allergies bp sugar other charge received due createdAt updatedAt isEdited editedAt')
+        .sort({ updatedAt: -1, createdAt: -1 })
         .limit(150)
         .lean();
 
@@ -229,7 +229,19 @@ export const getPatients = async (req, res) => {
         if (!visitsByPatient[v.patientId]) {
           visitsByPatient[v.patientId] = [];
         }
-        if (visitsByPatient[v.patientId].length < 3) {
+
+        // Deduplicate by visitDate: keep ONLY the latest updated/edited entry per consultation date
+        const dateKey = (v.visitDate || '').split('T')[0] || (v.createdAt ? new Date(v.createdAt).toISOString().split('T')[0] : '');
+        const alreadyHasDate = visitsByPatient[v.patientId].some((existing) => {
+          const exDate = (existing.visitDate || '').split('T')[0] || (existing.createdAt ? new Date(existing.createdAt).toISOString().split('T')[0] : '');
+          return exDate && exDate === dateKey;
+        });
+
+        if (!alreadyHasDate && visitsByPatient[v.patientId].length < 3) {
+          const ipdList = Array.isArray(v.ipdDetails)
+            ? v.ipdDetails.map((i) => (typeof i === 'string' ? i.trim() : (i?.item || '').trim())).filter(Boolean)
+            : (typeof v.ipdDetails === 'string' && v.ipdDetails.trim() ? v.ipdDetails.split(',').map((s) => s.trim()).filter(Boolean) : []);
+
           visitsByPatient[v.patientId].push({
             _id: v._id,
             visitDate: v.visitDate,
@@ -237,6 +249,8 @@ export const getPatients = async (req, res) => {
             treatments: v.treatments || [],
             prescriptions: v.prescriptions || [],
             investigation: v.investigation || '',
+            ipdDetails: ipdList,
+            dietary: v.dietary || '',
             labReport: v.labReport ? (typeof v.labReport === 'string' ? v.labReport : (v.labReport.reportType || v.labReport.title || 'Lab Report')) : '',
             allergies: Array.isArray(v.allergies) ? v.allergies : (v.allergies ? [v.allergies] : []),
             bp: v.bp || '',
@@ -246,6 +260,9 @@ export const getPatients = async (req, res) => {
             received: v.received || 0,
             due: v.due || 0,
             createdAt: v.createdAt,
+            updatedAt: v.updatedAt,
+            isEdited: Boolean(v.isEdited || (v.updatedAt && v.createdAt && new Date(v.updatedAt).getTime() - new Date(v.createdAt).getTime() > 2000)),
+            editedAt: v.editedAt || v.updatedAt,
           });
         }
       });
