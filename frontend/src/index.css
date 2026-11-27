@@ -909,27 +909,41 @@ input:focus, select:focus, textarea:focus {
 
   .cms-main-mobile {
     width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch;
   }
 
   .cms-page-container {
     height: auto !important;
+    min-height: 0 !important;
+    flex: none !important;
     overflow: visible !important;
   }
 
   .cms-split-container {
     flex-direction: column !important;
     height: auto !important;
-    gap: 12px !important;
+    min-height: 0 !important;
+    flex: none !important;
+    gap: 14px !important;
+    overflow: visible !important;
   }
 
   .cms-split-pane {
     width: 100% !important;
     min-width: 0 !important;
+    flex: none !important;
     height: auto !important;
     max-height: none !important;
-    overflow-y: visible !important;
+    overflow: visible !important;
+  }
+
+  .cms-split-pane form {
+    flex: none !important;
+    height: auto !important;
+    min-height: auto !important;
   }
 
   .cms-split-dragger {
