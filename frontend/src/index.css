@@ -905,14 +905,41 @@ input:focus, select:focus, textarea:focus {
   .cms-app-layout {
     height: 100dvh !important;
     max-height: 100dvh !important;
+    overflow: hidden !important;
+  }
+
+  .cms-mobile-body {
+    height: auto !important;
+    flex: 1 1 0 !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
   }
 
   .cms-main-mobile {
     width: 100% !important;
+    flex: 1 1 0 !important;
     height: 100% !important;
     min-height: 0 !important;
     overflow-y: auto !important;
+    overflow-x: hidden !important;
     -webkit-overflow-scrolling: touch;
+    display: block !important;
+  }
+
+  .cms-main-mobile > div,
+  .cms-main-mobile > div > div {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    flex: none !important;
+  }
+
+  .cms-main-mobile div:has(> table) {
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100% !important;
   }
 
   .cms-page-container {

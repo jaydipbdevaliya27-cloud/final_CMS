@@ -1499,7 +1499,7 @@ export const Dashboard = () => {
       )}
 
       {/* Main Body (Sidebar + Content Area) */}
-      <div style={styles.body}>
+      <div className={isMobile ? 'cms-mobile-body' : ''} style={styles.body}>
         {/* Exact Tab Navigation Sidebar (Desktop only) */}
         {!isMobile && (!isSidebarCollapsed ? (
           <>
