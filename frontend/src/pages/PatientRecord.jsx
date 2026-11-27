@@ -3304,7 +3304,7 @@ export const PatientRecord = ({
                 </div>
               </div>
 
-              {/* Row 3: Age, DOB (Select), Mobile No */}
+              {/* Row 3: Age, DOB (Select), Gender, Mobile No */}
               <div style={styles.photoRow3Col}>
                 <div style={styles.photoFieldGroup}>
                   <label style={styles.photoLabel}>Age: <span style={{ color: '#DC2626' }}>*</span></label>
@@ -3318,7 +3318,7 @@ export const PatientRecord = ({
                         setPatientAgeRecordedAt(null);
                         setAgeManuallyEdited(true);
                       }}
-                      onKeyDown={(e) => handlePatientDetailEnter(e, patientAge, genderSelectRef)}
+                      onKeyDown={(e) => handlePatientDetailEnter(e, patientAge, dobInputRef)}
                       placeholder="e.g. 23"
                       style={{ ...styles.photoInput, width: '42px', flexShrink: 0 }}
                     />
@@ -3333,21 +3333,6 @@ export const PatientRecord = ({
                   </div>
                 </div>
 
-                <div style={{ ...styles.photoFieldGroup, flex: '0 0 90px', minWidth: '85px' }}>
-                  <label style={styles.photoLabel}>Gender:</label>
-                  <select
-                    ref={genderSelectRef}
-                    value={patientGender}
-                    onChange={(e) => setPatientGender(e.target.value)}
-                    onKeyDown={(e) => handlePatientDetailEnter(e, patientGender, dobInputRef)}
-                    style={styles.photoSelect}
-                  >
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-
                 <div style={styles.photoFieldGroup}>
                   <label style={styles.photoLabel}>DOB (Select):</label>
                   <input
@@ -3355,9 +3340,24 @@ export const PatientRecord = ({
                     type="date"
                     value={patientDob}
                     onChange={(e) => handleDobChange(e.target.value)}
-                    onKeyDown={(e) => handlePatientDetailEnter(e, patientDob, phoneInputRef)}
+                    onKeyDown={(e) => handlePatientDetailEnter(e, patientDob, genderSelectRef)}
                     style={styles.photoInput}
                   />
+                </div>
+
+                <div style={{ ...styles.photoFieldGroup, flex: '0 0 90px', minWidth: '85px' }}>
+                  <label style={styles.photoLabel}>Gender:</label>
+                  <select
+                    ref={genderSelectRef}
+                    value={patientGender}
+                    onChange={(e) => setPatientGender(e.target.value)}
+                    onKeyDown={(e) => handlePatientDetailEnter(e, patientGender, phoneInputRef)}
+                    style={styles.photoSelect}
+                  >
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
                 </div>
 
                 <div style={styles.photoFieldGroup}>
