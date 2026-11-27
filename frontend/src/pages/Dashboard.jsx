@@ -4,7 +4,7 @@ import { useDebounce } from '../hooks/useDebounce';
 import { familyAPI, universalSearchAPI, reportAPI } from '../services/api';
 import { preloadMasterData } from '../components/common/MasterDataInput';
 import { preloadPatients, searchPatientsInMemory, updateCachedPatient } from '../utils/patientCache';
-import { SidebarTabs } from '../components/common/SidebarTabs';
+import { SidebarTabs, SIDEBAR_TABS } from '../components/common/SidebarTabs';
 import { FamilyHeadRegistration } from './FamilyHeadRegistration';
 import { MasterDataManagement } from './MasterDataManagement';
 import { AddMember } from './AddMember';
@@ -56,6 +56,8 @@ import {
   PanelLeftOpen,
   Menu,
   Lock,
+  Columns2,
+  History,
 } from 'lucide-react';
 
 export const Dashboard = () => {
@@ -205,6 +207,20 @@ export const Dashboard = () => {
     month: 'short',
     day: 'numeric',
   });
+
+  // Mobile / PWA responsive state
+  const [isMobile, setIsMobile] = useState(() => (typeof window !== 'undefined' ? window.innerWidth <= 900 : false));
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth <= 900;
+      setIsMobile(mobile);
+      if (!mobile) setMobileMenuOpen(false);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Draggable & Collapsible Sidebar state
   const [sidebarWidth, setSidebarWidth] = useState(210);
@@ -1047,37 +1063,88 @@ export const Dashboard = () => {
   };
 
   return (
-    <div style={styles.layout}>
+    <div className={isMobile ? 'cms-app-layout cms-mobile-layout' : 'cms-app-layout'} style={styles.layout}>
       {/* Top Header / Bar */}
-      <header style={styles.navbar}>
-        <div style={styles.navBrand}>
-          <button
-            type="button"
-            onClick={toggleSidebar}
-            style={styles.navToggleBtn}
-            title={isSidebarCollapsed ? 'Show Navigation Menu (Alt+B)' : 'Hide Navigation Menu (Alt+B)'}
-          >
-            {isSidebarCollapsed ? (
-              <PanelLeftOpen size={17} color="var(--primary)" />
-            ) : (
-              <PanelLeftClose size={17} color="var(--primary)" />
-            )}
-            <span style={styles.navToggleBtnText}>
-              {isSidebarCollapsed ? 'Show Menu' : 'Hide Menu'}
-            </span>
-          </button>
+      <header className={isMobile ? 'cms-navbar cms-navbar-mobile' : 'cms-navbar'} style={{
+        ...styles.navbar,
+        ...(isMobile ? { height: 'auto', flexWrap: 'wrap', padding: '8px 12px', gap: '8px' } : {}),
+      }}>
+        <div style={{ ...styles.navBrand, ...(isMobile ? { width: '100%', justifyContent: 'space-between' } : {}) }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+            <button
+              type="button"
+              onClick={isMobile ? () => setMobileMenuOpen(true) : toggleSidebar}
+              style={styles.navToggleBtn}
+              title={isMobile ? 'Open Navigation Menu' : (isSidebarCollapsed ? 'Show Navigation Menu (Alt+B)' : 'Hide Navigation Menu (Alt+B)')}
+            >
+              {isMobile ? (
+                <Menu size={18} color="var(--primary)" />
+              ) : isSidebarCollapsed ? (
+                <PanelLeftOpen size={17} color="var(--primary)" />
+              ) : (
+                <PanelLeftClose size={17} color="var(--primary)" />
+              )}
+              {!isMobile && (
+                <span style={styles.navToggleBtnText}>
+                  {isSidebarCollapsed ? 'Show Menu' : 'Hide Menu'}
+                </span>
+              )}
+            </button>
 
-          <div style={styles.brandIcon}>
-            <Stethoscope size={24} color="#FFFFFF" />
+            <div style={{ ...styles.brandIcon, ...(isMobile ? { width: '32px', height: '32px', borderRadius: '8px' } : {}) }}>
+              <Stethoscope size={isMobile ? 18 : 24} color="#FFFFFF" />
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <h2 style={{ ...styles.brandTitle, ...(isMobile ? { fontSize: '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '175px' } : {}) }}>
+                {doctor?.clinicName || 'Clinic Management'}
+              </h2>
+              {!isMobile && (
+                <span style={styles.brandSub}>{doctor?.clinicTagline || 'Single Doctor Medical Suite'}</span>
+              )}
+            </div>
           </div>
-          <div>
-            <h2 style={styles.brandTitle}>{doctor?.clinicName || 'Clinic Management'}</h2>
-            <span style={styles.brandSub}>{doctor?.clinicTagline || 'Single Doctor Medical Suite'}</span>
-          </div>
+
+          {isMobile && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+              {installPrompt && (
+                <button
+                  type="button"
+                  onClick={handleInstallPWA}
+                  className="cms-pwa-install-btn"
+                  title="Install Dhyey CMS App"
+                >
+                  <Download size={13} />
+                  <span>Install</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setActiveTab('doctor-profile')}
+                style={{ ...styles.avatarCircle, width: '30px', height: '30px', fontSize: '0.78rem', border: 'none', cursor: 'pointer' }}
+                title="Doctor Profile"
+              >
+                {doctor?.name?.charAt(0) || 'D'}
+              </button>
+              <button
+                type="button"
+                onClick={handleLogout}
+                style={{ ...styles.logoutBtn, padding: '6px 8px' }}
+                title="Sign Out"
+              >
+                <LogOut size={15} />
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Universal Search with '/' Shortcut & Rich Live Results */}
-        <div ref={searchWrapRef} style={styles.searchContainer}>
+        <div
+          ref={searchWrapRef}
+          style={{
+            ...styles.searchContainer,
+            ...(isMobile ? { width: '100%', maxWidth: '100%', margin: 0, order: 3 } : {}),
+          }}
+        >
           <Search size={16} color="var(--text-muted)" style={styles.searchIcon} />
           <input
             ref={searchInputRef}
@@ -1284,7 +1351,8 @@ export const Dashboard = () => {
           })()}
         </div>
 
-        {/* Doctor Badge, PWA Install & Sign Out */}
+        {/* Doctor Badge, PWA Install & Sign Out (Desktop) */}
+        {!isMobile && (
         <div style={styles.navActions}>
           {/* Offline Status Indicator */}
           {!isOnline && (
@@ -1347,12 +1415,93 @@ export const Dashboard = () => {
             <span>Sign Out</span>
           </button>
         </div>
+        )}
       </header>
+
+      {/* Mobile Slide-Over Navigation Drawer */}
+      {isMobile && mobileMenuOpen && (
+        <div className="cms-mobile-drawer-backdrop" onClick={() => setMobileMenuOpen(false)}>
+          <aside className="cms-mobile-drawer" onClick={(e) => e.stopPropagation()}>
+            <div className="cms-mobile-drawer-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ ...styles.brandIcon, width: '36px', height: '36px' }}>
+                  <Stethoscope size={20} color="#FFFFFF" />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#0F172A' }}>
+                    {doctor?.clinicName || 'Dhyey CMS'}
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: '#64748B', fontWeight: 600 }}>
+                    {doctor?.name || 'Dr. Dhyey'} &bull; {doctor?.specialization || 'Physician'}
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(false)}
+                className="cms-mobile-drawer-close"
+                aria-label="Close Menu"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="cms-mobile-drawer-list">
+              {SIDEBAR_TABS.map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
+                const isProtected = ['dashboard', 'cut-master', 'expense-master'].includes(tab.id);
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    className={`cms-mobile-drawer-item ${isActive ? 'active' : ''}`}
+                    onClick={() => {
+                      if (tab.id === 'patient-record') setSelectedPatientId('');
+                      setActiveTab(tab.id);
+                      setMobileMenuOpen(false);
+                    }}
+                  >
+                    <Icon size={18} />
+                    <span style={{ flex: 1, textAlign: 'left' }}>{tab.label}</span>
+                    {isProtected && !isFinanceUnlocked && <Lock size={13} color="#D97706" />}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="cms-mobile-drawer-footer">
+              {installPrompt && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleInstallPWA();
+                    setMobileMenuOpen(false);
+                  }}
+                  className="cms-pwa-install-btn"
+                  style={{ width: '100%', justifyContent: 'center', padding: '9px 12px', marginBottom: '8px' }}
+                >
+                  <Download size={15} />
+                  <span>Install PWA App</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleLogout}
+                style={{ ...styles.logoutBtn, width: '100%', justifyContent: 'center', padding: '9px 12px' }}
+              >
+                <LogOut size={16} />
+                <span>Sign Out</span>
+              </button>
+            </div>
+          </aside>
+        </div>
+      )}
 
       {/* Main Body (Sidebar + Content Area) */}
       <div style={styles.body}>
-        {/* Exact Tab Navigation Sidebar (Collapsible for big screens) */}
-        {!isSidebarCollapsed ? (
+        {/* Exact Tab Navigation Sidebar (Desktop only) */}
+        {!isMobile && (!isSidebarCollapsed ? (
           <>
             <SidebarTabs
               activeTab={activeTab}
@@ -1392,14 +1541,17 @@ export const Dashboard = () => {
               <span style={styles.verticalNavLabel}>MENU</span>
             </button>
           </div>
-        )}
+        ))}
 
         {/* Content Pane */}
         <main
+          className={isMobile ? 'cms-main-content cms-main-mobile' : 'cms-main-content'}
           style={{
             ...styles.mainContent,
-            width: isSidebarCollapsed ? 'calc(100% - 28px)' : `calc(100% - ${sidebarWidth}px)`,
-            padding: activeTab === 'patient-record' ? '2px 4px' : '8px 12px',
+            width: isMobile ? '100%' : (isSidebarCollapsed ? 'calc(100% - 28px)' : `calc(100% - ${sidebarWidth}px)`),
+            padding: isMobile
+              ? (activeTab === 'patient-record' ? '4px 4px 76px 4px' : '10px 10px 80px 10px')
+              : (activeTab === 'patient-record' ? '2px 4px' : '8px 12px'),
           }}
         >
           {/* PatientRecord is ALWAYS kept alive in the DOM so clinical case entry 100% persists across tab switches */}
@@ -1430,6 +1582,47 @@ export const Dashboard = () => {
           {renderTabContent()}
         </main>
       </div>
+
+      {/* Mobile PWA Bottom Navigation Bar */}
+      {isMobile && (
+        <nav className="cms-mobile-bottom-nav" aria-label="Primary Mobile Navigation">
+          {[
+            { id: 'dashboard', label: 'Home', icon: Columns2 },
+            { id: 'patient-record', label: 'Case', icon: Contact },
+            { id: 'recent-history', label: 'History', icon: History },
+            { id: 'reports', label: 'Reports', icon: TrendingUp },
+          ].map((item) => {
+            const Icon = item.icon;
+            const isActive = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                className={`cms-mobile-bottom-btn ${isActive ? 'active' : ''}`}
+                onClick={() => {
+                  if (item.id === 'patient-record') setSelectedPatientId('');
+                  setActiveTab(item.id);
+                }}
+              >
+                <div className="cms-mobile-bottom-pill">
+                  <Icon size={19} />
+                </div>
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            className={`cms-mobile-bottom-btn ${mobileMenuOpen ? 'active' : ''}`}
+            onClick={() => setMobileMenuOpen(true)}
+          >
+            <div className="cms-mobile-bottom-pill">
+              <Menu size={19} />
+            </div>
+            <span>More</span>
+          </button>
+        </nav>
+      )}
     </div>
   );
 };
