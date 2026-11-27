@@ -779,7 +779,15 @@ export const RecentHistory = ({
               const alerts = getLabAlerts(visit);
               const caseCharge = Number(visit.charge) || 0;
               const caseReceived = Number(visit.received) || 0;
-              const caseDue = Math.max(0, caseCharge - caseReceived);
+              const rawCaseDue = isDueCollection
+                ? 0
+                : Math.max(
+                    0,
+                    visit.due !== undefined && visit.due !== null
+                      ? Number(visit.due)
+                      : caseCharge - caseReceived
+                  );
+              const caseDue = visit.patientTotalDue === 0 ? 0 : rawCaseDue;
               const rawAllergies = visit.allergies || [];
               const allergiesList = (Array.isArray(rawAllergies) ? rawAllergies : [rawAllergies])
                 .flatMap((a) => (typeof a === 'string' ? a.split(',') : [String(a || '')]))
@@ -1008,7 +1016,15 @@ export const RecentHistory = ({
                   // Case-specific charge, received, due, deposit for this particular case/visit ONLY
                   const caseCharge = Number(visit.charge) || 0;
                   const caseReceived = Number(visit.received) || 0;
-                  const caseDue = Math.max(0, caseCharge - caseReceived);
+                  const rawCaseDue = isDueCollection
+                    ? 0
+                    : Math.max(
+                        0,
+                        visit.due !== undefined && visit.due !== null
+                          ? Number(visit.due)
+                          : caseCharge - caseReceived
+                      );
+                  const caseDue = visit.patientTotalDue === 0 ? 0 : rawCaseDue;
                   const caseDeposit = Math.max(0, caseReceived - caseCharge);
 
                   // Extract known allergies for prominent highlight

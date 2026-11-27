@@ -857,6 +857,28 @@ export const collectDue = async (req, res) => {
       due: -numAmount,
     });
 
+    // Settle due on unpaid visits (oldest first) without altering received so recalculateDues stays exact
+    let remainingToSettle = numAmount;
+    const unpaidVisits = await Visit.find({
+      patientId: patient.patientId,
+      charge: { $gt: 0 },
+    }).sort({ visitDate: 1, createdAt: 1 });
+    for (const uv of unpaidVisits) {
+      if (remainingToSettle <= 0) break;
+      const currentVisitDue = Math.max(
+        0,
+        uv.due !== undefined && uv.due !== null
+          ? Number(uv.due)
+          : (Number(uv.charge || 0) - Number(uv.received || 0))
+      );
+      if (currentVisitDue > 0) {
+        const deducted = Math.min(remainingToSettle, currentVisitDue);
+        uv.due = Math.max(0, currentVisitDue - deducted);
+        remainingToSettle -= deducted;
+        await uv.save();
+      }
+    }
+
     const { patientDue, patientDeposit, famDue, famDeposit } = await recalculateDues(patient.patientId, patient.familyId);
 
     return res.status(201).json({
@@ -943,10 +965,10 @@ export const getRecentVisits = async (req, res) => {
       .limit(Math.min(250, Number(limit) || 100))
       .lean();
 
-    // Attach latest patient allergies for highlight
+    // Attach latest patient allergies & current totalDue
     const patientIds = [...new Set(visits.map((v) => v.patientId).filter(Boolean))];
     const patients = await Patient.find({ patientId: { $in: patientIds } })
-      .select('patientId allergies')
+      .select('patientId allergies totalDue')
       .lean();
     const patMap = {};
     patients.forEach((p) => {
@@ -989,6 +1011,7 @@ export const getRecentVisits = async (req, res) => {
         ...v,
         labReport: attachedReport,
         allergies: combinedAllergies,
+        patientTotalDue: pat !== undefined ? Number(pat.totalDue || 0) : null,
       };
     });
 

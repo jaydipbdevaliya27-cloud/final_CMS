@@ -2341,14 +2341,20 @@ export const PatientRecord = ({
           houseNo: patientHouseNo || patient.houseNo,
           society: patientSociety || patient.society,
           area: patientArea || patient.area,
-          family: selectedFamily || {
-            familyId: res.visit?.familyId || resolvedFamilyId,
-            headName: resolvedHeadName,
-            society: patientSociety,
-            area: patientArea,
-            houseNo: patientHouseNo,
-            phone: patientPhone,
-          },
+          family: selectedFamily
+            ? {
+                ...selectedFamily,
+                familyDue: res.familyDue !== undefined ? res.familyDue : selectedFamily.familyDue,
+              }
+            : {
+                familyId: res.visit?.familyId || resolvedFamilyId,
+                headName: resolvedHeadName,
+                society: patientSociety,
+                area: patientArea,
+                houseNo: patientHouseNo,
+                phone: patientPhone,
+                familyDue: res.familyDue !== undefined ? res.familyDue : 0,
+              },
           totalDue: res.totalDue !== undefined ? res.totalDue : patient.totalDue,
           deposit: res.deposit !== undefined ? res.deposit : (patient.deposit || 0),
         };
@@ -3069,16 +3075,24 @@ export const PatientRecord = ({
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
                     <label style={styles.photoLabel}>Family Head / ID:</label>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                      {currentPatient && !currentPatient.isNewPatient && Number(currentPatient.totalDue || 0) > 0 && (
-                        <button
-                          type="button"
-                          onClick={handleOpenFamilyDueModal}
-                          style={styles.photoDueLink}
-                          title="Click to view family due breakdown"
-                        >
-                          Total Due: ₹{currentPatient.totalDue}
-                        </button>
-                      )}
+                      {currentPatient && !currentPatient.isNewPatient && (() => {
+                        const patDue = Math.max(0, Number(currentPatient.totalDue || 0));
+                        const famDue = Math.max(0, Number(selectedFamily?.familyDue ?? currentPatient.family?.familyDue ?? 0));
+                        if (patDue <= 0 && famDue <= 0) return null;
+                        const label = famDue > patDue
+                          ? (patDue > 0 ? `Due: ₹${patDue} (Family Due: ₹${famDue})` : `Family Due: ₹${famDue}`)
+                          : `Total Due: ₹${patDue}`;
+                        return (
+                          <button
+                            type="button"
+                            onClick={handleOpenFamilyDueModal}
+                            style={styles.photoDueLink}
+                            title="Click to view family due breakdown"
+                          >
+                            {label}
+                          </button>
+                        );
+                      })()}
                       {currentPatient && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           {selectedFamily ? (
