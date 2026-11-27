@@ -2028,7 +2028,122 @@ export const PatientRecord = ({
       formCharge > 0 ||
       labReport;
 
+    const resetCaseFormAfterSave = () => {
+      setCurrentPatient(null);
+      currentPatientRef.current = null;
+      setPatientSearch('');
+      setPatientDob('');
+      setPatientAge('');
+      setPatientPhone('');
+      setPatientHouseNo('');
+      setPatientSociety('');
+      setPatientArea('');
+      setSelectedFamily(null);
+      setFamilyHeadName('');
+      setTempAllergy('');
+      setTempComplaint('');
+      setTempInvestigation('');
+      setTempIpd('');
+      setDietaryTextInput('');
+      setDietaryCodeInput('');
+      setClinicMedForm({ medicine: '', qty: '', morning: '1', noon: '0', evening: '1' });
+      setRxForm({
+        medicine: '',
+        qty: '',
+        morning: '1',
+        noon: '0',
+        evening: '1',
+        night: '0',
+        timing: 'AF',
+        sosInstruction: '',
+      });
+      setShowInlineHistory(false);
+      setVisitForm(initialVisitForm);
+      visitFormRef.current = initialVisitForm;
+      setEditingVisitId(null);
+      editingVisitIdRef.current = null;
+      setEditingVisit(null);
+      editingVisitRef.current = null;
+      setAttachedReport(null);
+      attachedReportRef.current = null;
+    };
+
     if (!hasAnyData) {
+      if (patient.isNewPatient) {
+        const hasAgeOrDob = Boolean(String(patientAge || '').trim() || String(patientDob || '').trim());
+        const hasLocation = Boolean(String(patientSociety || patientArea || '').trim());
+        if (!hasAgeOrDob || !hasLocation) {
+          showToast('Please enter Age and Society / Area to save new patient entry.', 'error');
+          if (!hasAgeOrDob) {
+            ageInputRef.current?.focus();
+          } else {
+            societyInputRef.current?.focus();
+          }
+          return;
+        }
+
+        try {
+          isSavingVisitRef.current = true;
+          setIsSavingVisit(true);
+          const resolvedAgeRecordedAt = ageManuallyEdited
+            ? new Date().toISOString()
+            : (patientAgeRecordedAt || (patientAge ? new Date().toISOString() : null));
+
+          let regRes;
+          if (selectedFamily?.familyId) {
+            regRes = await patientAPI.addMember({
+              familyId: selectedFamily.familyId,
+              name: patient.name,
+              age: patientAge,
+              dob: patientDob,
+              ageRecordedAt: resolvedAgeRecordedAt,
+              gender: patientGender || 'Male',
+              phone: patientPhone,
+              houseNo: patientHouseNo,
+              society: patientSociety,
+              area: patientArea,
+            });
+          } else {
+            const resolvedHeadName = (familyHeadName && familyHeadName.trim())
+              ? familyHeadName.trim()
+              : patient.name;
+            regRes = await familyAPI.registerHead({
+              headName: resolvedHeadName,
+              age: patientAge,
+              dob: patientDob,
+              ageRecordedAt: resolvedAgeRecordedAt,
+              gender: patientGender || 'Male',
+              phone: patientPhone,
+              houseNo: patientHouseNo,
+              society: patientSociety,
+              area: patientArea,
+            });
+          }
+
+          if (regRes.success && regRes.patient) {
+            const savedPatientObj = {
+              ...regRes.patient,
+              isNewPatient: false,
+              family: regRes.family || selectedFamily || null,
+            };
+            addToRecentSearched(savedPatientObj);
+            updateCachedPatient(savedPatientObj);
+            showToast('New patient registered successfully (patient entry only, not added to Recent History).');
+            resetCaseFormAfterSave();
+            setTimeout(() => patientSearchInputRef.current?.focus(), 40);
+          } else {
+            showToast(regRes.message || 'Failed to register new patient', 'error');
+          }
+        } catch (err) {
+          console.error('Error registering patient:', err);
+          showToast('Error registering patient: ' + (err.response?.data?.message || err.message || 'Server error'), 'error');
+        } finally {
+          setIsSavingVisit(false);
+          isSavingVisitRef.current = false;
+        }
+        return;
+      }
+
       showToast('Please enter at least one clinical detail, complaint, injection/IPD, or medicine before saving.', 'error');
       return;
     }
@@ -2151,41 +2266,7 @@ export const PatientRecord = ({
         }
 
         // Cleanly reset form fields and active patient in one synchronous batch for 0ms response
-        setCurrentPatient(null);
-        currentPatientRef.current = null;
-        setPatientSearch('');
-        setPatientDob('');
-        setPatientAge('');
-        setPatientPhone('');
-        setPatientHouseNo('');
-        setPatientSociety('');
-        setPatientArea('');
-        setTempAllergy('');
-        setTempComplaint('');
-        setTempInvestigation('');
-        setTempIpd('');
-        setDietaryTextInput('');
-        setDietaryCodeInput('');
-        setClinicMedForm({ medicine: '', qty: '', morning: '1', noon: '0', evening: '1' });
-        setRxForm({
-          medicine: '',
-          qty: '',
-          morning: '1',
-          noon: '0',
-          evening: '1',
-          night: '0',
-          timing: 'AF',
-          sosInstruction: '',
-        });
-        setShowInlineHistory(false);
-        setVisitForm(initialVisitForm);
-        visitFormRef.current = initialVisitForm;
-        setEditingVisitId(null);
-        editingVisitIdRef.current = null;
-        setEditingVisit(null);
-        editingVisitRef.current = null;
-        setAttachedReport(null);
-        attachedReportRef.current = null;
+        resetCaseFormAfterSave();
       } else {
         showToast(res.message || 'Failed to save visit', 'error');
       }
