@@ -1057,8 +1057,11 @@ export const RecentHistory = ({
                                 borderRadius: '4px',
                                 fontSize: '10px',
                                 fontWeight: 800,
-                                lineHeight: 1.2,
-                                whiteSpace: 'nowrap',
+                                lineHeight: 1.25,
+                                whiteSpace: 'normal',
+                                wordBreak: 'break-word',
+                                maxWidth: '100%',
+                                boxSizing: 'border-box',
                               }}
                               title={`Due payment of ₹${visit.received || 0} collected`}
                             >
@@ -1072,7 +1075,7 @@ export const RecentHistory = ({
                             style={{
                               marginTop: '4px',
                               display: 'inline-flex',
-                              alignItems: 'center',
+                              alignItems: 'flex-start',
                               gap: '4px',
                               backgroundColor: '#FEE2E2',
                               color: '#B91C1C',
@@ -1081,8 +1084,11 @@ export const RecentHistory = ({
                               borderRadius: '4px',
                               fontSize: '11px',
                               fontWeight: '700',
-                              lineHeight: 1.2,
-                              whiteSpace: 'nowrap',
+                              lineHeight: 1.25,
+                              whiteSpace: 'normal',
+                              wordBreak: 'break-word',
+                              maxWidth: '100%',
+                              boxSizing: 'border-box',
                             }}
                             title={`Known Allergies: ${allergiesList.join(', ')}`}
                           >
