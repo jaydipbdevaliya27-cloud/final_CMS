@@ -83,3 +83,4 @@ export const getPatientDisplayAge = (patient) => {
   const recordedAt = patient.ageRecordedAt || patient.updatedAt || patient.createdAt || null;
   return calculateContinuousAge(age, recordedAt, dob);
 };
+
