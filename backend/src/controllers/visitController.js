@@ -404,6 +404,7 @@ export const recordVisit = async (req, res) => {
     const patUpdates = {};
     if (req.body.phone !== undefined) patUpdates.phone = req.body.phone;
     if (req.body.age !== undefined) patUpdates.age = req.body.age;
+    if (req.body.gender !== undefined) patUpdates.gender = req.body.gender;
     if (req.body.dob !== undefined) patUpdates.dob = req.body.dob;
     if (req.body.ageManuallyEdited) {
       patUpdates.ageRecordedAt = new Date();
@@ -651,6 +652,7 @@ export const updateVisit = async (req, res) => {
     const patUpdates = {};
     if (req.body.phone !== undefined) patUpdates.phone = req.body.phone;
     if (req.body.age !== undefined) patUpdates.age = req.body.age;
+    if (req.body.gender !== undefined) patUpdates.gender = req.body.gender;
     if (req.body.dob !== undefined) patUpdates.dob = req.body.dob;
     if (req.body.ageManuallyEdited) {
       patUpdates.ageRecordedAt = new Date();

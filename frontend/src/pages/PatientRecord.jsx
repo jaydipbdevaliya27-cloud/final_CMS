@@ -464,6 +464,7 @@ export const PatientRecord = ({
   // Editable Demographics & Auto-calculated Age
   const [patientDob, setPatientDob] = useState('');
   const [patientAge, setPatientAge] = useState('');
+  const [patientGender, setPatientGender] = useState('Male');
   const [patientAgeRecordedAt, setPatientAgeRecordedAt] = useState(null);
   const [ageManuallyEdited, setAgeManuallyEdited] = useState(false);
   const [patientPhone, setPatientPhone] = useState('');
@@ -1134,6 +1135,7 @@ export const PatientRecord = ({
     setCurrentPatient(patient);
     setPatientDob(patient.dob || '');
     setPatientAge(patient.age !== undefined && patient.age !== null ? String(patient.age) : '');
+    setPatientGender(patient.gender && patient.gender !== 'Not Specified' ? patient.gender : 'Male');
     setPatientAgeRecordedAt(patient.ageRecordedAt || patient.updatedAt || patient.createdAt || null);
     setAgeManuallyEdited(false);
     setPatientPhone(patient.phone || '');
@@ -1242,6 +1244,7 @@ export const PatientRecord = ({
     setShowFamilyHeadDropdown(false);
     setPatientDob('');
     setPatientAge('');
+    setPatientGender('Male');
     setPatientAgeRecordedAt(null);
     setAgeManuallyEdited(false);
     setPatientPhone('');
@@ -2033,6 +2036,7 @@ export const PatientRecord = ({
         visitDate: form.visitDate || getTodayDateStr(),
         dob: patientDob,
         age: patientAge,
+        gender: patientGender || 'Male',
         ageRecordedAt: patientAgeRecordedAt,
         ageManuallyEdited,
         phone: patientPhone,
@@ -2087,6 +2091,7 @@ export const PatientRecord = ({
           isNewPatient: false,
           isHead: !selectedFamily && resolvedHeadName.toUpperCase() === (patient.name || '').trim().toUpperCase(),
           age: patientAge || patient.age,
+          gender: patientGender || patient.gender || 'Male',
           dob: patientDob || patient.dob,
           ageRecordedAt: ageManuallyEdited ? new Date().toISOString() : (patientAgeRecordedAt || patient.ageRecordedAt || new Date().toISOString()),
           phone: patientPhone || patient.phone,
@@ -3024,6 +3029,19 @@ export const PatientRecord = ({
                       style={{ ...styles.photoInput, flex: 1, backgroundColor: '#F8FAFC', color: '#1E40AF', fontWeight: 600, fontSize: '10px' }}
                     />
                   </div>
+                </div>
+
+                <div style={{ ...styles.photoFieldGroup, flex: '0 0 90px', minWidth: '85px' }}>
+                  <label style={styles.photoLabel}>Gender:</label>
+                  <select
+                    value={patientGender}
+                    onChange={(e) => setPatientGender(e.target.value)}
+                    style={styles.photoSelect}
+                  >
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
                 </div>
 
                 <div style={styles.photoFieldGroup}>
