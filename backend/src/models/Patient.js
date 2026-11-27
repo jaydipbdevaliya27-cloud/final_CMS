@@ -9,7 +9,8 @@ const patientSchema = new mongoose.Schema(
     },
     familyId: {
       type: String,
-      required: true,
+      required: false,
+      default: '',
       index: true,
     },
     name: {

@@ -149,7 +149,37 @@ export const recordVisit = async (req, res) => {
         const cleanPatName = toUpperTrim(patientName);
         const requestedHeadName = (req.body.familyHeadName && String(req.body.familyHeadName).trim())
           ? toUpperTrim(req.body.familyHeadName)
-          : cleanPatName;
+          : '';
+
+        // Case 0: Unlinked individual patient (no Family Head provided)
+        if (finalFamilyId === 'UNLINKED' || (!requestedHeadName && (!finalFamilyId || finalFamilyId === 'NEW'))) {
+          const existingIndCount = await Patient.countDocuments({ patientId: { $regex: /^P-IND-/ } });
+          let nextSeq = existingIndCount + 1;
+          let patId = `P-IND-${nextSeq}`;
+          while (await Patient.exists({ patientId: patId })) {
+            nextSeq += 1;
+            patId = `P-IND-${nextSeq}`;
+          }
+
+          await Patient.create({
+            patientId: patId,
+            familyId: '',
+            name: cleanPatName,
+            isHead: false,
+            relation: 'INDIVIDUAL',
+            phone: req.body.phone ? String(req.body.phone).trim() : '',
+            houseNo: toUpperTrim(req.body.houseNo),
+            society: toUpperTrim(req.body.society),
+            area: toUpperTrim(req.body.area),
+            age: toUpperTrim(req.body.age),
+            dob: req.body.dob || '',
+            ageRecordedAt: req.body.age ? new Date() : null,
+            gender: req.body.gender || 'Male',
+            allergies: toUpperArray(allergies),
+          });
+          finalPatientId = patId;
+          finalFamilyId = '';
+        } else {
 
         // Case A: Joining an EXISTING Family Head
         if (finalFamilyId && finalFamilyId !== 'NEW') {
@@ -260,15 +290,16 @@ export const recordVisit = async (req, res) => {
           }
           finalFamilyId = nextFamId;
         }
+        }
       } catch (autoErr) {
         console.error('Error auto-creating patient in recordVisit:', autoErr.message);
       }
     }
 
-    if (!finalPatientId || !finalFamilyId) {
+    if (!finalPatientId) {
       return res.status(400).json({
         success: false,
-        message: 'Patient ID and Family ID are required',
+        message: 'Patient ID is required',
       });
     }
 

@@ -6,6 +6,7 @@ import LabReport from '../models/LabReport.js';
 import Certificate from '../models/Certificate.js';
 import { autoSaveMasterItem } from './masterDataController.js';
 import { toUpperTrim, toUpperArray } from '../utils/textUtils.js';
+import { getNextFamilyIdValue } from './familyController.js';
 
 // @desc    Add a new Patient Member under an existing Family Head
 // @route   POST /api/patients
@@ -28,17 +29,57 @@ export const addPatientMember = async (req, res) => {
       gender,
     } = req.body;
 
-    if (!familyId || !familyId.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Family ID is required. Please select a valid family head.',
-      });
-    }
-
     if (!name || !name.trim()) {
       return res.status(400).json({
         success: false,
         message: 'Member full name is required.',
+      });
+    }
+
+    // Normalize allergies
+    const patientAllergies = toUpperArray(allergies);
+
+    // Individual / Unlinked patient registration (no Family Head yet)
+    if (!familyId || !familyId.trim() || familyId.trim() === 'UNLINKED') {
+      const existingIndCount = await Patient.countDocuments({ patientId: { $regex: /^P-IND-/ } });
+      let nextSeq = existingIndCount + 1;
+      let patientId = `P-IND-${nextSeq}`;
+      while (await Patient.exists({ patientId })) {
+        nextSeq += 1;
+        patientId = `P-IND-${nextSeq}`;
+      }
+
+      const newPatient = await Patient.create({
+        patientId,
+        familyId: '',
+        name: toUpperTrim(name),
+        relation: 'INDIVIDUAL',
+        age: toUpperTrim(age),
+        dob: dob ? String(dob).trim() : '',
+        ageRecordedAt: ageRecordedAt ? new Date(ageRecordedAt) : (age ? new Date() : null),
+        gender: gender || 'Male',
+        bloodGroup: toUpperTrim(bloodGroup),
+        allergies: patientAllergies,
+        society: toUpperTrim(society),
+        area: toUpperTrim(area),
+        houseNo: toUpperTrim(houseNo),
+        phone: phone ? phone.trim() : '',
+        isHead: false,
+        registrationDoneBy: 'Individual Patient',
+      });
+
+      if (newPatient.area) await autoSaveMasterItem('area', newPatient.area);
+      if (patientAllergies.length > 0) {
+        for (const al of patientAllergies) {
+          await autoSaveMasterItem('allergy', al);
+        }
+      }
+
+      return res.status(201).json({
+        success: true,
+        message: `Patient "${newPatient.name}" registered without a Family Head`,
+        patient: newPatient,
+        family: null,
       });
     }
 
@@ -59,9 +100,6 @@ export const addPatientMember = async (req, res) => {
       nextSeq += 1;
       patientId = `P-${familyId.trim()}-${nextSeq}`;
     }
-
-    // Normalize allergies
-    const patientAllergies = toUpperArray(allergies);
 
     // Create Patient record in MongoDB
     const newPatient = await Patient.create({
@@ -364,14 +402,106 @@ export const updatePatient = async (req, res) => {
     }
 
     const oldName = patient.name;
+    const oldFamilyId = patient.familyId || '';
+    const { familyAction, newFamilyHeadName } = updateData;
+    delete updateData.familyAction;
+    delete updateData.newFamilyHeadName;
+
+    let linkedFamily = null;
+    if (familyAction === 'link-existing' && updateData.familyId) {
+      const targetFam = await Family.findOne({ familyId: String(updateData.familyId).trim() });
+      if (!targetFam) {
+        return res.status(404).json({
+          success: false,
+          message: `Family FAM-${updateData.familyId} not found`,
+        });
+      }
+      updateData.familyId = targetFam.familyId;
+      updateData.isHead = String(targetFam.headPatientId || '') === String(patient._id);
+      linkedFamily = targetFam;
+    } else if (familyAction === 'create-head' && newFamilyHeadName && String(newFamilyHeadName).trim()) {
+      const cleanHead = toUpperTrim(newFamilyHeadName);
+      const nextFamId = await getNextFamilyIdValue();
+      const isSelfHead = cleanHead === toUpperTrim(updateData.name || patient.name);
+
+      if (isSelfHead) {
+        const createdFam = await Family.create({
+          familyId: nextFamId,
+          headName: cleanHead,
+          headPatientId: patient._id,
+          society: updateData.society ?? patient.society ?? '',
+          area: updateData.area ?? patient.area ?? '',
+          houseNo: updateData.houseNo ?? patient.houseNo ?? '',
+          phone: updateData.phone ?? patient.phone ?? '',
+          registrationDoneBy: 'Self (Head of Family)',
+          membersCount: 1,
+        });
+        updateData.familyId = nextFamId;
+        updateData.isHead = true;
+        updateData.relation = 'SELF';
+        linkedFamily = createdFam;
+      } else {
+        const headPatId = `P-${nextFamId}-1`;
+        const headPat = await Patient.create({
+          patientId: headPatId,
+          familyId: nextFamId,
+          name: cleanHead,
+          isHead: true,
+          relation: 'SELF',
+          society: updateData.society ?? patient.society ?? '',
+          area: updateData.area ?? patient.area ?? '',
+          houseNo: updateData.houseNo ?? patient.houseNo ?? '',
+          phone: updateData.phone ?? patient.phone ?? '',
+          gender: 'Male',
+        });
+        const createdFam = await Family.create({
+          familyId: nextFamId,
+          headName: cleanHead,
+          headPatientId: headPat._id,
+          society: updateData.society ?? patient.society ?? '',
+          area: updateData.area ?? patient.area ?? '',
+          houseNo: updateData.houseNo ?? patient.houseNo ?? '',
+          phone: updateData.phone ?? patient.phone ?? '',
+          registrationDoneBy: 'Self (Head of Family)',
+          membersCount: 2,
+        });
+        updateData.familyId = nextFamId;
+        updateData.isHead = false;
+        updateData.relation = updateData.relation || 'MEMBER';
+        linkedFamily = createdFam;
+      }
+    } else if (familyAction === 'unlink') {
+      updateData.familyId = '';
+      updateData.isHead = false;
+      updateData.relation = 'INDIVIDUAL';
+    }
+
     Object.assign(patient, updateData);
     await patient.save();
+
+    if (patient.familyId !== oldFamilyId) {
+      await Visit.updateMany({ patientId: patient.patientId }, { familyId: patient.familyId });
+      if (oldFamilyId) {
+        const oldCount = await Patient.countDocuments({ familyId: oldFamilyId });
+        await Family.findOneAndUpdate({ familyId: oldFamilyId }, { membersCount: oldCount });
+      }
+      if (patient.familyId) {
+        const newCount = await Patient.countDocuments({ familyId: patient.familyId });
+        linkedFamily = await Family.findOneAndUpdate(
+          { familyId: patient.familyId },
+          { membersCount: newCount },
+          { new: true }
+        );
+      }
+    } else if (patient.familyId) {
+      linkedFamily = await Family.findOne({ familyId: patient.familyId });
+    }
 
     // If patient name changed, sync across visit records and family
     if (updateData.name && updateData.name.trim() !== oldName) {
       const newName = updateData.name.trim();
       await Visit.updateMany({ patientId: patient.patientId }, { patientName: newName });
-      if (patient.isHead) {
+      if (patient.isHead && patient.familyId) {
         await Family.findOneAndUpdate({ familyId: patient.familyId }, { headName: newName });
       }
     }
@@ -388,6 +518,7 @@ export const updatePatient = async (req, res) => {
       success: true,
       message: 'Patient updated successfully',
       patient,
+      family: linkedFamily,
     });
   } catch (error) {
     return res.status(500).json({

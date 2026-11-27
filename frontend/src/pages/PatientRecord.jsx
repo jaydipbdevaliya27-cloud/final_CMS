@@ -318,6 +318,11 @@ export const PatientRecord = ({
   // --- Modals State ---
   const [showEditModal, setShowEditModal] = useState(false);
   const [editFormData, setEditFormData] = useState({});
+  const [editHeadSearch, setEditHeadSearch] = useState('');
+  const [editHeadResults, setEditHeadResults] = useState([]);
+  const [showEditHeadDropdown, setShowEditHeadDropdown] = useState(false);
+  const [editSelectedFamily, setEditSelectedFamily] = useState(null);
+  const [editFamilyAction, setEditFamilyAction] = useState('keep');
   const [editSaving, setEditSaving] = useState(false);
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -1223,21 +1228,21 @@ export const PatientRecord = ({
     const newName = raw.toUpperCase();
     setShowSearchDropdown(false);
     setPatientSearch('');
-    setFamilyHeadName(newName);
+    setFamilyHeadName('');
     setSelectedFamily(null);
     setFamilyHeadHighlightIndex(-1);
-    setFamilyHeadResults(searchFamiliesInMemory(newName, 20));
+    setFamilyHeadResults(searchFamiliesInMemory('', 20));
     setShowFamilyHeadDropdown(false);
     const newPat = {
       name: newName,
       patientId: 'NEW',
-      familyId: 'NEW',
+      familyId: 'UNLINKED',
       isNewPatient: true,
       totalDue: 0,
       deposit: 0,
     };
     handleSelectPatient(newPat, true);
-    showToast(`New patient "${newName}" initialized. Select or enter Family Head, then press Enter to move to Age.`);
+    showToast(`New patient "${newName}" initialized. Select Family Head or leave blank and press Enter for Age.`);
     setTimeout(() => {
       if (familyHeadInputRef.current) {
         familyHeadInputRef.current.focus();
@@ -2103,12 +2108,22 @@ export const PatientRecord = ({
               society: upper(patientSociety),
               area: upper(patientArea),
             });
-          } else {
-            const resolvedHeadName = (familyHeadName && familyHeadName.trim())
-              ? upper(familyHeadName)
-              : upper(patient.name);
+          } else if (familyHeadName && familyHeadName.trim()) {
             regRes = await familyAPI.registerHead({
-              headName: resolvedHeadName,
+              headName: upper(familyHeadName),
+              age: upper(patientAge),
+              dob: patientDob,
+              ageRecordedAt: resolvedAgeRecordedAt,
+              gender: patientGender || 'Male',
+              phone: String(patientPhone || '').trim(),
+              houseNo: upper(patientHouseNo),
+              society: upper(patientSociety),
+              area: upper(patientArea),
+            });
+          } else {
+            regRes = await patientAPI.addMember({
+              familyId: 'UNLINKED',
+              name: upper(patient.name),
               age: upper(patientAge),
               dob: patientDob,
               ageRecordedAt: resolvedAgeRecordedAt,
@@ -2152,11 +2167,11 @@ export const PatientRecord = ({
       isSavingVisitRef.current = true;
       setIsSavingVisit(true);
       const resolvedFamilyId = patient.isNewPatient
-        ? (selectedFamily?.familyId || 'NEW')
+        ? (selectedFamily?.familyId || (familyHeadName && familyHeadName.trim() ? 'NEW' : 'UNLINKED'))
         : patient.familyId;
       const resolvedHeadName = (familyHeadName && familyHeadName.trim())
         ? familyHeadName.trim()
-        : patient.name;
+        : '';
 
       const upper = (v) => String(v || '').trim().toUpperCase();
       const payload = {
@@ -2323,6 +2338,16 @@ export const PatientRecord = ({
       area: currentPatient.area || '',
       phone: currentPatient.phone || '',
     });
+    const curHeadName = currentPatient.family?.headName || (currentPatient.isHead ? currentPatient.name : '');
+    setEditHeadSearch(curHeadName);
+    setEditSelectedFamily(
+      currentPatient.familyId
+        ? { familyId: currentPatient.familyId, headName: curHeadName || `FAM-${currentPatient.familyId}` }
+        : null
+    );
+    setEditFamilyAction('keep');
+    setEditHeadResults([]);
+    setShowEditHeadDropdown(false);
     setShowEditModal(true);
   };
 
@@ -2334,12 +2359,27 @@ export const PatientRecord = ({
     }
     try {
       setEditSaving(true);
-      const res = await patientAPI.update(currentPatient._id, editFormData);
+      const updatePayload = { ...editFormData };
+      if (editFamilyAction === 'link-existing' && editSelectedFamily?.familyId) {
+        updatePayload.familyAction = 'link-existing';
+        updatePayload.familyId = editSelectedFamily.familyId;
+      } else if (editFamilyAction === 'create-head' && editHeadSearch.trim()) {
+        updatePayload.familyAction = 'create-head';
+        updatePayload.newFamilyHeadName = editHeadSearch.trim().toUpperCase();
+      } else if (editFamilyAction === 'unlink') {
+        updatePayload.familyAction = 'unlink';
+      }
+
+      const res = await patientAPI.update(currentPatient._id, updatePayload);
       if (res.success && res.patient) {
-        setCurrentPatient((prev) => ({
-          ...prev,
+        const updatedPatient = {
+          ...currentPatient,
           ...res.patient,
-        }));
+          family: res.family !== undefined ? res.family : currentPatient.family,
+        };
+        setCurrentPatient(updatedPatient);
+        currentPatientRef.current = updatedPatient;
+        updateCachedPatient(updatedPatient);
         setShowEditModal(false);
         showToast('Patient details updated successfully!');
       }
@@ -2949,9 +2989,13 @@ export const PatientRecord = ({
                               × Unlink
                             </button>
                           </>
-                        ) : (
+                        ) : familyHeadName && familyHeadName.trim() ? (
                           <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#047857' }}>
                             New Family Head (Auto-creates FAM ID on Save)
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#64748B' }}>
+                            Optional — leave blank to link later
                           </span>
                         )}
                       </div>
@@ -3091,7 +3135,9 @@ export const PatientRecord = ({
                       readOnly
                       value={
                         currentPatient
-                          ? `${currentPatient.family?.headName || (currentPatient.isHead ? currentPatient.name : 'Family Head')} (FAM ID: ${currentPatient.familyId || currentPatient.family?.familyId || '-'})`
+                          ? (currentPatient.familyId || currentPatient.family?.familyId
+                              ? `${currentPatient.family?.headName || (currentPatient.isHead ? currentPatient.name : 'Family Head')} (FAM ID: ${currentPatient.familyId || currentPatient.family?.familyId})`
+                              : 'No Family Head Linked')
                           : ''
                       }
                       placeholder="Family Head / ID"
@@ -4852,6 +4898,124 @@ export const PatientRecord = ({
                     inputStyle={styles.modalInput}
                   />
                 </div>
+              </div>
+
+              {/* Family Head Link / Edit */}
+              <div style={{ ...styles.formGroup, position: 'relative' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                  <label style={styles.formLabel}>Family Head / Link Family</label>
+                  {editFamilyAction !== 'unlink' && (editSelectedFamily || (editFamilyAction === 'create-head' && editHeadSearch.trim())) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditFamilyAction('unlink');
+                        setEditSelectedFamily(null);
+                        setEditHeadSearch('');
+                        setShowEditHeadDropdown(false);
+                      }}
+                      style={{ fontSize: '11px', color: '#DC2626', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, padding: 0 }}
+                    >
+                      × Unlink Head
+                    </button>
+                  )}
+                </div>
+                <input
+                  type="text"
+                  value={editHeadSearch}
+                  placeholder="Search existing Family Head or type new Head Name..."
+                  onFocus={() => {
+                    setEditHeadResults(searchFamiliesInMemory(editHeadSearch, 20));
+                    setShowEditHeadDropdown(true);
+                  }}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setEditHeadSearch(val);
+                    setEditHeadResults(searchFamiliesInMemory(val, 20));
+                    setShowEditHeadDropdown(true);
+                    if (!val.trim()) {
+                      setEditSelectedFamily(null);
+                      setEditFamilyAction('unlink');
+                    } else {
+                      setEditSelectedFamily(null);
+                      setEditFamilyAction('create-head');
+                    }
+                  }}
+                  style={styles.modalInput}
+                />
+                {editFamilyAction === 'link-existing' && editSelectedFamily && (
+                  <span style={{ fontSize: '11px', color: '#1D4ED8', fontWeight: 700, marginTop: '3px' }}>
+                    Will link to: {editSelectedFamily.headName} (FAM-{editSelectedFamily.familyId})
+                  </span>
+                )}
+                {editFamilyAction === 'create-head' && editHeadSearch.trim() && (
+                  <span style={{ fontSize: '11px', color: '#047857', fontWeight: 700, marginTop: '3px' }}>
+                    Will create & link new Family Head: "{editHeadSearch.trim().toUpperCase()}"
+                  </span>
+                )}
+                {editFamilyAction === 'unlink' && (
+                  <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 600, marginTop: '3px' }}>
+                    No Family Head linked (Individual patient)
+                  </span>
+                )}
+
+                {showEditHeadDropdown && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    right: 0,
+                    zIndex: 80,
+                    backgroundColor: '#FFFFFF',
+                    border: '1px solid #CBD5E1',
+                    borderRadius: '6px',
+                    boxShadow: '0 8px 20px rgba(15, 23, 42, 0.16)',
+                    maxHeight: '180px',
+                    overflowY: 'auto',
+                    marginTop: '2px',
+                  }}>
+                    {editHeadSearch.trim() && (
+                      <div
+                        onClick={() => {
+                          setEditSelectedFamily(null);
+                          setEditFamilyAction('create-head');
+                          setShowEditHeadDropdown(false);
+                        }}
+                        style={{
+                          padding: '7px 10px',
+                          borderBottom: '1px solid #E2E8F0',
+                          backgroundColor: '#F0FDF4',
+                          cursor: 'pointer',
+                          fontSize: '11.5px',
+                          fontWeight: 700,
+                          color: '#065F46',
+                        }}
+                      >
+                        + Create & Link New Family Head: "{editHeadSearch.trim().toUpperCase()}"
+                      </div>
+                    )}
+                    {editHeadResults.map((fam) => (
+                      <div
+                        key={fam.familyId}
+                        onClick={() => {
+                          setEditSelectedFamily(fam);
+                          setEditHeadSearch(fam.headName);
+                          setEditFamilyAction('link-existing');
+                          setShowEditHeadDropdown(false);
+                        }}
+                        style={{
+                          padding: '7px 10px',
+                          borderBottom: '1px solid #F1F5F9',
+                          cursor: 'pointer',
+                          fontSize: '12px',
+                        }}
+                      >
+                        <strong>{fam.headName}</strong>{' '}
+                        <span style={{ color: '#1D4ED8', fontWeight: 700 }}>(FAM-{fam.familyId})</span>
+                        {fam.area ? <span style={{ color: '#64748B', fontSize: '11px' }}> • {fam.area}</span> : null}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div style={styles.modalFooter}>
