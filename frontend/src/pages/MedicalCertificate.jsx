@@ -55,6 +55,16 @@ export const MedicalCertificate = () => {
 
   // Form Fields
   const todayStr = new Date().toISOString().split('T')[0];
+
+  const formatDDMMYYYY = (val) => {
+    if (!val) return '';
+    const str = String(val).split('T')[0].trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+      const [yyyy, mm, dd] = str.split('-');
+      return `${dd}-${mm}-${yyyy}`;
+    }
+    return str;
+  };
   const [patientFullName, setPatientFullName] = useState('');
   const [age, setAge] = useState('');
   const [gender, setGender] = useState('Male');
@@ -280,9 +290,9 @@ export const MedicalCertificate = () => {
     const pName = (patientFullName || '{PATIENT_NAME}').toUpperCase();
     const pAge = age ? `${age} Yrs` : '{AGE}';
     const pDiag = medicalDiagnosis ? medicalDiagnosis.trim() : '{DIAGNOSIS}';
-    const fDate = fromDate || '{FROM_DATE}';
-    const tDate = toDate || '{TO_DATE}';
-    const jDate = joiningDate || '{JOINING_DATE}';
+    const fDate = fromDate ? formatDDMMYYYY(fromDate) : '{FROM_DATE}';
+    const tDate = toDate ? formatDDMMYYYY(toDate) : '{TO_DATE}';
+    const jDate = joiningDate ? formatDDMMYYYY(joiningDate) : '{JOINING_DATE}';
     const rDays = restDays ? `${restDays}` : '{REST_DAYS}';
     const cId = nextCertId || '{CERT_ID}';
     const cName = doctor?.clinicName || 'Dhyey Main Clinic';
@@ -1107,12 +1117,12 @@ export const MedicalCertificate = () => {
                   }}>
                     <div>
                       <span style={{ fontSize: '9px', color: '#64748B', fontWeight: 600, display: 'block', textTransform: 'uppercase' }}>From Date</span>
-                      <strong style={{ color: '#0F172A', fontSize: '11px' }}>{fromDate || todayStr}</strong>
+                      <strong style={{ color: '#0F172A', fontSize: '11px' }}>{formatDDMMYYYY(fromDate || todayStr)}</strong>
                     </div>
                     <div style={{ width: '1px', height: '22px', backgroundColor: '#CBD5E1' }} />
                     <div>
                       <span style={{ fontSize: '9px', color: '#64748B', fontWeight: 600, display: 'block', textTransform: 'uppercase' }}>To Date</span>
-                      <strong style={{ color: '#0F172A', fontSize: '11px' }}>{toDate || todayStr}</strong>
+                      <strong style={{ color: '#0F172A', fontSize: '11px' }}>{formatDDMMYYYY(toDate || todayStr)}</strong>
                     </div>
                     <div style={{ width: '1px', height: '22px', backgroundColor: '#CBD5E1' }} />
                     <div>
@@ -1122,7 +1132,7 @@ export const MedicalCertificate = () => {
                     <div style={{ width: '1px', height: '22px', backgroundColor: '#CBD5E1' }} />
                     <div style={{ backgroundColor: '#F0FDF4', padding: '3px 8px', borderRadius: '4px', border: '1px solid #86EFAC' }}>
                       <span style={{ fontSize: '9px', color: '#166534', fontWeight: 700, display: 'block', textTransform: 'uppercase' }}>Joining Date</span>
-                      <strong style={{ color: '#15803D', fontSize: '11px', fontWeight: 800 }}>{joiningDate || todayStr}</strong>
+                      <strong style={{ color: '#15803D', fontSize: '11px', fontWeight: 800 }}>{formatDDMMYYYY(joiningDate || todayStr)}</strong>
                     </div>
                   </div>
 
@@ -1138,7 +1148,7 @@ export const MedicalCertificate = () => {
                         </div>
                       </div>
                       <div style={styles.a4IssueMeta}>
-                        <p style={styles.a4FootItem}><strong>Date:</strong> {todayStr}</p>
+                        <p style={styles.a4FootItem}><strong>Date:</strong> {formatDDMMYYYY(todayStr)}</p>
                         <p style={styles.a4FootItem}><strong>Place:</strong> {issuePlace || 'Ahmedabad'}</p>
                         <p style={styles.a4FootSecurity}>Secure Document &bull; Reg: G-14285</p>
                       </div>
@@ -1317,7 +1327,7 @@ export const MedicalCertificate = () => {
               CERTIFICATE ID: {activePrintCert.certificateId}
             </span>
             <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#000000' }}>
-              Date: {activePrintCert.issueDate || todayStr}
+              Date: {formatDDMMYYYY(activePrintCert.issueDate || todayStr)}
             </span>
           </div>
 
@@ -1348,12 +1358,12 @@ export const MedicalCertificate = () => {
           }}>
             <div>
               <span style={{ fontSize: '8.5px', color: '#334155', fontWeight: 700, display: 'block', textTransform: 'uppercase' }}>From Date</span>
-              <strong style={{ color: '#000000', fontSize: '10.5px' }}>{activePrintCert.fromDate || todayStr}</strong>
+              <strong style={{ color: '#000000', fontSize: '10.5px' }}>{formatDDMMYYYY(activePrintCert.fromDate || todayStr)}</strong>
             </div>
             <div style={{ width: '1px', height: '20px', backgroundColor: '#CBD5E1' }} />
             <div>
               <span style={{ fontSize: '8.5px', color: '#334155', fontWeight: 700, display: 'block', textTransform: 'uppercase' }}>To Date</span>
-              <strong style={{ color: '#000000', fontSize: '10.5px' }}>{activePrintCert.toDate || todayStr}</strong>
+              <strong style={{ color: '#000000', fontSize: '10.5px' }}>{formatDDMMYYYY(activePrintCert.toDate || todayStr)}</strong>
             </div>
             <div style={{ width: '1px', height: '20px', backgroundColor: '#CBD5E1' }} />
             <div>
@@ -1363,7 +1373,7 @@ export const MedicalCertificate = () => {
             <div style={{ width: '1px', height: '20px', backgroundColor: '#CBD5E1' }} />
             <div>
               <span style={{ fontSize: '8.5px', color: '#334155', fontWeight: 700, display: 'block', textTransform: 'uppercase' }}>Joining Date</span>
-              <strong style={{ color: '#000000', fontSize: '10.5px', fontWeight: 800 }}>{activePrintCert.joiningDate || todayStr}</strong>
+              <strong style={{ color: '#000000', fontSize: '10.5px', fontWeight: 800 }}>{formatDDMMYYYY(activePrintCert.joiningDate || todayStr)}</strong>
             </div>
           </div>
 
@@ -1376,10 +1386,10 @@ export const MedicalCertificate = () => {
             paddingTop: '8px',
           }}>
             <div style={{ fontSize: '10.5px', lineHeight: 1.5, color: '#000000' }}>
-              <p style={{ margin: 0 }}><strong>Date of Issue:</strong> {activePrintCert.issueDate || todayStr}</p>
+              <p style={{ margin: 0 }}><strong>Date of Issue:</strong> {formatDDMMYYYY(activePrintCert.issueDate || todayStr)}</p>
               <p style={{ margin: 0 }}><strong>Place of Issue:</strong> {activePrintCert.issuePlace || 'Surat'}</p>
               {activePrintCert.joiningDate && (
-                <p style={{ margin: 0 }}><strong>Joining Date:</strong> {activePrintCert.joiningDate}</p>
+                <p style={{ margin: 0 }}><strong>Joining Date:</strong> {formatDDMMYYYY(activePrintCert.joiningDate)}</p>
               )}
             </div>
 
