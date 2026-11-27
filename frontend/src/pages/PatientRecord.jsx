@@ -323,6 +323,8 @@ export const PatientRecord = ({
   const [showEditHeadDropdown, setShowEditHeadDropdown] = useState(false);
   const [editSelectedFamily, setEditSelectedFamily] = useState(null);
   const [editFamilyAction, setEditFamilyAction] = useState('keep');
+  const [pendingHeadChange, setPendingHeadChange] = useState(null);
+  const [savingHeadChange, setSavingHeadChange] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -1210,6 +1212,23 @@ export const PatientRecord = ({
 
   const handleSelectExistingFamilyHead = (fam) => {
     if (!fam) return;
+    const activePat = currentPatientRef.current || currentPatient;
+    if (activePat && !activePat.isNewPatient) {
+      setShowFamilyHeadDropdown(false);
+      if (fam.familyId === activePat.familyId) {
+        setSelectedFamily(fam);
+        setFamilyHeadName(fam.headName || '');
+        focusAgeField();
+        return;
+      }
+      setPendingHeadChange({
+        action: 'link-existing',
+        family: fam,
+        title: 'Confirm Family Head Change',
+        message: `Link "${activePat.name}" to Family Head "${fam.headName}" (FAM-${fam.familyId})?`,
+      });
+      return;
+    }
     setSelectedFamily(fam);
     setFamilyHeadName(fam.headName || '');
     setShowFamilyHeadDropdown(false);
@@ -1219,6 +1238,60 @@ export const PatientRecord = ({
     if (!patientArea && fam.area) setPatientArea(fam.area);
     if (!patientPhone && fam.phone) setPatientPhone(fam.phone);
     focusAgeField();
+  };
+
+  const restoreExistingPatientHeadState = (pat) => {
+    if (!pat || pat.isNewPatient) return;
+    const existingHead = pat.family?.headName || (pat.isHead ? pat.name : '');
+    setFamilyHeadName(existingHead);
+    setSelectedFamily(
+      pat.family || (pat.familyId ? { familyId: pat.familyId, headName: existingHead } : null)
+    );
+  };
+
+  const cancelPendingHeadChange = () => {
+    setPendingHeadChange(null);
+    restoreExistingPatientHeadState(currentPatientRef.current || currentPatient);
+  };
+
+  const confirmPendingHeadChange = async () => {
+    if (!pendingHeadChange) return;
+    const activePat = currentPatientRef.current || currentPatient;
+    if (!activePat || activePat.isNewPatient) {
+      setPendingHeadChange(null);
+      return;
+    }
+    try {
+      setSavingHeadChange(true);
+      const payload = { familyAction: pendingHeadChange.action };
+      if (pendingHeadChange.action === 'link-existing' && pendingHeadChange.family?.familyId) {
+        payload.familyId = pendingHeadChange.family.familyId;
+      } else if (pendingHeadChange.action === 'create-head' && pendingHeadChange.newHeadName) {
+        payload.newFamilyHeadName = pendingHeadChange.newHeadName.trim().toUpperCase();
+      }
+      const res = await patientAPI.update(activePat._id, payload);
+      if (res.success && res.patient) {
+        const updatedPatient = {
+          ...activePat,
+          ...res.patient,
+          family: res.family !== undefined ? res.family : null,
+        };
+        setCurrentPatient(updatedPatient);
+        currentPatientRef.current = updatedPatient;
+        updateCachedPatient(updatedPatient);
+        restoreExistingPatientHeadState(updatedPatient);
+        showToast('Family Head updated successfully!');
+      } else {
+        showToast(res.message || 'Failed to update Family Head', 'error');
+        restoreExistingPatientHeadState(activePat);
+      }
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Failed to update Family Head', 'error');
+      restoreExistingPatientHeadState(activePat);
+    } finally {
+      setSavingHeadChange(false);
+      setPendingHeadChange(null);
+    }
   };
 
   // --- Immediate inline creation of a new patient directly from search input ---
@@ -2958,51 +3031,68 @@ export const PatientRecord = ({
               {/* Row 2: Family Head / ID: (Auto address & due) */}
               <div style={styles.photoRow1Col}>
                 <div style={{ ...styles.photoFieldGroup, position: 'relative' }} ref={familyHeadWrapRef}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
                     <label style={styles.photoLabel}>Family Head / ID:</label>
-                    {currentPatient && !currentPatient.isNewPatient && Number(currentPatient.totalDue || 0) > 0 ? (
-                      <button
-                        type="button"
-                        onClick={handleOpenFamilyDueModal}
-                        style={styles.photoDueLink}
-                        title="Click to view family due breakdown"
-                      >
-                        Total Due: ₹{currentPatient.totalDue}
-                      </button>
-                    ) : currentPatient?.isNewPatient ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        {selectedFamily ? (
-                          <>
-                            <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#1D4ED8', backgroundColor: '#EFF6FF', border: '1px solid #BFDBFE', padding: '1px 6px', borderRadius: 4 }}>
-                              Existing Family: FAM-{selectedFamily.familyId}
-                              {Number(selectedFamily.familyDue || 0) > 0 ? ` (Due: ₹${selectedFamily.familyDue})` : ''}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      {currentPatient && !currentPatient.isNewPatient && Number(currentPatient.totalDue || 0) > 0 && (
+                        <button
+                          type="button"
+                          onClick={handleOpenFamilyDueModal}
+                          style={styles.photoDueLink}
+                          title="Click to view family due breakdown"
+                        >
+                          Total Due: ₹{currentPatient.totalDue}
+                        </button>
+                      )}
+                      {currentPatient && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          {selectedFamily ? (
+                            <>
+                              <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#1D4ED8', backgroundColor: '#EFF6FF', border: '1px solid #BFDBFE', padding: '1px 6px', borderRadius: 4 }}>
+                                FAM-{selectedFamily.familyId}
+                                {Number(selectedFamily.familyDue || 0) > 0 ? ` (Due: ₹${selectedFamily.familyDue})` : ''}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (!currentPatient.isNewPatient) {
+                                    setPendingHeadChange({
+                                      action: 'unlink',
+                                      title: 'Confirm Unlink Family Head',
+                                      message: `Remove Family Head "${selectedFamily.headName || familyHeadName}" from "${currentPatient.name}"?`,
+                                    });
+                                  } else {
+                                    setSelectedFamily(null);
+                                    setFamilyHeadName('');
+                                  }
+                                }}
+                                style={{ fontSize: '10.5px', color: '#DC2626', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, padding: 0 }}
+                                title="Unlink Family Head"
+                              >
+                                × Unlink
+                              </button>
+                            </>
+                          ) : currentPatient.isNewPatient ? (
+                            familyHeadName && familyHeadName.trim() ? (
+                              <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#047857' }}>
+                                New Family Head (Auto-creates FAM ID on Save)
+                              </span>
+                            ) : (
+                              <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#64748B' }}>
+                                Optional — leave blank to link later
+                              </span>
+                            )
+                          ) : (
+                            <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#64748B' }}>
+                              No Family Head Linked — search or type to link
                             </span>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSelectedFamily(null);
-                                setFamilyHeadName(currentPatient.name || '');
-                              }}
-                              style={{ fontSize: '10.5px', color: '#DC2626', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, padding: 0 }}
-                              title="Unlink and use a new family head instead"
-                            >
-                              × Unlink
-                            </button>
-                          </>
-                        ) : familyHeadName && familyHeadName.trim() ? (
-                          <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#047857' }}>
-                            New Family Head (Auto-creates FAM ID on Save)
-                          </span>
-                        ) : (
-                          <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#64748B' }}>
-                            Optional — leave blank to link later
-                          </span>
-                        )}
-                      </div>
-                    ) : null}
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
-                  {currentPatient?.isNewPatient ? (
+                  {currentPatient ? (
                     <>
                       <input
                         ref={familyHeadInputRef}
@@ -3028,6 +3118,26 @@ export const PatientRecord = ({
                             e.preventDefault();
                             if (showFamilyHeadDropdown && familyHeadHighlightIndex >= 0 && familyHeadResults[familyHeadHighlightIndex]) {
                               handleSelectExistingFamilyHead(familyHeadResults[familyHeadHighlightIndex]);
+                            } else if (!currentPatient.isNewPatient) {
+                              setShowFamilyHeadDropdown(false);
+                              const typed = familyHeadName.trim().toUpperCase();
+                              const currentHead = (currentPatient.family?.headName || (currentPatient.isHead ? currentPatient.name : '')).trim().toUpperCase();
+                              if (!typed && currentPatient.familyId) {
+                                setPendingHeadChange({
+                                  action: 'unlink',
+                                  title: 'Confirm Unlink Family Head',
+                                  message: `Remove Family Head from "${currentPatient.name}"?`,
+                                });
+                              } else if (typed && typed !== currentHead) {
+                                setPendingHeadChange({
+                                  action: 'create-head',
+                                  newHeadName: typed,
+                                  title: 'Confirm Family Head Change',
+                                  message: `Create and link new Family Head "${typed}" for "${currentPatient.name}"?`,
+                                });
+                              } else {
+                                focusAgeField();
+                              }
                             } else {
                               setSelectedFamily(null);
                               setShowFamilyHeadDropdown(false);
@@ -3037,14 +3147,17 @@ export const PatientRecord = ({
                             setShowFamilyHeadDropdown(false);
                           } else if (e.key === 'Escape') {
                             setShowFamilyHeadDropdown(false);
+                            if (!currentPatient.isNewPatient) {
+                              restoreExistingPatientHeadState(currentPatient);
+                            }
                           }
                         }}
-                        placeholder="Family Head..."
+                        placeholder="Search or enter Family Head..."
                         style={{
                           ...styles.photoInput,
-                          backgroundColor: selectedFamily ? '#EFF6FF' : '#F0FDF4',
-                          color: selectedFamily ? '#1E40AF' : '#047857',
-                          borderColor: selectedFamily ? '#3B82F6' : '#16A34A',
+                          backgroundColor: selectedFamily ? '#EFF6FF' : (currentPatient.isNewPatient ? '#F0FDF4' : '#FFFFFF'),
+                          color: selectedFamily ? '#1E40AF' : '#0F172A',
+                          borderColor: selectedFamily ? '#3B82F6' : (currentPatient.isNewPatient ? '#16A34A' : '#94A3B8'),
                           fontWeight: 700,
                         }}
                       />
@@ -3067,9 +3180,20 @@ export const PatientRecord = ({
                           {familyHeadName.trim() && (
                             <div
                               onClick={() => {
-                                setSelectedFamily(null);
-                                setShowFamilyHeadDropdown(false);
-                                focusAgeField();
+                                if (!currentPatient.isNewPatient) {
+                                  const typed = familyHeadName.trim().toUpperCase();
+                                  setShowFamilyHeadDropdown(false);
+                                  setPendingHeadChange({
+                                    action: 'create-head',
+                                    newHeadName: typed,
+                                    title: 'Confirm Family Head Change',
+                                    message: `Create and link new Family Head "${typed}" for "${currentPatient.name}"?`,
+                                  });
+                                } else {
+                                  setSelectedFamily(null);
+                                  setShowFamilyHeadDropdown(false);
+                                  focusAgeField();
+                                }
                               }}
                               style={{
                                 padding: '7px 10px',
@@ -3085,13 +3209,13 @@ export const PatientRecord = ({
                               }}
                             >
                               <span>+ Use New Family Head: "{familyHeadName.trim().toUpperCase()}"</span>
-                              <span style={{ fontSize: '10px', color: '#047857' }}>New Family (Enter â†µ)</span>
+                              <span style={{ fontSize: '10px', color: '#047857' }}>New Family (Enter ↵)</span>
                             </div>
                           )}
 
                           {familyHeadResults.length === 0 ? (
                             <div style={{ padding: '8px 10px', fontSize: '11px', color: '#64748B' }}>
-                              No matching existing family heads. Will create a new family on Save.
+                              No matching existing family heads.
                             </div>
                           ) : (
                             familyHeadResults.map((fam, fIdx) => (
@@ -3132,20 +3256,13 @@ export const PatientRecord = ({
                   ) : (
                     <input
                       type="text"
-                      readOnly
-                      value={
-                        currentPatient
-                          ? (currentPatient.familyId || currentPatient.family?.familyId
-                              ? `${currentPatient.family?.headName || (currentPatient.isHead ? currentPatient.name : 'Family Head')} (FAM ID: ${currentPatient.familyId || currentPatient.family?.familyId})`
-                              : 'No Family Head Linked')
-                          : ''
-                      }
+                      disabled
+                      value=""
                       placeholder="Family Head / ID"
                       style={{
                         ...styles.photoInput,
                         backgroundColor: '#F8FAFC',
-                        color: '#334155',
-                        fontWeight: 500,
+                        color: '#64748B',
                       }}
                     />
                   )}
@@ -4742,6 +4859,45 @@ export const PatientRecord = ({
           </div>
         </div>
       )}
+      {/* CONFIRM FAMILY HEAD CHANGE DIALOG */}
+      {pendingHeadChange && (
+        <div style={styles.modalOverlay}>
+          <div style={{ ...styles.modalContent, maxWidth: '420px' }}>
+            <div style={styles.modalHeader}>
+              <h3 style={styles.modalTitle}>{pendingHeadChange.title || 'Confirm Family Head Change'}</h3>
+              <button
+                type="button"
+                onClick={cancelPendingHeadChange}
+                style={styles.modalCloseBtn}
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div style={{ padding: '16px 20px', fontSize: '13.5px', color: '#1E293B', lineHeight: 1.5, fontWeight: 600 }}>
+              {pendingHeadChange.message}
+            </div>
+            <div style={styles.modalFooter}>
+              <button
+                type="button"
+                onClick={cancelPendingHeadChange}
+                disabled={savingHeadChange}
+                style={styles.modalCancelBtn}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmPendingHeadChange}
+                disabled={savingHeadChange}
+                style={styles.modalSubmitBtn}
+              >
+                {savingHeadChange ? 'Updating...' : 'Confirm & Update'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* MODAL 1: EDIT PATIENT DETAILS */}
       {showEditModal && (
         <div style={styles.modalOverlay}>
