@@ -4861,22 +4861,25 @@ export const PatientRecord = ({
       )}
       {/* CONFIRM FAMILY HEAD CHANGE DIALOG */}
       {pendingHeadChange && (
-        <div style={styles.modalOverlay}>
-          <div style={{ ...styles.modalContent, maxWidth: '420px' }}>
+        <div style={styles.modalOverlay} onClick={cancelPendingHeadChange}>
+          <div style={{ ...styles.modalCard, maxWidth: '430px', width: '92%' }} onClick={(e) => e.stopPropagation()}>
             <div style={styles.modalHeader}>
-              <h3 style={styles.modalTitle}>{pendingHeadChange.title || 'Confirm Family Head Change'}</h3>
+              <div style={styles.modalHeaderTitle}>
+                <Users size={16} color="var(--primary)" />
+                <h3>{pendingHeadChange.title || 'Confirm Family Head Change'}</h3>
+              </div>
               <button
                 type="button"
                 onClick={cancelPendingHeadChange}
-                style={styles.modalCloseBtn}
+                style={styles.closeModalBtn}
               >
-                <X size={18} />
+                <X size={16} />
               </button>
             </div>
-            <div style={{ padding: '16px 20px', fontSize: '13.5px', color: '#1E293B', lineHeight: 1.5, fontWeight: 600 }}>
+            <div style={{ padding: '16px 18px', fontSize: '13.5px', color: '#1E293B', lineHeight: 1.55, fontWeight: 600 }}>
               {pendingHeadChange.message}
             </div>
-            <div style={styles.modalFooter}>
+            <div style={{ ...styles.modalFooter, padding: '0 18px 14px 18px', marginTop: 0 }}>
               <button
                 type="button"
                 onClick={cancelPendingHeadChange}
