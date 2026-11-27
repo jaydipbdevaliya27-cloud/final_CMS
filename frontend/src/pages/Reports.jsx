@@ -20,6 +20,7 @@ import {
   Users,
   ChevronDown,
   ChevronUp,
+  Lock,
 } from 'lucide-react';
 
 const KpiCard = ({ title, value, subtitle, icon: Icon, colorTheme = 'blue', isAlert = false }) => {
@@ -53,7 +54,7 @@ const KpiCard = ({ title, value, subtitle, icon: Icon, colorTheme = 'blue', isAl
   );
 };
 
-export const Reports = ({ onNavigateToPatient }) => {
+export const Reports = ({ onNavigateToPatient, onLock }) => {
   const { doctor } = useAuth();
 
   // Active sub-tab matching media_1793643310685_5609bc87.png
@@ -412,6 +413,30 @@ export const Reports = ({ onNavigateToPatient }) => {
             <Printer size={14} />
             <span style={{ marginLeft: 6, fontWeight: '700' }}>Print Report</span>
           </button>
+
+          {onLock && (
+            <button
+              type="button"
+              onClick={onLock}
+              title="Lock Reports & Due (Doctor password required to re-open)"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 5,
+                padding: '6px 10px',
+                borderRadius: '6px',
+                border: '1px solid #FDE68A',
+                backgroundColor: '#FFFBEB',
+                color: '#B45309',
+                fontSize: '12px',
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              <Lock size={13} color="#D97706" />
+              <span>Lock Tab</span>
+            </button>
+          )}
         </div>
       </div>
 

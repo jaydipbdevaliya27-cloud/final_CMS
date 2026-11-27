@@ -254,7 +254,7 @@ export const SidebarTabs = ({ activeTab, onSelectTab, onSearchFocus, width = 210
                     }}
                   >
                     <span>{tab.label}</span>
-                    {isFinanceLocked && ['dashboard', 'cut-master', 'expense-master'].includes(tab.id) && (
+                    {isFinanceLocked && ['dashboard', 'cut-master', 'expense-master', 'reports'].includes(tab.id) && (
                       <Lock
                         size={11}
                         color={isActive ? '#FEF08A' : '#D97706'}

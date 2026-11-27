@@ -1009,9 +1009,21 @@ export const Dashboard = () => {
         );
 
       case 'reports':
+        if (!isFinanceUnlocked) {
+          return (
+            <div style={styles.tabContentContainer}>
+              <ProtectedTabLock
+                tabName="Reports & Due"
+                onUnlock={() => setIsFinanceUnlocked(true)}
+                onCancel={() => setActiveTab('patient-record')}
+              />
+            </div>
+          );
+        }
         return (
           <div style={styles.tabContentContainer}>
             <Reports
+              onLock={() => setIsFinanceUnlocked(false)}
               onNavigateToPatient={(patientId) => {
                 if (patientId) {
                   setSelectedPatientId(patientId);
