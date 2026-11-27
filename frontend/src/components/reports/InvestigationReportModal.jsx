@@ -1,180 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { labReportAPI } from '../../services/api';
 import {
-  Save,
-  Printer,
-  RotateCcw,
-  X,
-  Plus,
-  Trash2,
-  FileText,
-  AlertCircle,
-  CheckCircle2,
-  LogOut,
-  Folder,
-} from 'lucide-react';
-
-const DEFAULT_SPECIAL_BOXES = [
-  { key: 'xray', title: 'X - RAY', placeholder: 'Write X-Ray findings / impression here...', notes: '' },
-  { key: 'stool', title: 'STOOL', placeholder: 'Write Stool Examination notes...', notes: '' },
-  { key: 'usg', title: 'SONOGRAPHY (USG)', placeholder: 'Write USG Abdomen / Pelvis report notes...', notes: '' },
-  { key: 'mri', title: 'MRI / CTSCAN', placeholder: 'Write MRI / CT Scan report findings...', notes: '' },
-];
-
-// Reference Medical Ranges for Diagnostic Investigations
-const PARAM_CONFIG = {
-  // Routine Hematology
-  hb: { min: 12.0, max: 16.0, rangeStr: '( 12.0 - 16.0 gm% )' },
-  rbc: { min: 4.2, max: 5.4, rangeStr: '( 4.2 - 5.4 mill /c.mm )' },
-  wbc: { min: 4000, max: 10000, rangeStr: '( 4000 - 10,000 /c.mm )' },
-  platelet: { min: 150000, max: 400000, rangeStr: '( 1,50,000 - 4,00,000 / c.mm )' },
-  esr: { min: 2, max: 20, rangeStr: '( 2 - 20 mm/hr. ) (< 50 yrs)' },
-
-  // Blood Glucose & Renal
-  rbs: { min: 70, max: 140, rangeStr: '( 70 - 140 mg% )' },
-  fbs: { min: 70, max: 100, rangeStr: '( 70 - 100 mg% )' },
-  ppbs: { min: 70, max: 140, rangeStr: '( 70 - 140 mg% )' },
-  screatinin: { min: 0.5, max: 1.5, rangeStr: '( 0.5 - 1.5 mg/dl )' },
-  vitb12: { min: 200, max: 900, rangeStr: '( 200 - 900 pg/ml )' },
-
-  // Differential WBC
-  bandCell: { min: 0, max: 6, rangeStr: '( 0 - 6 % )' },
-  neutrophils: { min: 55, max: 70, rangeStr: '( 55 - 70 % )' },
-  lymphocytes: { min: 20, max: 40, rangeStr: '( 20 - 40 % )' },
-  eosinophils: { min: 1, max: 6, rangeStr: '( 1 - 6 % )' },
-  monocytes: { min: 2, max: 8, rangeStr: '( 2 - 8 % )' },
-  basophils: { min: 0, max: 1, rangeStr: '( 0 - 01 % )' },
-  parasites: { rangeStr: '( Negative / Not Seen )' },
-
-  // Thyroid
-  t3: { min: 82, max: 200, rangeStr: '( 82 - 200 ng/ml )' },
-  t4: { min: 4.5, max: 12.5, rangeStr: '( 4.5 - 12.5 mg% )' },
-  tsh: { min: 0.4, max: 6.0, rangeStr: '( 0.4 - 6.0 mlu/ml )' },
-};
-
-const checkFieldStatus = (key, val) => {
-  if (val === undefined || val === null || String(val).trim() === '') return null;
-  const str = String(val).trim().toLowerCase();
-
-  if (key === 'parasites') {
-    if (str.includes('pos') || str.includes('seen') || str.includes('pres') || str.includes('+')) {
-      return 'high';
-    }
-    if (str.includes('neg') || str.includes('not') || str.includes('nil')) {
-      return 'normal';
-    }
-    return null;
-  }
-
-  const conf = PARAM_CONFIG[key];
-  if (!conf || conf.min === undefined) return null;
-
-  const num = parseFloat(str.replace(/,/g, ''));
-  if (isNaN(num)) return null;
-
-  if (num < conf.min) return 'low';
-  if (num > conf.max) return 'high';
-  return 'normal';
-};
-
-const getHighlightInputStyle = (status) => {
-  if (status === 'high') {
-    return {
-      borderColor: '#EF4444',
-      backgroundColor: '#FEF2F2',
-      color: '#B91C1C',
-      fontWeight: '700',
-      boxShadow: '0 0 0 2px rgba(239, 68, 68, 0.25)',
-    };
-  }
-  if (status === 'low') {
-    return {
-      borderColor: '#F59E0B',
-      backgroundColor: '#FFFBEB',
-      color: '#B45309',
-      fontWeight: '700',
-      boxShadow: '0 0 0 2px rgba(245, 158, 11, 0.25)',
-    };
-  }
-  if (status === 'normal') {
-    return {
-      borderColor: '#10B981',
-      backgroundColor: '#F0FDF4',
-      color: '#15803D',
-      fontWeight: '600',
-    };
-  }
-  return {};
-};
-
-const renderRangeStatusBadge = (status) => {
-  if (status === 'high') {
-    return (
-      <span
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '2px',
-          fontSize: '8.5px',
-          fontWeight: '800',
-          color: '#DC2626',
-          backgroundColor: '#FEE2E2',
-          border: '1px solid #FECACA',
-          padding: '1px 4px',
-          borderRadius: '4px',
-          marginLeft: '3px',
-          flexShrink: 0,
-        }}
-      >
-        ▲ HIGH
-      </span>
-    );
-  }
-  if (status === 'low') {
-    return (
-      <span
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '2px',
-          fontSize: '8.5px',
-          fontWeight: '800',
-          color: '#D97706',
-          backgroundColor: '#FEF3C7',
-          border: '1px solid #FDE68A',
-          padding: '1px 4px',
-          borderRadius: '4px',
-          marginLeft: '3px',
-          flexShrink: 0,
-        }}
-      >
-        ▼ LOW
-      </span>
-    );
-  }
-  if (status === 'normal') {
-    return (
-      <span
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          fontSize: '8.5px',
-          fontWeight: '700',
-          color: '#16A34A',
-          backgroundColor: '#DCFCE7',
-          border: '1px solid #BBF7D0',
-          padding: '1px 4px',
-          borderRadius: '4px',
-          marginLeft: '3px',
-          flexShrink: 0,
-        }}
-      >
-        ✓ OK
-      </span>
-    );
-  }
-  return null;
-};
+  LAB_COLUMNS,
+  LAB_FINDING_BOXES,
+  evaluateLabValue,
+  isLabStatusAbnormal,
+  extractFlatLabValues,
+  extractFlatLabFindings,
+} from '../../utils/labReportConfig';
+import { Check, Printer, RotateCcw, X, FlaskConical } from 'lucide-react';
 
 export const InvestigationReportModal = ({
   isOpen,
@@ -184,12 +18,6 @@ export const InvestigationReportModal = ({
   initialReport = null,
   onReportSaved,
 }) => {
-  if (!isOpen) return null;
-
-  // Active Tab: 'hematology' (Image 1) or 'other' (Image 2)
-  const [activeTab, setActiveTab] = useState('hematology');
-
-  // Header Details
   const todayStr = () => {
     const d = new Date();
     const dd = String(d.getDate()).padStart(2, '0');
@@ -198,877 +26,343 @@ export const InvestigationReportModal = ({
     return `${dd}-${mm}-${yyyy}`;
   };
 
-  const [headerData, setHeaderData] = useState({
-    familyName: initialReport?.familyName || patient?.familyHeadName || patient?.familyName || patient?.name || 'JAYDIP DEVALIYA',
-    patientName: initialReport?.patientName || patient?.name || patient?.fullName || 'JAYDIP DEVALIYA',
-    labName: initialReport?.labName || 'Diagnostic Laboratory Name',
-    doctorName: initialReport?.doctorName || doctor?.name || 'Dr. Chirag Paghdal',
-    caseNo: initialReport?.caseNo || patient?.patientId || '110101',
-    entryDate: initialReport?.entryDate || todayStr(),
-  });
-
-  // 1. Routine Hematology (CBC) Parameters
-  const [hematology, setHematology] = useState(
-    initialReport?.hematology || {
-      hb: '',
-      rbc: '',
-      wbc: '',
-      platelet: '',
-      esr: '',
-    }
-  );
-
-  // 2. Blood Glucose & Renal Profile
-  const [bloodGlucoseRenal, setBloodGlucoseRenal] = useState(
-    initialReport?.bloodGlucoseRenal || {
-      rbs: '',
-      fbs: '',
-      ppbs: '',
-      screatinin: '',
-      vitb12: '',
-    }
-  );
-
-  // 3. Differential WBC Count Polymorphs
-  const [differentialWbc, setDifferentialWbc] = useState(
-    initialReport?.differentialWbc || {
-      bandCell: '',
-      neutrophils: '',
-      lymphocytes: '',
-      eosinophils: '',
-      monocytes: '',
-      basophils: '',
-      parasites: '',
-    }
-  );
-
-  // 4. Thyroid Function Test
-  const [thyroid, setThyroid] = useState(
-    initialReport?.thyroid || {
-      t3: '',
-      t4: '',
-      tsh: '',
-    }
-  );
-
-  // 5. Special Findings Cards (Image 2)
-  const [specialBoxes, setSpecialBoxes] = useState(
-    initialReport?.specialFindings && initialReport.specialFindings.length > 0
-      ? initialReport.specialFindings
-      : DEFAULT_SPECIAL_BOXES
-  );
-
-  // Status & UI
+  const [values, setValues] = useState(() => extractFlatLabValues(initialReport));
+  const [findings, setFindings] = useState(() => extractFlatLabFindings(initialReport));
   const [saving, setSaving] = useState(false);
   const [statusMsg, setStatusMsg] = useState({ text: '', type: '' });
-  const [showAddBoxModal, setShowAddBoxModal] = useState(false);
-  const [newBoxTitle, setNewBoxTitle] = useState('');
 
+  // Sync whenever modal opens or initialReport changes
   useEffect(() => {
-    if (initialReport) {
-      if (initialReport.hematology) setHematology(initialReport.hematology);
-      if (initialReport.bloodGlucoseRenal) setBloodGlucoseRenal(initialReport.bloodGlucoseRenal);
-      if (initialReport.differentialWbc) setDifferentialWbc(initialReport.differentialWbc);
-      if (initialReport.thyroid) setThyroid(initialReport.thyroid);
-      if (initialReport.specialFindings && initialReport.specialFindings.length > 0) {
-        setSpecialBoxes(initialReport.specialFindings);
-      }
-      setHeaderData({
-        familyName: initialReport.familyName || patient?.familyHeadName || patient?.name || 'JAYDIP DEVALIYA',
-        patientName: initialReport.patientName || patient?.name || 'JAYDIP DEVALIYA',
-        labName: initialReport.labName || 'Diagnostic Laboratory Name',
-        doctorName: initialReport.doctorName || doctor?.name || 'Dr. Chirag Paghdal',
-        caseNo: initialReport.caseNo || patient?.patientId || '110101',
-        entryDate: initialReport.entryDate || todayStr(),
-      });
-    } else if (patient) {
-      setHeaderData((prev) => ({
-        ...prev,
-        familyName: patient.familyHeadName || patient.familyName || patient.name || prev.familyName,
-        patientName: patient.name || patient.fullName || prev.patientName,
-        caseNo: patient.patientId || prev.caseNo,
-      }));
+    if (isOpen) {
+      setValues(extractFlatLabValues(initialReport));
+      setFindings(extractFlatLabFindings(initialReport));
+      setStatusMsg({ text: '', type: '' });
     }
-  }, [initialReport, patient]);
+  }, [isOpen, initialReport]);
 
-  // Handlers
-  const handleHematologyChange = (field, val) => {
-    setHematology((prev) => ({ ...prev, [field]: val }));
+  if (!isOpen) return null;
+
+  const handleValueChange = (key, val) => {
+    setValues((prev) => ({ ...prev, [key]: val }));
   };
 
-  const handleGlucoseRenalChange = (field, val) => {
-    setBloodGlucoseRenal((prev) => ({ ...prev, [field]: val }));
+  const handleFindingChange = (key, val) => {
+    setFindings((prev) => ({ ...prev, [key]: val }));
   };
 
-  const handleDifferentialWbcChange = (field, val) => {
-    setDifferentialWbc((prev) => ({ ...prev, [field]: val }));
+  const handleReset = () => {
+    setValues(extractFlatLabValues({}));
+    setFindings(extractFlatLabFindings({}));
+    setStatusMsg({ text: 'Cleared all fields.', type: 'info' });
   };
 
-  const handleThyroidChange = (field, val) => {
-    setThyroid((prev) => ({ ...prev, [field]: val }));
-  };
-
-  // Helper to render parameter row with dynamic out-of-range highlighting
-  const renderParamRow = (label, fieldKey, value, onChange, rangeText) => {
-    const status = checkFieldStatus(fieldKey, value);
-    const highlightStyle = getHighlightInputStyle(status);
-
-    return (
-      <div style={styles.paramRow} title={`${label}: ${rangeText}`}>
-        <span style={styles.paramLabel} title={label}>{label} :</span>
-        <input
-          type="text"
-          placeholder="--"
-          value={value}
-          onChange={(e) => onChange(fieldKey, e.target.value)}
-          style={{
-            ...styles.paramInput,
-            ...highlightStyle,
-          }}
-        />
-        <span
-          style={{
-            ...styles.rangeText,
-            color: status === 'high' ? '#DC2626' : status === 'low' ? '#D97706' : '#64748B',
-            fontWeight: status === 'high' || status === 'low' ? 700 : 500,
-          }}
-          title={rangeText}
-        >
-          {rangeText}
-        </span>
-        {renderRangeStatusBadge(status)}
-      </div>
-    );
-  };
-
-  // Helper to render print table cell with out-of-range warning
-  const renderPrintTdVal = (key, val, unit) => {
-    const status = checkFieldStatus(key, val);
-    if (status === 'high') {
-      return (
-        <td style={{ ...styles.printTdVal, color: '#DC2626', fontWeight: 'bold' }}>
-          {val} {unit} <span style={{ fontSize: '10px' }}>(HIGH)</span>
-        </td>
-      );
-    }
-    if (status === 'low') {
-      return (
-        <td style={{ ...styles.printTdVal, color: '#D97706', fontWeight: 'bold' }}>
-          {val} {unit} <span style={{ fontSize: '10px' }}>(LOW)</span>
-        </td>
-      );
-    }
-    return <td style={styles.printTdVal}>{val} {unit}</td>;
-  };
-
-  const handleSpecialBoxChange = (index, notes) => {
-    setSpecialBoxes((prev) => {
-      const copy = [...prev];
-      copy[index] = { ...copy[index], notes };
-      return copy;
-    });
-  };
-
-  const handleRemoveSpecialBox = (index) => {
-    setSpecialBoxes((prev) => prev.filter((_, idx) => idx !== index));
-  };
-
-  const handleAddCustomBox = (e) => {
-    e.preventDefault();
-    if (!newBoxTitle.trim()) return;
-    const key = `custom_${Date.now()}`;
-    const newBox = {
-      key,
-      title: newBoxTitle.trim().toUpperCase(),
-      placeholder: `Write ${newBoxTitle.trim()} report findings / notes here...`,
-      notes: '',
+  // Build backward-compatible nested sections alongside unified values/findings
+  const buildPayload = () => {
+    const hematology = {
+      hb: values.hb || '',
+      rbc: values.rbc || '',
+      wbc: values.wbc || '',
+      platelet: values.platelet || '',
+      esr: values.esr || '',
     };
-    setSpecialBoxes((prev) => [...prev, newBox]);
-    setNewBoxTitle('');
-    setShowAddBoxModal(false);
-  };
+    const bloodGlucoseRenal = {
+      rbs: values.rbs || '',
+      fbs: values.fbs || '',
+      ppbs: values.pp2bs || '',
+      screatinin: values.screatinin || '',
+      vitb12: values.vitb12 || '',
+    };
+    const differentialWbc = {
+      bandCell: '',
+      neutrophils: values.neutrophils || '',
+      lymphocytes: values.lymphocytes || '',
+      eosinophils: values.eosinophils || '',
+      monocytes: values.monocytes || '',
+      basophils: values.basophils || '',
+      parasites: values.mp || '',
+    };
+    const thyroid = {
+      t3: values.t3 || '',
+      t4: values.t4 || '',
+      tsh: values.tsh || '',
+    };
+    const specialFindings = LAB_FINDING_BOXES.map((b) => ({
+      key: b.legacyKey || b.key,
+      title: b.label.replace(':', ''),
+      notes: findings[b.key] || '',
+    }));
 
-  // Clear Form
-  const handleClearAll = () => {
-    if (window.confirm('Are you sure you want to clear all report input fields?')) {
-      setHematology({ hb: '', rbc: '', wbc: '', platelet: '', esr: '' });
-      setBloodGlucoseRenal({ rbs: '', fbs: '', ppbs: '', screatinin: '', vitb12: '' });
-      setDifferentialWbc({
-        bandCell: '',
-        neutrophils: '',
-        lymphocytes: '',
-        eosinophils: '',
-        monocytes: '',
-        basophils: '',
-        parasites: '',
-      });
-      setThyroid({ t3: '', t4: '', tsh: '' });
-      setSpecialBoxes(DEFAULT_SPECIAL_BOXES);
-      setStatusMsg({ text: 'All report fields cleared.', type: 'info' });
-    }
-  };
-
-  // Compile summary of non-empty findings
-  const compileSummary = () => {
-    const parts = [];
-    const h = [];
-    if (hematology.hb) h.push(`Hb ${hematology.hb}`);
-    if (hematology.wbc) h.push(`WBC ${hematology.wbc}`);
-    if (hematology.platelet) h.push(`Plat ${hematology.platelet}`);
-    if (hematology.esr) h.push(`ESR ${hematology.esr}`);
-    if (h.length) parts.push(`CBC: ${h.join(', ')}`);
-
-    const g = [];
-    if (bloodGlucoseRenal.rbs) g.push(`RBS ${bloodGlucoseRenal.rbs}`);
-    if (bloodGlucoseRenal.fbs) g.push(`FBS ${bloodGlucoseRenal.fbs}`);
-    if (bloodGlucoseRenal.ppbs) g.push(`PPBS ${bloodGlucoseRenal.ppbs}`);
-    if (bloodGlucoseRenal.screatinin) g.push(`S.Creat ${bloodGlucoseRenal.screatinin}`);
-    if (bloodGlucoseRenal.vitb12) g.push(`Vit B12 ${bloodGlucoseRenal.vitb12}`);
-    if (g.length) parts.push(`Sugar/Renal: ${g.join(', ')}`);
-
-    const t = [];
-    if (thyroid.t3) t.push(`T3 ${thyroid.t3}`);
-    if (thyroid.t4) t.push(`T4 ${thyroid.t4}`);
-    if (thyroid.tsh) t.push(`TSH ${thyroid.tsh}`);
-    if (t.length) parts.push(`Thyroid: ${t.join(', ')}`);
-
-    for (const b of specialBoxes) {
-      if (b.notes && b.notes.trim()) {
-        const snippet = b.notes.trim().slice(0, 35);
-        parts.push(`${b.title}: ${snippet}${b.notes.trim().length > 35 ? '...' : ''}`);
-      }
-    }
-
-    return parts.join(' | ') || 'Routine Investigation Complete';
-  };
-
-  // Save Report
-  const handleSave = async () => {
-    setSaving(true);
-    setStatusMsg({ text: '', type: '' });
-
-    const payload = {
-      patientId: patient?.patientId || headerData.caseNo || 'TEMP-PID',
-      familyId: patient?.familyId || '',
-      patientName: headerData.patientName,
-      familyName: headerData.familyName,
-      labName: headerData.labName,
-      doctorName: headerData.doctorName,
-      caseNo: headerData.caseNo,
-      entryDate: headerData.entryDate,
+    return {
+      patientId: patient?.patientId || initialReport?.patientId || 'TEMP-PID',
+      familyId: patient?.familyId || initialReport?.familyId || '',
+      patientName: initialReport?.patientName || patient?.name || patient?.fullName || 'Patient',
+      familyName: initialReport?.familyName || patient?.familyHeadName || patient?.familyName || patient?.name || '',
+      labName: initialReport?.labName || 'Clinic Lab Investigation',
+      doctorName: initialReport?.doctorName || doctor?.name || 'Dr. Chirag Paghdal',
+      caseNo: initialReport?.caseNo || patient?.patientId || '',
+      entryDate: initialReport?.entryDate || todayStr(),
+      values,
+      findings,
       hematology,
       bloodGlucoseRenal,
       differentialWbc,
       thyroid,
-      specialFindings: specialBoxes.map((b) => ({
-        key: b.key,
-        title: b.title,
-        notes: b.notes || '',
-      })),
+      specialFindings,
     };
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    setStatusMsg({ text: '', type: '' });
+    const payload = buildPayload();
 
     try {
       const res = await labReportAPI.create(payload);
       const savedData = res?.data || payload;
-      setStatusMsg({ text: `✓ Lab Report ${savedData?.reportId || ''} saved!`, type: 'success' });
+      setStatusMsg({ text: 'Lab investigation details saved!', type: 'success' });
       if (onReportSaved) {
         onReportSaved(savedData);
       }
       setTimeout(() => {
         onClose();
-      }, 700);
+      }, 300);
     } catch (err) {
       console.error('Save report error:', err);
       if (onReportSaved) {
         onReportSaved(payload);
       }
-      setStatusMsg({ text: 'Report data saved for this case!', type: 'success' });
+      setStatusMsg({ text: 'Lab details attached to case!', type: 'success' });
       setTimeout(() => {
         onClose();
-      }, 700);
+      }, 300);
     } finally {
       setSaving(false);
     }
   };
 
-  // Print Report
   const handlePrint = () => {
     window.print();
   };
 
+  const getInputStyle = (status) => {
+    if (isLabStatusAbnormal(status)) {
+      return {
+        border: '1.5px solid #DC2626',
+        backgroundColor: '#FEE2E2',
+        color: '#991B1B',
+        fontWeight: 800,
+        boxShadow: '0 0 0 1px rgba(220, 38, 38, 0.2)',
+      };
+    }
+    if (status === 'normal') {
+      return {
+        border: '1px solid #16A34A',
+        backgroundColor: '#F0FDF4',
+        color: '#166534',
+        fontWeight: 600,
+      };
+    }
+    return {
+      border: '1px solid #94A3B8',
+      backgroundColor: '#FFFFFF',
+      color: '#0F172A',
+      fontWeight: 500,
+    };
+  };
+
+  const renderStatusTag = (status) => {
+    if (status === 'danger') {
+      return (
+        <span style={styles.dangerTag} title="Manually flagged borderline/danger (*)">
+          * HIGHLIGHT
+        </span>
+      );
+    }
+    if (status === 'high') {
+      return (
+        <span style={styles.dangerTag} title="Above normal range">
+          HIGH
+        </span>
+      );
+    }
+    if (status === 'low') {
+      return (
+        <span style={styles.dangerTag} title="Below normal range">
+          LOW
+        </span>
+      );
+    }
+    return null;
+  };
+
   return (
-    <div style={styles.overlay} className="lab-modal-overlay">
-      <div style={styles.modal} className="lab-modal-container">
-        {/* TOP ROW: PATIENT & LAB HEADER BAR (Image 1) */}
-        <div style={styles.headerBar} className="lab-header-bar">
-          {/* Row 1 */}
-          <div style={styles.headerCol} className="lab-header-col">
-            <span style={styles.headerLabel}>FAMILY NAME :</span>
-            <input
-              type="text"
-              value={headerData.familyName}
-              onChange={(e) => setHeaderData({ ...headerData, familyName: e.target.value })}
-              style={styles.headerInput}
-            />
+    <div style={styles.overlay} className="lab-modal-overlay" onClick={onClose}>
+      <div
+        id="printable-lab-report"
+        style={styles.modal}
+        className="lab-modal-container"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* TOP BLUE TITLE BAR (MATCHING REFERENCE IMAGE) */}
+        <div style={styles.topBlueBar} className="no-print">
+          <div style={styles.topTitleWrap}>
+            <FlaskConical size={16} color="#FFFFFF" />
+            <span style={styles.topTitleText}>Lab Investigation Details</span>
+            {(patient?.name || initialReport?.patientName) && (
+              <span style={styles.patientPill}>
+                {patient?.name || initialReport?.patientName}
+              </span>
+            )}
           </div>
-
-          <div style={styles.headerCol} className="lab-header-col">
-            <span style={styles.headerLabel}>LAB NAME :</span>
-            <input
-              type="text"
-              value={headerData.labName}
-              onChange={(e) => setHeaderData({ ...headerData, labName: e.target.value })}
-              style={styles.headerInput}
-            />
-          </div>
-
-          <div style={styles.headerCol} className="lab-header-col">
-            <span style={styles.headerLabel}>CASE NO :</span>
-            <input
-              type="text"
-              value={headerData.caseNo}
-              onChange={(e) => setHeaderData({ ...headerData, caseNo: e.target.value })}
-              style={styles.headerInput}
-            />
-          </div>
-
-          {/* Row 2 */}
-          <div style={styles.headerCol} className="lab-header-col">
-            <span style={styles.headerLabel}>PATIENT NAME :</span>
-            <input
-              type="text"
-              value={headerData.patientName}
-              onChange={(e) => setHeaderData({ ...headerData, patientName: e.target.value })}
-              style={styles.headerInput}
-            />
-          </div>
-
-          <div style={styles.headerCol} className="lab-header-col">
-            <span style={styles.headerLabel}>DR NAME :</span>
-            <input
-              type="text"
-              value={headerData.doctorName}
-              onChange={(e) => setHeaderData({ ...headerData, doctorName: e.target.value })}
-              style={styles.headerInput}
-            />
-          </div>
-
-          <div style={styles.headerCol} className="lab-header-col">
-            <span style={styles.headerLabel}>ENTRY DATE :</span>
-            <input
-              type="text"
-              value={headerData.entryDate}
-              onChange={(e) => setHeaderData({ ...headerData, entryDate: e.target.value })}
-              style={styles.headerInput}
-            />
-          </div>
-        </div>
-
-        {/* TABS ROW (Image 1 - with 2nd tab removed, 3rd tab matching Image 2) */}
-        <div style={styles.tabsRow} className="lab-tabs-row">
           <button
             type="button"
-            onClick={() => setActiveTab('hematology')}
-            style={{
-              ...styles.tabBtn,
-              ...(activeTab === 'hematology' ? styles.tabBtnActive : {}),
-            }}
+            onClick={onClose}
+            style={styles.topCloseBtn}
+            title="Close (Esc)"
           >
-            <span style={{ fontSize: '14px', marginRight: '6px' }}>🩸</span>
-            <span>Routine Hematology Report</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('other')}
-            style={{
-              ...styles.tabBtn,
-              ...(activeTab === 'other' ? styles.tabBtnActive : {}),
-            }}
-          >
-            <Folder size={14} color="#D98E3F" style={{ marginRight: '6px' }} />
-            <span>Other Reports (Bilirubin, Widal, X-Ray, Stool, USG, CT)</span>
+            <X size={18} color="#FFFFFF" />
           </button>
         </div>
 
-        {/* NOTIFICATION MESSAGE */}
-        {statusMsg.text && (
-          <div
-            style={{
-              ...styles.statusBanner,
-              backgroundColor: statusMsg.type === 'error' ? '#FEE2E2' : '#DCFCE7',
-              color: statusMsg.type === 'error' ? '#DC2626' : '#15803D',
-            }}
-          >
-            {statusMsg.type === 'error' ? <AlertCircle size={15} /> : <CheckCircle2 size={15} />}
-            <span>{statusMsg.text}</span>
-          </div>
-        )}
-
-        {/* MAIN BODY AREA */}
-        <div style={styles.bodyContent} className="lab-body-content">
-          {/* TAB 1: ROUTINE HEMATOLOGY REPORT (Image 1) */}
-          {activeTab === 'hematology' && (
-            <div style={styles.tab1Container} className="lab-tab1-container">
-              <div style={styles.cardsGrid} className="lab-cards-grid">
-                {/* 1. ROUTINE HEMATOLOGY (CBC) PARAMETERS */}
-                <div style={styles.paramCard} className="lab-param-card">
-                  <h4 style={styles.cardTitleTeal}>ROUTINE HEMATOLOGY (CBC) PARAMETERS</h4>
-                  <div style={styles.paramRowsList}>
-                    {renderParamRow('Hemoglobin', 'hb', hematology.hb, handleHematologyChange, '( 12.0 - 16.0 gm% )')}
-                    {renderParamRow('RBC Count', 'rbc', hematology.rbc, handleHematologyChange, '( 4.2 - 5.4 mill /c.mm )')}
-                    {renderParamRow('WBC Count', 'wbc', hematology.wbc, handleHematologyChange, '( 4000 - 10,000 /c.mm )')}
-                    {renderParamRow('Platelet Count', 'platelet', hematology.platelet, handleHematologyChange, '( 1,50,000 - 4,00,000 / c.mm )')}
-                    {renderParamRow('ESR', 'esr', hematology.esr, handleHematologyChange, '( 2 - 20 mm/hr. ) (< 50 yrs)')}
-                  </div>
-                </div>
-
-                {/* 2. BLOOD GLUCOSE & RENAL PROFILE */}
-                <div style={styles.paramCard} className="lab-param-card">
-                  <h4 style={styles.cardTitleTeal}>BLOOD GLUCOSE &amp; RENAL PROFILE</h4>
-                  <div style={styles.paramRowsList}>
-                    {renderParamRow('RBS', 'rbs', bloodGlucoseRenal.rbs, handleGlucoseRenalChange, '( 70 - 140 mg% )')}
-                    {renderParamRow('FBS', 'fbs', bloodGlucoseRenal.fbs, handleGlucoseRenalChange, '( 70 - 100 mg% )')}
-                    {renderParamRow('PPBS', 'ppbs', bloodGlucoseRenal.ppbs, handleGlucoseRenalChange, '( 70 - 140 mg% )')}
-                    {renderParamRow('S.Creatinin', 'screatinin', bloodGlucoseRenal.screatinin, handleGlucoseRenalChange, '( 0.5 - 1.5 mg/dl )')}
-                    {renderParamRow('Vitamin B 12', 'vitb12', bloodGlucoseRenal.vitb12, handleGlucoseRenalChange, '( 200 - 900 pg/ml )')}
-                  </div>
-                </div>
-
-                {/* 3. DIFFERENTIAL WBC COUNT POLYMORPHS (Yellow Card) */}
-                <div style={{ ...styles.paramCard, ...styles.cardYellow }} className="lab-param-card">
-                  <h4 style={styles.cardTitleYellow}>DIFFERENTIAL WBC COUNT POLYMORPHS</h4>
-                  <div style={styles.paramRowsList}>
-                    {renderParamRow('Band Cell', 'bandCell', differentialWbc.bandCell, handleDifferentialWbcChange, '( 0 - 6 % )')}
-                    {renderParamRow('Neutrophils', 'neutrophils', differentialWbc.neutrophils, handleDifferentialWbcChange, '( 55 - 70 % )')}
-                    {renderParamRow('Lymphocytes', 'lymphocytes', differentialWbc.lymphocytes, handleDifferentialWbcChange, '( 20 - 40 % )')}
-                    {renderParamRow('Eosinophils', 'eosinophils', differentialWbc.eosinophils, handleDifferentialWbcChange, '( 1 - 6 % )')}
-                    {renderParamRow('Monocytes', 'monocytes', differentialWbc.monocytes, handleDifferentialWbcChange, '( 2 - 8 % )')}
-                    {renderParamRow('Basophils', 'basophils', differentialWbc.basophils, handleDifferentialWbcChange, '( 0 - 01 % )')}
-                    {renderParamRow('Parasites', 'parasites', differentialWbc.parasites, handleDifferentialWbcChange, '( Negative / Not Seen )')}
-                  </div>
-                </div>
-
-                {/* 4. THYROID FUNCTION TEST : (Green Card) */}
-                <div style={{ ...styles.paramCard, ...styles.cardGreen }} className="lab-param-card">
-                  <h4 style={styles.cardTitleGreen}>THYROID FUNCTION TEST :</h4>
-                  <div style={styles.paramRowsList}>
-                    {renderParamRow('T3', 't3', thyroid.t3, handleThyroidChange, '( 82 - 200 ng/ml )')}
-                    {renderParamRow('T4', 't4', thyroid.t4, handleThyroidChange, '( 4.5 - 12.5 mg% )')}
-                    {renderParamRow('TSH', 'tsh', thyroid.tsh, handleThyroidChange, '( 0.4 - 6.0 mlu/ml )')}
-                  </div>
-                </div>
-              </div>
-
-              {/* VERTICAL ACTION BUTTONS COLUMN (Image 1 Right Stack) */}
-              <div style={styles.actionsColumn} className="lab-actions-column">
-                <button
-                  type="button"
-                  onClick={handleSave}
-                  disabled={saving}
-                  style={styles.actionSaveBtn}
-                  title="Save Report & Attach to Case"
-                >
-                  <Save size={15} />
-                  <span>{saving ? 'Saving...' : 'Save'}</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handlePrint}
-                  style={styles.actionOutlineBtn}
-                  title="Print Diagnostic Report"
-                >
-                  <Printer size={15} />
-                  <span>Print</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleClearAll}
-                  style={styles.actionOutlineBtn}
-                  title="Clear All Fields"
-                >
-                  <RotateCcw size={15} />
-                  <span>Clear</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={onClose}
-                  style={styles.actionOutlineBtn}
-                  title="Cancel & Close"
-                >
-                  <span>Cancel</span>
-                </button>
-
-                <div style={{ marginTop: 'auto', paddingTop: '16px' }} className="lab-exit-btn-wrap">
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    style={styles.actionExitBtn}
-                    title="Exit Report Form"
-                  >
-                    <LogOut size={14} />
-                    <span>Exit</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 2: OTHER REPORTS (Image 2) */}
-          {activeTab === 'other' && (
-            <div style={styles.tab2Container} className="lab-tab2-container">
-              {/* Header with Title and '+ Add New Box' Button */}
-              <div style={styles.specialHeaderBar} className="lab-special-header-bar">
-                <h4 style={styles.specialTitle}>
-                  DIAGNOSTIC RADIOLOGY, SONOGRAPHY &amp; SPECIAL REPORTS (DOCTOR FREE-TEXT FINDINGS)
-                </h4>
-
-                <button
-                  type="button"
-                  onClick={() => setShowAddBoxModal(true)}
-                  style={styles.addNewBoxBtn}
-                  title="Add Custom Examination / Radiology Box"
-                >
-                  <Plus size={14} />
-                  <span>+ Add New Box</span>
-                </button>
-              </div>
-
-              {/* Responsive Grid of Free-Text Finding Cards (Image 2) */}
-              <div style={styles.specialCardsGrid} className="lab-special-cards-grid">
-                {specialBoxes.map((box, idx) => (
-                  <div key={box.key || idx} style={styles.specialCard} className="lab-special-card">
-                    <div style={styles.specialCardHeader}>
-                      <span style={styles.specialCardTitle}>{box.title}</span>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveSpecialBox(idx)}
-                        style={styles.specialCardCloseBtn}
-                        title={`Remove ${box.title} card`}
-                      >
-                        <X size={13} color="#EF4444" />
-                      </button>
-                    </div>
-
-                    <textarea
-                      rows={5}
-                      placeholder={box.placeholder}
-                      value={box.notes || ''}
-                      onChange={(e) => handleSpecialBoxChange(idx, e.target.value)}
-                      style={styles.specialTextarea}
-                    />
-                  </div>
-                ))}
-              </div>
-
-              {/* Action Buttons for Tab 2 */}
-              <div style={styles.tab2BottomActions} className="lab-tab2-bottom-actions">
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  <button
-                    type="button"
-                    onClick={handleSave}
-                    disabled={saving}
-                    style={styles.actionSaveBtn}
-                  >
-                    <Save size={15} />
-                    <span>{saving ? 'Saving...' : 'Save'}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handlePrint}
-                    style={styles.actionOutlineBtn}
-                  >
-                    <Printer size={15} />
-                    <span>Print</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleClearAll}
-                    style={styles.actionOutlineBtn}
-                  >
-                    <RotateCcw size={15} />
-                    <span>Clear</span>
-                  </button>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={onClose}
-                  style={styles.actionExitBtn}
-                >
-                  <LogOut size={14} />
-                  <span>Exit</span>
-                </button>
-              </div>
-            </div>
-          )}
+        {/* PRINT-ONLY HEADER */}
+        <div style={styles.printOnlyHeader} className="print-only-lab-header">
+          <strong style={{ fontSize: '15px' }}>Lab Investigation Details</strong>
+          <span>
+            Patient: <strong>{patient?.name || initialReport?.patientName || '-'}</strong> | Date:{' '}
+            {initialReport?.entryDate || todayStr()}
+          </span>
         </div>
 
-        {/* MODAL: ADD CUSTOM REPORT BOX */}
-        {showAddBoxModal && (
-          <div style={styles.subModalOverlay}>
-            <div style={styles.subModalContent}>
-              <div style={styles.subModalHeader}>
-                <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: '#1B2B29' }}>
-                  Add Custom Diagnostic Report Box
-                </h4>
-                <button
-                  type="button"
-                  onClick={() => setShowAddBoxModal(false)}
-                  style={styles.iconBtn}
-                >
-                  <X size={16} />
-                </button>
+        {/* 3-COLUMN LAB PARAMETERS GRID */}
+        <div style={styles.bodyWrap}>
+          <div style={styles.threeColGrid}>
+            {LAB_COLUMNS.map((colTests, colIdx) => (
+              <div key={colIdx} style={styles.colCard}>
+                <table style={styles.colTable}>
+                  <thead>
+                    <tr style={styles.colTheadRow}>
+                      <th style={{ ...styles.colTh, width: '34%', textAlign: 'left' }}>Test</th>
+                      <th style={{ ...styles.colTh, width: '44%', textAlign: 'left' }}>Patient&apos;s Value</th>
+                      <th style={{ ...styles.colTh, width: '22%', textAlign: 'left' }}>Normal</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {colTests.map((test) => {
+                      const rawVal = values[test.key] || '';
+                      const status = evaluateLabValue(test, rawVal);
+                      const abnormal = isLabStatusAbnormal(status);
+
+                      return (
+                        <tr
+                          key={test.key}
+                          style={{
+                            ...styles.colTr,
+                            backgroundColor: abnormal ? '#FFF5F5' : '#FFFFFF',
+                          }}
+                        >
+                          <td
+                            style={{
+                              ...styles.colTdLabel,
+                              color: abnormal ? '#B91C1C' : '#0F172A',
+                            }}
+                          >
+                            {test.label}
+                          </td>
+                          <td style={styles.colTdInput}>
+                            <div style={styles.inputWithBadgeWrap}>
+                              <input
+                                type="text"
+                                value={rawVal}
+                                onChange={(e) => handleValueChange(test.key, e.target.value)}
+                                style={{
+                                  ...styles.valInput,
+                                  ...getInputStyle(status),
+                                }}
+                                placeholder=""
+                              />
+                              {renderStatusTag(status)}
+                            </div>
+                          </td>
+                          <td style={styles.colTdNormal}>{test.normal}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
-
-              <form onSubmit={handleAddCustomBox} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div>
-                  <label style={{ fontSize: '11px', fontWeight: 700, color: '#5E7572', display: 'block', marginBottom: 4 }}>
-                    EXAMINATION / REPORT TITLE *
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. ECG, 2D ECHO, URINE CULTURE, BIOPSY..."
-                    value={newBoxTitle}
-                    onChange={(e) => setNewBoxTitle(e.target.value)}
-                    style={styles.headerInput}
-                    autoFocus
-                    required
-                  />
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: 6 }}>
-                  <button
-                    type="button"
-                    onClick={() => setShowAddBoxModal(false)}
-                    style={styles.actionOutlineBtn}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    style={styles.actionSaveBtn}
-                  >
-                    Add Box
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* DEDICATED PRINTABLE LAYOUT (#printable-lab-report) */}
-        <div id="printable-lab-report" className="print-only" style={styles.printContainer}>
-          <div style={styles.printHeader}>
-            <h1 style={styles.printLabName}>{headerData.labName?.toUpperCase() || 'DIAGNOSTIC LABORATORY'}</h1>
-            <p style={styles.printLabSub}>
-              Consulting Pathologist &bull; Advanced Clinical &amp; Diagnostic Center &bull; Ph: 9876543210
-            </p>
-            <div style={styles.printDivider} />
+            ))}
           </div>
 
-          <div style={styles.printPatientGrid}>
-            <div>
-              <p><strong>Patient Name:</strong> {headerData.patientName}</p>
-              <p><strong>Family Name:</strong> {headerData.familyName}</p>
-              <p><strong>Case / PID:</strong> {headerData.caseNo}</p>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <p><strong>Date:</strong> {headerData.entryDate}</p>
-              <p><strong>Ref. Doctor:</strong> {headerData.doctorName}</p>
-            </div>
+          {/* BOTTOM 5 TEXTAREA BOXES */}
+          <div style={styles.bottomFiveGrid}>
+            {LAB_FINDING_BOXES.map((box) => (
+              <div key={box.key} style={styles.findingBoxCard}>
+                <label style={styles.findingLabel}>{box.label}</label>
+                <textarea
+                  value={findings[box.key] || ''}
+                  onChange={(e) => handleFindingChange(box.key, e.target.value)}
+                  style={styles.findingTextarea}
+                  rows={3}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* FOOTER ACTION BAR */}
+        <div style={styles.footerBar} className="no-print">
+          <div style={styles.footerLeft}>
+            <span style={styles.tipText}>
+              Out-of-range values highlight automatically. Add <strong>*</strong> after borderline values (e.g. <strong>5.4*</strong>) to highlight as danger.
+            </span>
+            {statusMsg.text && (
+              <span
+                style={{
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  color: statusMsg.type === 'success' ? '#15803D' : '#1D4ED8',
+                }}
+              >
+                {statusMsg.text}
+              </span>
+            )}
           </div>
 
-          <div style={styles.printSectionTitle}>ROUTINE HEMATOLOGY &amp; BIOCHEMISTRY REPORT</div>
-
-          <table style={styles.printTable}>
-            <thead>
-              <tr style={{ borderBottom: '2px solid #146B5C' }}>
-                <th style={{ textAlign: 'left', padding: '6px' }}>INVESTIGATION PARAMETER</th>
-                <th style={{ textAlign: 'center', padding: '6px' }}>OBSERVED VALUE</th>
-                <th style={{ textAlign: 'left', padding: '6px' }}>REFERENCE NORMAL RANGE</th>
-              </tr>
-            </thead>
-            <tbody>
-              {hematology.hb && (
-                <tr>
-                  <td style={styles.printTd}>Hemoglobin</td>
-                  {renderPrintTdVal('hb', hematology.hb, 'gm%')}
-                  <td style={styles.printTd}>12.0 - 16.0 gm%</td>
-                </tr>
-              )}
-              {hematology.rbc && (
-                <tr>
-                  <td style={styles.printTd}>RBC Count</td>
-                  {renderPrintTdVal('rbc', hematology.rbc, 'mill/c.mm')}
-                  <td style={styles.printTd}>4.2 - 5.4 mill /c.mm</td>
-                </tr>
-              )}
-              {hematology.wbc && (
-                <tr>
-                  <td style={styles.printTd}>WBC Count</td>
-                  {renderPrintTdVal('wbc', hematology.wbc, '/c.mm')}
-                  <td style={styles.printTd}>4000 - 10,000 /c.mm</td>
-                </tr>
-              )}
-              {hematology.platelet && (
-                <tr>
-                  <td style={styles.printTd}>Platelet Count</td>
-                  {renderPrintTdVal('platelet', hematology.platelet, '/c.mm')}
-                  <td style={styles.printTd}>1,50,000 - 4,00,000 / c.mm</td>
-                </tr>
-              )}
-              {hematology.esr && (
-                <tr>
-                  <td style={styles.printTd}>ESR</td>
-                  {renderPrintTdVal('esr', hematology.esr, 'mm/hr')}
-                  <td style={styles.printTd}>2 - 20 mm/hr (&lt; 50 yrs)</td>
-                </tr>
-              )}
-
-              {/* Glucose & Renal */}
-              {bloodGlucoseRenal.rbs && (
-                <tr>
-                  <td style={styles.printTd}>RBS (Random Blood Sugar)</td>
-                  {renderPrintTdVal('rbs', bloodGlucoseRenal.rbs, 'mg%')}
-                  <td style={styles.printTd}>70 - 140 mg%</td>
-                </tr>
-              )}
-              {bloodGlucoseRenal.fbs && (
-                <tr>
-                  <td style={styles.printTd}>FBS (Fasting Blood Sugar)</td>
-                  {renderPrintTdVal('fbs', bloodGlucoseRenal.fbs, 'mg%')}
-                  <td style={styles.printTd}>70 - 100 mg%</td>
-                </tr>
-              )}
-              {bloodGlucoseRenal.ppbs && (
-                <tr>
-                  <td style={styles.printTd}>PPBS</td>
-                  {renderPrintTdVal('ppbs', bloodGlucoseRenal.ppbs, 'mg%')}
-                  <td style={styles.printTd}>70 - 140 mg%</td>
-                </tr>
-              )}
-              {bloodGlucoseRenal.screatinin && (
-                <tr>
-                  <td style={styles.printTd}>Serum Creatinine</td>
-                  {renderPrintTdVal('screatinin', bloodGlucoseRenal.screatinin, 'mg/dl')}
-                  <td style={styles.printTd}>0.5 - 1.5 mg/dl</td>
-                </tr>
-              )}
-              {bloodGlucoseRenal.vitb12 && (
-                <tr>
-                  <td style={styles.printTd}>Vitamin B 12</td>
-                  {renderPrintTdVal('vitb12', bloodGlucoseRenal.vitb12, 'pg/ml')}
-                  <td style={styles.printTd}>200 - 900 pg/ml</td>
-                </tr>
-              )}
-
-              {/* Differential WBC */}
-              {differentialWbc.bandCell && (
-                <tr>
-                  <td style={styles.printTd}>Band Cell</td>
-                  {renderPrintTdVal('bandCell', differentialWbc.bandCell, '%')}
-                  <td style={styles.printTd}>0 - 6 %</td>
-                </tr>
-              )}
-              {differentialWbc.neutrophils && (
-                <tr>
-                  <td style={styles.printTd}>Neutrophils</td>
-                  {renderPrintTdVal('neutrophils', differentialWbc.neutrophils, '%')}
-                  <td style={styles.printTd}>55 - 70 %</td>
-                </tr>
-              )}
-              {differentialWbc.lymphocytes && (
-                <tr>
-                  <td style={styles.printTd}>Lymphocytes</td>
-                  {renderPrintTdVal('lymphocytes', differentialWbc.lymphocytes, '%')}
-                  <td style={styles.printTd}>20 - 40 %</td>
-                </tr>
-              )}
-              {differentialWbc.eosinophils && (
-                <tr>
-                  <td style={styles.printTd}>Eosinophils</td>
-                  {renderPrintTdVal('eosinophils', differentialWbc.eosinophils, '%')}
-                  <td style={styles.printTd}>1 - 6 %</td>
-                </tr>
-              )}
-              {differentialWbc.monocytes && (
-                <tr>
-                  <td style={styles.printTd}>Monocytes</td>
-                  {renderPrintTdVal('monocytes', differentialWbc.monocytes, '%')}
-                  <td style={styles.printTd}>2 - 8 %</td>
-                </tr>
-              )}
-              {differentialWbc.basophils && (
-                <tr>
-                  <td style={styles.printTd}>Basophils</td>
-                  {renderPrintTdVal('basophils', differentialWbc.basophils, '%')}
-                  <td style={styles.printTd}>0 - 01 %</td>
-                </tr>
-              )}
-              {differentialWbc.parasites && (
-                <tr>
-                  <td style={styles.printTd}>Parasites</td>
-                  {renderPrintTdVal('parasites', differentialWbc.parasites, '')}
-                  <td style={styles.printTd}>Negative / Not Seen</td>
-                </tr>
-              )}
-
-              {/* Thyroid */}
-              {thyroid.t3 && (
-                <tr>
-                  <td style={styles.printTd}>Total T3</td>
-                  {renderPrintTdVal('t3', thyroid.t3, 'ng/ml')}
-                  <td style={styles.printTd}>82 - 200 ng/ml</td>
-                </tr>
-              )}
-              {thyroid.t4 && (
-                <tr>
-                  <td style={styles.printTd}>Total T4</td>
-                  {renderPrintTdVal('t4', thyroid.t4, 'mg%')}
-                  <td style={styles.printTd}>4.5 - 12.5 mg%</td>
-                </tr>
-              )}
-              {thyroid.tsh && (
-                <tr>
-                  <td style={styles.printTd}>TSH</td>
-                  {renderPrintTdVal('tsh', thyroid.tsh, 'mlu/ml')}
-                  <td style={styles.printTd}>0.4 - 6.0 mlu/ml</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-
-          {/* Radiology & Special Findings in Print */}
-          {specialBoxes.some((b) => b.notes && b.notes.trim()) && (
-            <div style={{ marginTop: '20px' }}>
-              <div style={styles.printSectionTitle}>RADIOLOGY &amp; SPECIAL INVESTIGATION FINDINGS</div>
-              {specialBoxes.map(
-                (b) =>
-                  b.notes &&
-                  b.notes.trim() && (
-                    <div key={b.key} style={{ marginBottom: '10px' }}>
-                      <strong style={{ fontSize: '12px', color: '#0E4F44' }}>{b.title}:</strong>
-                      <p style={{ fontSize: '11px', margin: '2px 0 0 10px', color: '#222' }}>{b.notes}</p>
-                    </div>
-                  )
-              )}
-            </div>
-          )}
-
-          <div style={styles.printFooter}>
-            <div>
-              <p style={{ fontSize: '10px', color: '#666' }}>Document verified and digitally recorded.</p>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <p style={{ fontWeight: '700', fontSize: '12px' }}>{headerData.doctorName}</p>
-              <p style={{ fontSize: '10px', color: '#555' }}>Pathologist / Consulting Physician</p>
-            </div>
+          <div style={styles.footerActions}>
+            <button
+              type="button"
+              onClick={handleReset}
+              style={styles.resetBtn}
+              title="Clear all entered values"
+            >
+              <RotateCcw size={13} />
+              <span>Clear</span>
+            </button>
+            <button
+              type="button"
+              onClick={handlePrint}
+              style={styles.printBtn}
+              title="Print Lab Investigation Details"
+            >
+              <Printer size={13} />
+              <span>Print</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving}
+              style={styles.doneBtn}
+            >
+              <Check size={15} strokeWidth={2.8} />
+              <span>{saving ? 'Saving...' : 'Done'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              style={styles.cancelBtn}
+            >
+              Cancel
+            </button>
           </div>
         </div>
       </div>
@@ -1079,491 +373,255 @@ export const InvestigationReportModal = ({
 const styles = {
   overlay: {
     position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(15, 23, 42, 0.65)',
-    zIndex: 1000005,
+    inset: 0,
+    backgroundColor: 'rgba(15, 23, 42, 0.55)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: '12px',
-    overflowY: 'auto',
-    boxSizing: 'border-box',
+    zIndex: 9999,
+    padding: '10px',
   },
   modal: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: '12px',
-    border: '1px solid #DCEAE7',
-    boxShadow: '0 20px 40px rgba(0, 0, 0, 0.2)',
-    width: '100%',
-    maxWidth: '1140px',
-    maxHeight: '94vh',
+    width: '98vw',
+    maxWidth: '1380px',
+    maxHeight: '95vh',
+    backgroundColor: '#F1F5F9',
+    borderRadius: '6px',
+    boxShadow: '0 20px 50px rgba(0, 0, 0, 0.3)',
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden',
-    boxSizing: 'border-box',
+    border: '1px solid #94A3B8',
   },
-  // Top Header Bar
-  headerBar: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-    gap: '8px 14px',
-    backgroundColor: '#F8FAF9',
-    padding: '10px 16px',
-    borderBottom: '1px solid #E2E8F0',
-    boxSizing: 'border-box',
-  },
-  headerCol: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-    minWidth: 0,
-    width: '100%',
-  },
-  headerLabel: {
-    fontSize: '11px',
-    fontWeight: '700',
-    color: '#1B2B29',
-    whiteSpace: 'nowrap',
-    minWidth: '85px',
-    flexShrink: 0,
-  },
-  headerInput: {
-    flex: 1,
-    minWidth: 0,
-    width: '100%',
-    height: '28px',
-    borderRadius: '14px',
-    border: '1px solid #DCEAE7',
-    backgroundColor: '#FFFFFF',
-    padding: '0 10px',
-    fontSize: '11.5px',
-    fontWeight: '600',
-    color: '#1B2B29',
-    outline: 'none',
-    boxSizing: 'border-box',
-  },
-  // Tabs Row
-  tabsRow: {
-    display: 'flex',
-    alignItems: 'center',
-    backgroundColor: '#EEF2F6',
-    borderBottom: '1px solid #CBD5E1',
-    padding: '0 16px',
-    gap: '4px',
-    overflowX: 'auto',
-    flexShrink: 0,
-  },
-  tabBtn: {
-    display: 'flex',
-    alignItems: 'center',
-    padding: '9px 18px',
-    backgroundColor: 'transparent',
-    border: 'none',
-    borderBottom: '3px solid transparent',
-    fontSize: '12px',
-    fontWeight: '600',
-    color: '#475569',
-    cursor: 'pointer',
-    whiteSpace: 'nowrap',
-    transition: 'all 0.15s ease',
-  },
-  tabBtnActive: {
-    backgroundColor: '#FFFFFF',
-    color: '#146B5C',
-    fontWeight: '700',
-    borderBottom: '3px solid #146B5C',
-    borderRadius: '6px 6px 0 0',
-  },
-  statusBanner: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    padding: '6px 16px',
-    fontSize: '11.5px',
-    fontWeight: '600',
-  },
-  bodyContent: {
-    flex: 1,
-    overflowY: 'auto',
-    padding: '14px 18px',
-    minHeight: 0,
-  },
-  // Tab 1 Layout
-  tab1Container: {
-    display: 'flex',
-    gap: '14px',
-    alignItems: 'stretch',
-    width: '100%',
-    minWidth: 0,
-  },
-  cardsGrid: {
-    flex: 1,
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(290px, 1fr))',
-    gap: '12px',
-    minWidth: 0,
-    width: '100%',
-  },
-  paramCard: {
-    backgroundColor: '#FFFFFF',
-    border: '1px solid #DCEAE7',
-    borderRadius: '8px',
-    padding: '10px 12px',
-    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.03)',
-    minWidth: 0,
-    overflow: 'hidden',
-    boxSizing: 'border-box',
-  },
-  cardYellow: {
-    backgroundColor: '#FFFDF5',
-    borderColor: '#FDE68A',
-  },
-  cardGreen: {
-    backgroundColor: '#F0FDF8',
-    borderColor: '#BBF7D0',
-  },
-  cardTitleTeal: {
-    fontSize: '11px',
-    fontWeight: '800',
-    color: '#0284C7',
-    letterSpacing: '0.4px',
-    margin: '0 0 10px 0',
-    textTransform: 'uppercase',
-  },
-  cardTitleYellow: {
-    fontSize: '11px',
-    fontWeight: '800',
-    color: '#B45309',
-    letterSpacing: '0.4px',
-    margin: '0 0 10px 0',
-    textTransform: 'uppercase',
-  },
-  cardTitleGreen: {
-    fontSize: '11px',
-    fontWeight: '800',
-    color: '#15803D',
-    letterSpacing: '0.4px',
-    margin: '0 0 10px 0',
-    textTransform: 'uppercase',
-  },
-  paramRowsList: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '6px',
-    width: '100%',
-    minWidth: 0,
-  },
-  paramRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-    width: '100%',
-    minWidth: 0,
-    boxSizing: 'border-box',
-  },
-  paramLabel: {
-    fontSize: '11px',
-    fontWeight: '700',
-    color: '#1E293B',
-    width: '88px',
-    minWidth: '80px',
-    textAlign: 'right',
-    flexShrink: 0,
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-  },
-  paramInput: {
-    width: '62px',
-    minWidth: '52px',
-    height: '24px',
-    borderRadius: '12px',
-    border: '1px solid #CBD5E1',
-    backgroundColor: '#FFFFFF',
-    textAlign: 'center',
-    fontSize: '11px',
-    fontWeight: '700',
-    color: '#0F172A',
-    outline: 'none',
-    flexShrink: 0,
-    boxSizing: 'border-box',
-    padding: '0 4px',
-  },
-  rangeText: {
-    fontSize: '10px',
-    color: '#64748B',
-    fontWeight: '500',
-    flex: 1,
-    minWidth: 0,
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-    lineHeight: 1.2,
-  },
-  // Right Vertical Actions Column (Image 1)
-  actionsColumn: {
-    width: '105px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-    flexShrink: 0,
-  },
-  actionSaveBtn: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '5px',
-    padding: '7px 12px',
-    backgroundColor: '#146B5C',
+  topBlueBar: {
+    backgroundColor: '#1565C0',
     color: '#FFFFFF',
-    border: 'none',
-    borderRadius: '6px',
-    fontSize: '12px',
-    fontWeight: '700',
-    cursor: 'pointer',
-    boxShadow: '0 1px 3px rgba(20, 107, 92, 0.25)',
-  },
-  actionOutlineBtn: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '5px',
-    padding: '7px 12px',
-    backgroundColor: '#FFFFFF',
-    color: '#1E293B',
-    border: '1px solid #CBD5E1',
-    borderRadius: '6px',
-    fontSize: '11.5px',
-    fontWeight: '600',
-    cursor: 'pointer',
-  },
-  actionExitBtn: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '5px',
-    padding: '7px 12px',
-    backgroundColor: '#FEE2E2',
-    color: '#DC2626',
-    border: '1px solid #FECACA',
-    borderRadius: '6px',
-    fontSize: '12px',
-    fontWeight: '700',
-    cursor: 'pointer',
-    width: '100%',
-  },
-  // Tab 2: Special Reports (Image 2)
-  tab2Container: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '12px',
-    width: '100%',
-    minWidth: 0,
-  },
-  specialHeaderBar: {
+    padding: '8px 14px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: '4px 0',
-    flexWrap: 'wrap',
+    flexShrink: 0,
+  },
+  topTitleWrap: {
+    display: 'flex',
+    alignItems: 'center',
     gap: '8px',
   },
-  specialTitle: {
-    fontSize: '12px',
-    fontWeight: '800',
-    color: '#0284C7',
-    textTransform: 'uppercase',
-    letterSpacing: '0.4px',
-    margin: 0,
+  topTitleText: {
+    fontSize: '15px',
+    fontWeight: 700,
+    letterSpacing: '0.2px',
   },
-  addNewBoxBtn: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '4px',
-    padding: '5px 12px',
-    backgroundColor: '#E0F2FE',
-    border: '1px solid #BAE6FD',
-    borderRadius: '6px',
-    color: '#0284C7',
-    fontSize: '11.5px',
-    fontWeight: '700',
-    cursor: 'pointer',
-  },
-  specialCardsGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-    gap: '12px',
-    width: '100%',
-    minWidth: 0,
-  },
-  specialCard: {
-    backgroundColor: '#FFFFFF',
-    border: '1px solid #CBD5E1',
-    borderRadius: '8px',
-    padding: '10px 12px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '6px',
-    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
-    minWidth: 0,
-    overflow: 'hidden',
-    boxSizing: 'border-box',
-  },
-  specialCardHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  specialCardTitle: {
-    fontSize: '11.5px',
-    fontWeight: '800',
-    color: '#0369A1',
-    letterSpacing: '0.4px',
-  },
-  specialCardCloseBtn: {
-    background: '#FEE2E2',
-    border: 'none',
-    width: '20px',
-    height: '20px',
+  patientPill: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    color: '#FFFFFF',
+    padding: '2px 8px',
     borderRadius: '4px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    cursor: 'pointer',
+    fontSize: '12px',
+    fontWeight: 600,
+    marginLeft: '6px',
   },
-  specialTextarea: {
-    width: '100%',
-    minWidth: 0,
-    boxSizing: 'border-box',
-    padding: '8px 10px',
-    fontSize: '11px',
-    color: '#1E293B',
-    borderRadius: '6px',
-    border: '1px solid #E2E8F0',
-    backgroundColor: '#FAFAFA',
-    resize: 'vertical',
-    outline: 'none',
-    fontFamily: 'inherit',
-    lineHeight: '1.4',
-  },
-  tab2BottomActions: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: '12px',
-    borderTop: '1px solid #E2E8F0',
-    flexWrap: 'wrap',
-    gap: '8px',
-  },
-  // Sub Modal
-  subModalOverlay: {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
-    zIndex: 10000,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '16px',
-  },
-  subModalContent: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: '10px',
-    padding: '18px',
-    width: '100%',
-    maxWidth: '380px',
-    boxShadow: '0 12px 30px rgba(0, 0, 0, 0.15)',
-  },
-  subModalHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: '14px',
-  },
-  iconBtn: {
+  topCloseBtn: {
     background: 'none',
     border: 'none',
     cursor: 'pointer',
-    color: '#64748B',
-  },
-
-  // Print Styles
-  printContainer: {
-    backgroundColor: '#FFFFFF',
-    color: '#000000',
-    padding: '10mm',
-    width: '100%',
-  },
-  printHeader: {
-    textAlign: 'center',
-    marginBottom: '16px',
-  },
-  printLabName: {
-    fontSize: '22px',
-    fontWeight: '800',
-    color: '#0E4F44',
-    margin: 0,
-    letterSpacing: '0.8px',
-  },
-  printLabSub: {
-    fontSize: '11px',
-    color: '#444',
-    margin: '4px 0 10px 0',
-  },
-  printDivider: {
-    height: '2px',
-    backgroundColor: '#146B5C',
-    width: '100%',
-  },
-  printPatientGrid: {
+    padding: '2px',
     display: 'flex',
-    justifyContent: 'space-between',
-    fontSize: '11px',
-    lineHeight: '1.6',
-    borderBottom: '1px solid #CBD5E1',
-    paddingBottom: '10px',
-    marginBottom: '14px',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  printSectionTitle: {
-    fontSize: '12px',
-    fontWeight: '800',
-    color: '#146B5C',
-    borderBottom: '1px solid #146B5C',
-    paddingBottom: '3px',
-    marginBottom: '8px',
-    textTransform: 'uppercase',
+  printOnlyHeader: {
+    display: 'none',
   },
-  printTable: {
+  bodyWrap: {
+    padding: '8px 10px',
+    overflowY: 'auto',
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+  },
+  threeColGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+    gap: '8px',
+    alignItems: 'start',
+  },
+  colCard: {
+    backgroundColor: '#FFFFFF',
+    border: '1px solid #CBD5E1',
+    borderRadius: '4px',
+    overflow: 'hidden',
+  },
+  colTable: {
     width: '100%',
     borderCollapse: 'collapse',
-    fontSize: '11px',
-    marginBottom: '16px',
+    tableLayout: 'fixed',
   },
-  printTd: {
-    padding: '5px 8px',
+  colTheadRow: {
+    backgroundColor: '#F8FAFC',
+    borderBottom: '1px solid #CBD5E1',
+  },
+  colTh: {
+    padding: '6px 8px',
+    fontSize: '12px',
+    fontWeight: 700,
+    color: '#0F172A',
+  },
+  colTr: {
     borderBottom: '1px solid #E2E8F0',
-    color: '#333',
   },
-  printTdVal: {
-    padding: '5px 8px',
-    borderBottom: '1px solid #E2E8F0',
-    fontWeight: '700',
-    textAlign: 'center',
-    color: '#000',
+  colTdLabel: {
+    padding: '4px 8px',
+    fontSize: '12px',
+    fontWeight: 700,
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
   },
-  printFooter: {
+  colTdInput: {
+    padding: '3px 6px',
+  },
+  inputWithBadgeWrap: {
     display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+  },
+  valInput: {
+    width: '100%',
+    minWidth: 0,
+    height: '26px',
+    padding: '2px 7px',
+    fontSize: '12.5px',
+    borderRadius: '4px',
+    outline: 'none',
+    boxSizing: 'border-box',
+  },
+  dangerTag: {
+    fontSize: '9px',
+    fontWeight: 800,
+    color: '#DC2626',
+    backgroundColor: '#FEE2E2',
+    border: '1px solid #FCA5A5',
+    padding: '1px 4px',
+    borderRadius: '3px',
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
+  },
+  colTdNormal: {
+    padding: '4px 6px',
+    fontSize: '11px',
+    color: '#64748B',
+    fontWeight: 500,
+    whiteSpace: 'nowrap',
+  },
+  bottomFiveGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
+    gap: '8px',
+  },
+  findingBoxCard: {
+    backgroundColor: '#FFFFFF',
+    border: '1px solid #CBD5E1',
+    borderRadius: '4px',
+    padding: '6px 8px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+  },
+  findingLabel: {
+    fontSize: '12px',
+    fontWeight: 700,
+    color: '#1E3A8A',
+  },
+  findingTextarea: {
+    width: '100%',
+    minHeight: '64px',
+    border: '1px solid #94A3B8',
+    borderRadius: '4px',
+    padding: '5px 7px',
+    fontSize: '12px',
+    color: '#0F172A',
+    resize: 'vertical',
+    outline: 'none',
+    boxSizing: 'border-box',
+    fontFamily: 'inherit',
+  },
+  footerBar: {
+    backgroundColor: '#F8FAFC',
+    borderTop: '1px solid #CBD5E1',
+    padding: '8px 12px',
+    display: 'flex',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    marginTop: '40px',
-    borderTop: '1px solid #E2E8F0',
-    paddingTop: '12px',
+    gap: '12px',
+    flexShrink: 0,
+  },
+  footerLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    flexWrap: 'wrap',
+  },
+  tipText: {
+    fontSize: '11.5px',
+    color: '#475569',
+  },
+  footerActions: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  resetBtn: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '5px',
+    padding: '6px 12px',
+    borderRadius: '4px',
+    border: '1px solid #CBD5E1',
+    backgroundColor: '#FFFFFF',
+    color: '#334155',
+    fontSize: '12.5px',
+    fontWeight: 600,
+    cursor: 'pointer',
+  },
+  printBtn: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '5px',
+    padding: '6px 12px',
+    borderRadius: '4px',
+    border: '1px solid #93C5FD',
+    backgroundColor: '#EFF6FF',
+    color: '#1D4ED8',
+    fontSize: '12.5px',
+    fontWeight: 600,
+    cursor: 'pointer',
+  },
+  doneBtn: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '5px',
+    padding: '6px 14px',
+    borderRadius: '4px',
+    border: 'none',
+    backgroundColor: '#15803D',
+    color: '#FFFFFF',
+    fontSize: '13px',
+    fontWeight: 700,
+    cursor: 'pointer',
+  },
+  cancelBtn: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '6px 14px',
+    borderRadius: '4px',
+    border: 'none',
+    backgroundColor: '#DC2626',
+    color: '#FFFFFF',
+    fontSize: '13px',
+    fontWeight: 700,
+    cursor: 'pointer',
   },
 };
-

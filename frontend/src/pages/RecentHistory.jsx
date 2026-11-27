@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { visitAPI, patientAPI } from '../services/api';
 import { useDebounce } from '../hooks/useDebounce';
+import { extractLabAlerts } from '../utils/labReportConfig';
+import { InvestigationReportModal } from '../components/reports/InvestigationReportModal';
 import {
   Search,
   Calendar,
@@ -20,6 +22,7 @@ import {
   ShieldAlert,
   ArrowRight,
   Filter,
+  FlaskConical,
 } from 'lucide-react';
 
 // In-memory cache for ultra-fast instant tab switching
@@ -63,6 +66,7 @@ export const RecentHistory = ({
   // Print Prescription Modal State & Stationery Mode
   const [printModalOpen, setPrintModalOpen] = useState(false);
   const [visitToPrint, setVisitToPrint] = useState(null);
+  const [viewingLabReport, setViewingLabReport] = useState(null);
   const [printMode, setPrintMode] = useState(() => {
     try {
       return localStorage.getItem('cms_print_mode') || 'padOnly';
@@ -415,73 +419,30 @@ export const RecentHistory = ({
       });
     }
 
-    // Attached Lab Report - Comprehensive out-of-range parameter highlighting
+    // Attached Lab Report - Comprehensive out-of-range & '*' danger parameter highlighting
     const rep = visit.labReport;
     if (rep && typeof rep === 'object') {
-      const paramLimits = [
-        // Hematology
-        { section: 'hematology', key: 'hb', label: 'Hb', min: 12.0, max: 16.0 },
-        { section: 'hematology', key: 'rbc', label: 'RBC', min: 4.2, max: 5.4 },
-        { section: 'hematology', key: 'wbc', label: 'WBC', min: 4000, max: 10000 },
-        { section: 'hematology', key: 'platelet', label: 'Plat', min: 150000, max: 400000 },
-        { section: 'hematology', key: 'esr', label: 'ESR', min: 2, max: 20 },
-        // Blood Glucose & Renal Profile
-        { section: 'bloodGlucoseRenal', key: 'rbs', label: 'RBS', min: 70, max: 140 },
-        { section: 'bloodGlucoseRenal', key: 'fbs', label: 'FBS', min: 70, max: 100 },
-        { section: 'bloodGlucoseRenal', key: 'ppbs', label: 'PPBS', min: 70, max: 140 },
-        { section: 'bloodGlucoseRenal', key: 'screatinin', label: 'S.Creat', min: 0.5, max: 1.5 },
-        { section: 'bloodGlucoseRenal', key: 'vitb12', label: 'Vit B12', min: 200, max: 900 },
-        // Differential WBC
-        { section: 'differentialWbc', key: 'bandCell', label: 'Band Cell', min: 0, max: 6 },
-        { section: 'differentialWbc', key: 'neutrophils', label: 'Neutrophils', min: 55, max: 70 },
-        { section: 'differentialWbc', key: 'lymphocytes', label: 'Lymphocytes', min: 20, max: 40 },
-        { section: 'differentialWbc', key: 'eosinophils', label: 'Eosinophils', min: 1, max: 6 },
-        { section: 'differentialWbc', key: 'monocytes', label: 'Monocytes', min: 2, max: 8 },
-        { section: 'differentialWbc', key: 'basophils', label: 'Basophils', min: 0, max: 1 },
-        // Thyroid Function
-        { section: 'thyroid', key: 't3', label: 'T3', min: 82, max: 200 },
-        { section: 'thyroid', key: 't4', label: 'T4', min: 4.5, max: 12.5 },
-        { section: 'thyroid', key: 'tsh', label: 'TSH', min: 0.4, max: 6.0 },
-      ];
+      alerts.push(...extractLabAlerts(rep));
 
-      paramLimits.forEach((rule) => {
-        const sec = rep[rule.section] || {};
-        const rawVal = sec[rule.key];
-        if (rawVal !== undefined && rawVal !== null && String(rawVal).trim() !== '') {
-          const valStr = String(rawVal).trim();
-          const hasStar = valStr.includes('*');
-          const cleanStr = valStr.replace(/\*/g, '').replace(/,/g, '').trim();
-          const num = parseFloat(cleanStr);
-
-          if (hasStar) {
-            alerts.push({ type: 'lab', text: `${rule.label}: ${valStr}`, variant: 'red' });
-          } else if (!isNaN(num)) {
-            if (num < rule.min) {
-              alerts.push({ type: 'lab', text: `${rule.label}: ${valStr} (Low)`, variant: 'red' });
-            } else if (num > rule.max) {
-              alerts.push({ type: 'lab', text: `${rule.label}: ${valStr} (High)`, variant: 'red' });
-            }
+      // Special Findings (e.g. Urine, USG, X-RAY, CT/MRI, OTHERS)
+      if (rep.findings && typeof rep.findings === 'object') {
+        Object.entries(rep.findings).forEach(([k, notes]) => {
+          const nStr = String(notes || '').trim();
+          if (!nStr) return;
+          const lower = nStr.toLowerCase();
+          if (
+            nStr.includes('*') ||
+            lower.includes('pos') ||
+            lower.includes('abnorm') ||
+            lower.includes('stone') ||
+            lower.includes('infect')
+          ) {
+            alerts.push({ type: 'lab', text: `${k.toUpperCase()}: ${nStr.slice(0, 28)}`, variant: 'red' });
           }
-        }
-      });
-
-      // Differential WBC - Parasites
-      const diff = rep.differentialWbc || {};
-      if (diff.parasites && String(diff.parasites).trim() !== '') {
-        const pStr = String(diff.parasites).trim();
-        const pLower = pStr.toLowerCase();
-        if (
-          pLower.includes('*') ||
-          pLower.includes('pos') ||
-          pLower.includes('seen') ||
-          pLower.includes('pres') ||
-          pLower.includes('+')
-        ) {
-          alerts.push({ type: 'lab', text: `Parasites: ${pStr}`, variant: 'red' });
-        }
+        });
       }
 
-      // Special Findings (e.g. Widal, Dengue, Urine, USG, Radiology)
+      // Legacy Special Findings (e.g. Widal, Dengue, Urine, USG, Radiology)
       if (Array.isArray(rep.specialFindings)) {
         rep.specialFindings.forEach((sf) => {
           if (sf && sf.notes && String(sf.notes).trim() !== '') {
@@ -956,7 +917,7 @@ export const RecentHistory = ({
 
                       {/* 7. Lab Alerts */}
                       <td style={styles.tdAlerts}>
-                        {alerts.length === 0 ? (
+                        {alerts.length === 0 && !visit.labReport ? (
                           <span style={styles.nilText}>-</span>
                         ) : (
                           <div style={styles.alertsList}>
@@ -973,6 +934,35 @@ export const RecentHistory = ({
                                 </span>
                               );
                             })}
+                            {visit.labReport && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setViewingLabReport({
+                                    ...visit.labReport,
+                                    patientName: visit.labReport.patientName || visit.patientName,
+                                    patientId: visit.labReport.patientId || visit.patientId,
+                                  })
+                                }
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '3px',
+                                  padding: '2px 6px',
+                                  borderRadius: '4px',
+                                  border: '1px solid #93C5FD',
+                                  backgroundColor: '#EFF6FF',
+                                  color: '#1D4ED8',
+                                  fontSize: '10px',
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                }}
+                                title="View full Lab Investigation Details"
+                              >
+                                <FlaskConical size={10} />
+                                <span>Lab Report</span>
+                              </button>
+                            )}
                           </div>
                         )}
                       </td>
@@ -1517,6 +1507,19 @@ export const RecentHistory = ({
             </div>
           </div>
         </div>
+      )}
+
+      {viewingLabReport && (
+        <InvestigationReportModal
+          isOpen={!!viewingLabReport}
+          onClose={() => setViewingLabReport(null)}
+          patient={{
+            name: viewingLabReport.patientName || 'Patient',
+            patientId: viewingLabReport.patientId || '',
+          }}
+          doctor={doctor}
+          initialReport={viewingLabReport}
+        />
       )}
     </div>
   );

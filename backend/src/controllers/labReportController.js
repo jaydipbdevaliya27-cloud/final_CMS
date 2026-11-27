@@ -53,6 +53,14 @@ export const generateLabSummary = (data) => {
     }
   }
 
+  if (parts.length === 0 && data.values && typeof data.values === 'object') {
+    const filled = Object.entries(data.values)
+      .filter(([, v]) => v !== undefined && v !== null && String(v).trim() !== '')
+      .slice(0, 6)
+      .map(([k, v]) => `${k.toUpperCase()} ${String(v).trim()}`);
+    if (filled.length) parts.push(filled.join(', '));
+  }
+
   return parts.join(' | ') || 'Routine Investigation Complete';
 };
 
@@ -75,6 +83,8 @@ export const createLabReport = async (req, res) => {
       differentialWbc,
       thyroid,
       specialFindings,
+      values,
+      findings,
       visitId,
     } = req.body;
 
@@ -103,6 +113,8 @@ export const createLabReport = async (req, res) => {
       differentialWbc: differentialWbc || {},
       thyroid: thyroid || {},
       specialFindings: specialFindings || [],
+      values: values || {},
+      findings: findings || {},
       summary,
       visitId: visitId || null,
     });

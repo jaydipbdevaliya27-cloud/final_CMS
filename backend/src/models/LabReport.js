@@ -105,6 +105,16 @@ const labReportSchema = new mongoose.Schema(
       trim: true,
     },
 
+    // Unified 37-test flat values & 5 bottom findings matching Lab Investigation Details modal
+    values: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
+    },
+    findings: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
+    },
+
     visitId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Visit',
