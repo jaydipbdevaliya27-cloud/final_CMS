@@ -251,6 +251,11 @@ export const PatientRecord = ({
   const searchWrapRef = useRef(null);
   const patientSearchInputRef = useRef(null);
   const ageInputRef = useRef(null);
+  const genderSelectRef = useRef(null);
+  const dobInputRef = useRef(null);
+  const phoneInputRef = useRef(null);
+  const houseNoInputRef = useRef(null);
+  const societyInputRef = useRef(null);
   const [recentPatientsList, setRecentPatientsList] = useState([]);
 
   // --- Family Head Selection State for New Patients ---
@@ -274,7 +279,17 @@ export const PatientRecord = ({
   const [layoutMode, setLayoutMode] = useState('stacked');
   const splitContainerRef = useRef(null);
   const bpInputRef = useRef(null);
+  const sugarInputRef = useRef(null);
+  const otherInputRef = useRef(null);
   const caseFormPaneRef = useRef(null);
+
+  const handlePatientDetailEnter = (e, value, nextRef) => {
+    if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.altKey && String(value || '').trim()) {
+      e.preventDefault();
+      nextRef?.current?.focus();
+      nextRef?.current?.select?.();
+    }
+  };
 
   // Refs for keyboard navigation: Left Column Clinical Cards & Billing
   const allergyInputRef = useRef(null);
@@ -2393,6 +2408,7 @@ export const PatientRecord = ({
                     type="date"
                     value={visitForm.visitDate}
                     onChange={(e) => updateFormField('visitDate', e.target.value)}
+                    onKeyDown={(e) => handlePatientDetailEnter(e, visitForm.visitDate, patientSearchInputRef)}
                     style={{
                       ...styles.photoInput,
                       height: '30px',
@@ -3013,6 +3029,7 @@ export const PatientRecord = ({
                         setPatientAgeRecordedAt(null);
                         setAgeManuallyEdited(true);
                       }}
+                      onKeyDown={(e) => handlePatientDetailEnter(e, patientAge, genderSelectRef)}
                       placeholder="e.g. 23"
                       style={{ ...styles.photoInput, width: '42px', flexShrink: 0 }}
                     />
@@ -3030,8 +3047,10 @@ export const PatientRecord = ({
                 <div style={{ ...styles.photoFieldGroup, flex: '0 0 90px', minWidth: '85px' }}>
                   <label style={styles.photoLabel}>Gender:</label>
                   <select
+                    ref={genderSelectRef}
                     value={patientGender}
                     onChange={(e) => setPatientGender(e.target.value)}
+                    onKeyDown={(e) => handlePatientDetailEnter(e, patientGender, dobInputRef)}
                     style={styles.photoSelect}
                   >
                     <option value="Male">Male</option>
@@ -3043,9 +3062,11 @@ export const PatientRecord = ({
                 <div style={styles.photoFieldGroup}>
                   <label style={styles.photoLabel}>DOB (Select):</label>
                   <input
+                    ref={dobInputRef}
                     type="date"
                     value={patientDob}
                     onChange={(e) => handleDobChange(e.target.value)}
+                    onKeyDown={(e) => handlePatientDetailEnter(e, patientDob, phoneInputRef)}
                     style={styles.photoInput}
                   />
                 </div>
@@ -3053,12 +3074,14 @@ export const PatientRecord = ({
                 <div style={styles.photoFieldGroup}>
                   <label style={styles.photoLabel}>Mobile No:</label>
                   <input
+                    ref={phoneInputRef}
                     type="tel"
                     inputMode="tel"
                     pattern="[0-9]*"
                     maxLength={15}
                     value={patientPhone}
                     onChange={(e) => setPatientPhone(e.target.value)}
+                    onKeyDown={(e) => handlePatientDetailEnter(e, patientPhone, houseNoInputRef)}
                     placeholder="Mobile No"
                     style={styles.photoInput}
                   />
@@ -3070,9 +3093,11 @@ export const PatientRecord = ({
                 <div style={{ ...styles.photoFieldGroup, width: '110px', flexShrink: 0 }}>
                   <label style={styles.photoLabel}>House No:</label>
                   <input
+                    ref={houseNoInputRef}
                     type="text"
                     value={patientHouseNo}
                     onChange={(e) => setPatientHouseNo(e.target.value)}
+                    onKeyDown={(e) => handlePatientDetailEnter(e, patientHouseNo, societyInputRef)}
                     placeholder="House #"
                     style={styles.photoInput}
                   />
@@ -3081,9 +3106,11 @@ export const PatientRecord = ({
                 <div style={{ ...styles.photoFieldGroup, flex: 1 }}>
                   <label style={styles.photoLabel}>Society / Area: <span style={{ color: '#DC2626' }}>*</span></label>
                   <input
+                    ref={societyInputRef}
                     type="text"
                     value={patientSociety}
                     onChange={(e) => setPatientSociety(e.target.value)}
+                    onKeyDown={(e) => handlePatientDetailEnter(e, patientSociety, bpInputRef)}
                     placeholder="Society / Area"
                     style={styles.photoInput}
                   />
@@ -3099,6 +3126,7 @@ export const PatientRecord = ({
                     type="text"
                     value={visitForm.bp}
                     onChange={(e) => updateFormField('bp', e.target.value)}
+                    onKeyDown={(e) => handlePatientDetailEnter(e, visitForm.bp, sugarInputRef)}
                     placeholder="e.g. 120/80"
                     style={styles.photoInput}
                   />
@@ -3107,9 +3135,11 @@ export const PatientRecord = ({
                 <div style={styles.photoFieldGroup}>
                   <label style={styles.photoLabel}>Blood Sugar:</label>
                   <input
+                    ref={sugarInputRef}
                     type="text"
                     value={visitForm.sugar}
                     onChange={(e) => updateFormField('sugar', e.target.value)}
+                    onKeyDown={(e) => handlePatientDetailEnter(e, visitForm.sugar, otherInputRef)}
                     placeholder="mg/dL"
                     style={styles.photoInput}
                   />
@@ -3118,6 +3148,7 @@ export const PatientRecord = ({
                 <div style={styles.photoFieldGroup}>
                   <label style={styles.photoLabel}>Others / Spo2:</label>
                   <input
+                    ref={otherInputRef}
                     type="text"
                     value={visitForm.other}
                     onChange={(e) => updateFormField('other', e.target.value)}
@@ -3125,6 +3156,8 @@ export const PatientRecord = ({
                       if (e.key === 'Tab' && !e.shiftKey) {
                         e.preventDefault();
                         allergyInputRef.current?.focus();
+                      } else {
+                        handlePatientDetailEnter(e, visitForm.other, allergyInputRef);
                       }
                     }}
                     placeholder="Pulse / Spo2"
