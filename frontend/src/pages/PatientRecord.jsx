@@ -61,31 +61,31 @@ const formatDoseInstruction = (m, n, e, ng, timing, langKey, sosInstruction = ''
 
   if (isSos) {
     const customText = sosInstruction ? ` (${sosInstruction})` : '';
-    if (langKey === 'hi') return `Ã Â¤Å“Ã Â¤Â¼Ã Â¤Â°Ã Â¥â€šÃ Â¤Â°Ã Â¤Â¤ Ã Â¤ÂªÃ Â¤Â¡Ã Â¤Â¼Ã Â¤Â¨Ã Â¥â€¡ Ã Â¤ÂªÃ Â¤Â° (SOS)${customText}`;
-    if (langKey === 'gu') return `Ã ÂªÅ“Ã ÂªÂ°Ã Â«â€šÃ ÂªÂ° Ã ÂªÂªÃ ÂªÂ¡Ã Â«ÂÃ ÂªÂ¯Ã Â«â€¡ (SOS)${customText}`;
+    if (langKey === 'hi') return `ज़रूरत पड़ने पर (SOS)${customText}`;
+    if (langKey === 'gu') return `જરૂર પડ્યે (SOS)${customText}`;
     return `As Needed (SOS)${customText}`;
   }
 
   const parts = [];
 
   if (langKey === 'hi') {
-    if (mVal && mVal !== '0') parts.push(`${mVal} Ã Â¤Â¸Ã Â¥ÂÃ Â¤Â¬Ã Â¤Â¹ (Morning)`);
-    if (nVal && nVal !== '0') parts.push(`${nVal} Ã Â¤Â¦Ã Â¥â€¹Ã Â¤ÂªÃ Â¤Â¹Ã Â¤Â° (Afternoon)`);
-    if (eVal && eVal !== '0') parts.push(`${eVal} Ã Â¤Â¶Ã Â¤Â¾Ã Â¤Â® (Evening)`);
-    if (ngVal && ngVal !== '0') parts.push(`${ngVal} Ã Â¤Â°Ã Â¤Â¾Ã Â¤Â¤ (Night)`);
-    const timingStr = isBf ? 'Ã Â¤â€“Ã Â¤Â¾Ã Â¤Â¨Ã Â¥â€¡ Ã Â¤Â¸Ã Â¥â€¡ Ã Â¤ÂªÃ Â¤Â¹Ã Â¤Â²Ã Â¥â€¡ (Ã Â¤Â­Ã Â¥â€šÃ Â¤â€“Ã Â¥â€¡ Ã Â¤ÂªÃ Â¥â€¡Ã Â¤Å¸)' : 'Ã Â¤â€“Ã Â¤Â¾Ã Â¤Â¨Ã Â¥â€¡ Ã Â¤â€¢Ã Â¥â€¡ Ã Â¤Â¬Ã Â¤Â¾Ã Â¤Â¦';
-    const doseText = parts.length > 0 ? parts.join(', ') : 'Ã Â¤Â¡Ã Â¥â€°Ã Â¤â€¢Ã Â¥ÂÃ Â¤Å¸Ã Â¤Â° Ã Â¤â€¢Ã Â¥â€¡ Ã Â¤Â¨Ã Â¤Â¿Ã Â¤Â°Ã Â¥ÂÃ Â¤Â¦Ã Â¥â€¡Ã Â¤Â¶Ã Â¤Â¾Ã Â¤Â¨Ã Â¥ÂÃ Â¤Â¸Ã Â¤Â¾Ã Â¤Â°';
-    return `${doseText} Ã¢â‚¬â€ ${timingStr}`;
+    if (mVal && mVal !== '0') parts.push(`${mVal} सुबह (Morning)`);
+    if (nVal && nVal !== '0') parts.push(`${nVal} दोपहर (Afternoon)`);
+    if (eVal && eVal !== '0') parts.push(`${eVal} शाम (Evening)`);
+    if (ngVal && ngVal !== '0') parts.push(`${ngVal} रात (Night)`);
+    const timingStr = isBf ? 'खाने से पहले (भूखे पेट)' : 'खाने के बाद';
+    const doseText = parts.length > 0 ? parts.join(', ') : 'डॉक्टर के निर्देशानुसार';
+    return `${doseText} — ${timingStr}`;
   }
 
   if (langKey === 'gu') {
-    if (mVal && mVal !== '0') parts.push(`${mVal} Ã ÂªÂ¸Ã ÂªÂµÃ ÂªÂ¾Ã ÂªÂ°Ã Â«â€¡ (Morning)`);
-    if (nVal && nVal !== '0') parts.push(`${nVal} Ã ÂªÂ¬Ã ÂªÂªÃ Â«â€¹Ã ÂªÂ°Ã Â«â€¡ (Afternoon)`);
-    if (eVal && eVal !== '0') parts.push(`${eVal} Ã ÂªÂ¸Ã ÂªÂ¾Ã Âªâ€šÃ ÂªÅ“Ã Â«â€¡ (Evening)`);
-    if (ngVal && ngVal !== '0') parts.push(`${ngVal} Ã ÂªÂ°Ã ÂªÂ¾Ã ÂªÂ¤Ã Â«ÂÃ ÂªÂ°Ã Â«â€¡ (Night)`);
-    const timingStr = isBf ? 'Ã ÂªÅ“Ã ÂªÂ®Ã Â«ÂÃ ÂªÂ¯Ã ÂªÂ¾ Ã ÂªÂªÃ ÂªÂ¹Ã Â«â€¡Ã ÂªÂ²Ã ÂªÂ¾Ã Âªâ€š (Ã ÂªÂ­Ã Â«â€šÃ Âªâ€“Ã Â«ÂÃ ÂªÂ¯Ã ÂªÂ¾ Ã ÂªÂªÃ Â«â€¡Ã ÂªÅ¸Ã Â«â€¡)' : 'Ã ÂªÅ“Ã ÂªÂ®Ã Â«ÂÃ ÂªÂ¯Ã ÂªÂ¾ Ã ÂªÂªÃ Âªâ€ºÃ Â«â‚¬';
-    const doseText = parts.length > 0 ? parts.join(', ') : 'Ã ÂªÂ¡Ã Â«â€¹Ã Âªâ€¢Ã Â«ÂÃ ÂªÅ¸Ã ÂªÂ°Ã ÂªÂ¨Ã Â«â‚¬ Ã ÂªÂ¸Ã ÂªÂ²Ã ÂªÂ¾Ã ÂªÂ¹ Ã ÂªÂ®Ã Â«ÂÃ ÂªÅ“Ã ÂªÂ¬';
-    return `${doseText} Ã¢â‚¬â€ ${timingStr}`;
+    if (mVal && mVal !== '0') parts.push(`${mVal} સવારે (Morning)`);
+    if (nVal && nVal !== '0') parts.push(`${nVal} બપોરે (Afternoon)`);
+    if (eVal && eVal !== '0') parts.push(`${eVal} સાંજે (Evening)`);
+    if (ngVal && ngVal !== '0') parts.push(`${ngVal} રાત્રે (Night)`);
+    const timingStr = isBf ? 'જમ્યા પહેલાં (ભૂખ્યા પેટે)' : 'જમ્યા પછી';
+    const doseText = parts.length > 0 ? parts.join(', ') : 'ડોક્ટરની સલાહ મુજબ';
+    return `${doseText} — ${timingStr}`;
   }
 
   // English default
@@ -95,7 +95,7 @@ const formatDoseInstruction = (m, n, e, ng, timing, langKey, sosInstruction = ''
   if (ngVal && ngVal !== '0') parts.push(`${ngVal} Night`);
   const timingStr = isBf ? 'Before Food' : 'After Food';
   const doseText = parts.length > 0 ? parts.join(', ') : 'As Directed';
-  return `${doseText} Ã¢â‚¬â€ ${timingStr}`;
+  return `${doseText} — ${timingStr}`;
 };
 
 const RX_TRANSLATIONS = {
@@ -131,62 +131,62 @@ const RX_TRANSLATIONS = {
   },
   hi: {
     langKey: 'hi',
-    langName: 'Ã Â¤Â¹Ã Â¤Â¿Ã Â¤â€šÃ Â¤Â¦Ã Â¥â‚¬',
+    langName: 'हिंदी',
     flag: '',
-    patientLabel: 'Ã Â¤Â®Ã Â¤Â°Ã Â¥â‚¬Ã Â¤Å“Ã Â¤Â¼ Ã Â¤â€¢Ã Â¤Â¾ Ã Â¤Â¨Ã Â¤Â¾Ã Â¤Â®:',
-    dateLabel: 'Ã Â¤Â¦Ã Â¤Â¿Ã Â¤Â¨Ã Â¤Â¾Ã Â¤â€šÃ Â¤â€¢:',
-    ageLabel: 'Ã Â¤â€°Ã Â¤Â®Ã Â¥ÂÃ Â¤Â°:',
-    bpLabel: 'Ã Â¤Â¬Ã Â¥â‚¬.Ã Â¤ÂªÃ Â¥â‚¬.:',
-    mobileLabel: 'Ã Â¤Â®Ã Â¥â€¹Ã Â¤Â¬Ã Â¤Â¾Ã Â¤â€¡Ã Â¤Â²:',
-    sugarLabel: 'Ã Â¤Â¶Ã Â¥ÂÃ Â¤â€”Ã Â¤Â°:',
-    colMedicine: 'Ã Â¤Â¦Ã Â¤ÂµÃ Â¤Â¾ Ã Â¤â€¢Ã Â¤Â¾ Ã Â¤Â¨Ã Â¤Â¾Ã Â¤Â®',
-    colQty: 'Ã Â¤Â®Ã Â¤Â¾Ã Â¤Â¤Ã Â¥ÂÃ Â¤Â°Ã Â¤Â¾',
-    colDose: 'Ã Â¤â€“Ã Â¥ÂÃ Â¤Â°Ã Â¤Â¾Ã Â¤â€¢',
-    colInstruction: 'Ã Â¤Â¨Ã Â¤Â¿Ã Â¤Â°Ã Â¥ÂÃ Â¤Â¦Ã Â¥â€¡Ã Â¤Â¶',
-    morning: 'Ã Â¤Â¸Ã Â¥ÂÃ Â¤Â¬Ã Â¤Â¹',
-    noon: 'Ã Â¤Â¦Ã Â¥â€¹Ã Â¤ÂªÃ Â¤Â¹Ã Â¤Â°',
-    evening: 'Ã Â¤Â¶Ã Â¤Â¾Ã Â¤Â®',
-    night: 'Ã Â¤Â°Ã Â¤Â¾Ã Â¤Â¤',
-    beforeFood: 'Ã Â¤â€“Ã Â¤Â¾Ã Â¤Â¨Ã Â¥â€¡ Ã Â¤Â¸Ã Â¥â€¡ Ã Â¤ÂªÃ Â¤Â¹Ã Â¤Â²Ã Â¥â€¡ (Ã Â¤Â­Ã Â¥â€šÃ Â¤â€“Ã Â¥â€¡ Ã Â¤ÂªÃ Â¥â€¡Ã Â¤Å¸)',
-    afterFood: 'Ã Â¤â€“Ã Â¤Â¾Ã Â¤Â¨Ã Â¥â€¡ Ã Â¤â€¢Ã Â¥â€¡ Ã Â¤Â¬Ã Â¤Â¾Ã Â¤Â¦',
-    asNeeded: 'Ã Â¤Å“Ã Â¤Â¼Ã Â¤Â°Ã Â¥â€šÃ Â¤Â°Ã Â¤Â¤ Ã Â¤ÂªÃ Â¤Â¡Ã Â¤Â¼Ã Â¤Â¨Ã Â¥â€¡ Ã Â¤ÂªÃ Â¤Â° (SOS)',
-    feverSos: 'Ã Â¤Â¬Ã Â¥ÂÃ Â¤â€“Ã Â¤Â¾Ã Â¤Â° Ã Â¤â€ Ã Â¤Â¨Ã Â¥â€¡ Ã Â¤ÂªÃ Â¤Â° (SOS)',
-    dietaryTitle: 'Ã Â¤â€ Ã Â¤Â¹Ã Â¤Â¾Ã Â¤Â° Ã Â¤ÂÃ Â¤ÂµÃ Â¤â€š Ã Â¤ÂªÃ Â¤Â°Ã Â¤Â¹Ã Â¥â€¡Ã Â¤Å“Ã Â¤Â¼ Ã Â¤Â¸Ã Â¤â€šÃ Â¤Â¬Ã Â¤â€šÃ Â¤Â§Ã Â¥â‚¬ Ã Â¤Â¸Ã Â¤Â²Ã Â¤Â¾Ã Â¤Â¹:',
-    adviceTitle: 'Ã Â¤Â¸Ã Â¤Â²Ã Â¤Â¾Ã Â¤Â¹ Ã Â¤ÂÃ Â¤ÂµÃ Â¤â€š Ã Â¤ÂªÃ Â¤Â°Ã Â¤Â¹Ã Â¥â€¡Ã Â¤Å“Ã Â¤Â¼ (ADVICE):',
-    defaultAdvice: '---Ã Â¤â€¦Ã Â¤Â¨Ã Â¤Â¾Ã Â¤Å“ [Ã Â¤Â°Ã Â¥â€¹Ã Â¤Å¸Ã Â¥â‚¬, Ã Â¤Â­Ã Â¤Â¾Ã Â¤â€“Ã Â¤Â°Ã Â¥â‚¬, Ã Â¤Â°Ã Â¥â€¹Ã Â¤Å¸Ã Â¤Â²Ã Â¤Â¾], Ã Â¤â€ Ã Â¤Â²Ã Â¥â€š, Ã Â¤Â¦Ã Â¥â€šÃ Â¤Â§ Ã Â¤Â¨ Ã Â¤Â²Ã Â¥â€¡Ã Â¤â€š----- ---Ã Â¤Â¦Ã Â¤Â¾Ã Â¤Â²-Ã Â¤Å¡Ã Â¤Â¾Ã Â¤ÂµÃ Â¤Â², Ã Â¤â€“Ã Â¤Â¿Ã Â¤Å¡Ã Â¤Â¡Ã Â¤Â¼Ã Â¥â‚¬, Ã Â¤â€ºÃ Â¤Â¾Ã Â¤â€º, Ã Â¤Â¦Ã Â¤Â¹Ã Â¥â‚¬, Ã Â¤Â¨Ã Â¥â‚¬Ã Â¤â€šÃ Â¤Â¬Ã Â¥â€š Ã Â¤ÂªÃ Â¤Â¾Ã Â¤Â¨Ã Â¥â‚¬, Ã Â¤Â®Ã Â¥Å’Ã Â¤Â¸Ã Â¤â€šÃ Â¤Â¬Ã Â¥â‚¬ Ã Â¤â€¢Ã Â¤Â¾ Ã Â¤Å“Ã Â¥â€šÃ Â¤Â¸, Ã Â¤ÂªÃ Â¤Â¾Ã Â¤â€¡Ã Â¤Â¨Ã Â¤ÂÃ Â¤ÂªÃ Â¥ÂÃ Â¤ÂªÃ Â¤Â² Ã Â¤â€¢Ã Â¤Â¾ Ã Â¤Å“Ã Â¥â€šÃ Â¤Â¸, Ã Â¤Â²Ã Â¤Â¸Ã Â¥ÂÃ Â¤Â¸Ã Â¥â‚¬ Ã Â¤Å“Ã Â¥ÂÃ Â¤Â¯Ã Â¤Â¾Ã Â¤Â¦Ã Â¤Â¾ Ã Â¤Â²Ã Â¥â€¡Ã Â¤â€š---',
-    noPrescription: 'Ã Â¤â€¡Ã Â¤Â¸ Ã Â¤ÂµÃ Â¤Â¿Ã Â¤Å“Ã Â¤Â¼Ã Â¤Â¿Ã Â¤Å¸ Ã Â¤â€¢Ã Â¥â€¡ Ã Â¤Â²Ã Â¤Â¿Ã Â¤Â Ã Â¤â€¢Ã Â¥â€¹Ã Â¤Ë† Ã Â¤Â¦Ã Â¤ÂµÃ Â¤Â¾ Ã Â¤Â¨Ã Â¤Â¹Ã Â¥â‚¬Ã Â¤â€š Ã Â¤Â²Ã Â¤Â¿Ã Â¤â€“Ã Â¥â‚¬ Ã Â¤â€”Ã Â¤Ë† Ã Â¤Â¹Ã Â¥Ë†Ã Â¥Â¤',
-    footerAdvice: '* Ã Â¤â€¢Ã Â¥Æ’Ã Â¤ÂªÃ Â¤Â¯Ã Â¤Â¾ Ã Â¤Â¦Ã Â¤ÂµÃ Â¤Â¾Ã Â¤â€¡Ã Â¤Â¯Ã Â¤Â¾Ã Â¤Â Ã Â¤Â¸Ã Â¤Â®Ã Â¤Â¯ Ã Â¤ÂªÃ Â¤Â° Ã Â¤â€Ã Â¤Â° Ã Â¤Â¨Ã Â¤Â¿Ã Â¤Â°Ã Â¥ÂÃ Â¤Â¦Ã Â¥â€¡Ã Â¤Â¶Ã Â¤Â¾Ã Â¤Â¨Ã Â¥ÂÃ Â¤Â¸Ã Â¤Â¾Ã Â¤Â° Ã Â¤Â²Ã Â¥â€¡Ã Â¤â€šÃ Â¥Â¤',
-    opdTimings: 'Ã Â¤â€œÃ Â¤ÂªÃ Â¥â‚¬Ã Â¤Â¡Ã Â¥â‚¬ Ã Â¤Â¸Ã Â¤Â®Ã Â¤Â¯: Ã Â¤Â¸Ã Â¥â€¹Ã Â¤Â® - Ã Â¤Â¶Ã Â¤Â¨Ã Â¤Â¿ (Ã Â¤Â¸Ã Â¥ÂÃ Â¤Â¬Ã Â¤Â¹ 9:00 - 1:00, Ã Â¤Â¶Ã Â¤Â¾Ã Â¤Â® 5:00 - 9:00)',
+    patientLabel: 'मरीज़ का नाम:',
+    dateLabel: 'दिनांक:',
+    ageLabel: 'उम्र:',
+    bpLabel: 'बी.पी.:',
+    mobileLabel: 'मोबाइल:',
+    sugarLabel: 'शुगर:',
+    colMedicine: 'दवा का नाम',
+    colQty: 'मात्रा',
+    colDose: 'खुराक',
+    colInstruction: 'निर्देश',
+    morning: 'सुबह',
+    noon: 'दोपहर',
+    evening: 'शाम',
+    night: 'रात',
+    beforeFood: 'खाने से पहले (भूखे पेट)',
+    afterFood: 'खाने के बाद',
+    asNeeded: 'ज़रूरत पड़ने पर (SOS)',
+    feverSos: 'बुखार आने पर (SOS)',
+    dietaryTitle: 'आहार एवं परहेज़ संबंधी सलाह:',
+    adviceTitle: 'सलाह एवं परहेज़ (ADVICE):',
+    defaultAdvice: '---अनाज [रोटी, भाखरी, रोटला], आलू, दूध न लें----- ---दाल-चावल, खिचड़ी, छाछ, दही, नींबू पानी, मौसंबी का जूस, पाइनएप्पल का जूस, लस्सी ज्यादा लें---',
+    noPrescription: 'इस विज़िट के लिए कोई दवा नहीं लिखी गई है।',
+    footerAdvice: '* कृपया दवाइयाँ समय पर और निर्देशानुसार लें।',
+    opdTimings: 'ओपीडी समय: सोम - शनि (सुबह 9:00 - 1:00, शाम 5:00 - 9:00)',
     timingHelp: (m, n, e, ng, timing, sosInstruction) => formatDoseInstruction(m, n, e, ng, timing, 'hi', sosInstruction),
   },
   gu: {
     langKey: 'gu',
-    langName: 'Ã Âªâ€”Ã Â«ÂÃ ÂªÅ“Ã ÂªÂ°Ã ÂªÂ¾Ã ÂªÂ¤Ã Â«â‚¬',
+    langName: 'ગુજરાતી',
     flag: '',
-    patientLabel: 'Ã ÂªÂ¦Ã ÂªÂ°Ã Â«ÂÃ ÂªÂ¦Ã Â«â‚¬Ã ÂªÂ¨Ã Â«ÂÃ Âªâ€š Ã ÂªÂ¨Ã ÂªÂ¾Ã ÂªÂ®:',
-    dateLabel: 'Ã ÂªÂ¤Ã ÂªÂ¾Ã ÂªÂ°Ã Â«â‚¬Ã Âªâ€“:',
-    ageLabel: 'Ã Âªâ€°Ã Âªâ€šÃ ÂªÂ®Ã ÂªÂ°:',
-    bpLabel: 'Ã ÂªÂ¬Ã Â«â‚¬.Ã ÂªÂªÃ Â«â‚¬.:',
-    mobileLabel: 'Ã ÂªÂ®Ã Â«â€¹Ã ÂªÂ¬Ã ÂªÂ¾Ã Âªâ€¡Ã ÂªÂ²:',
-    sugarLabel: 'Ã ÂªÂ¶Ã Â«ÂÃ Âªâ€”Ã ÂªÂ°:',
-    colMedicine: 'Ã ÂªÂ¦Ã ÂªÂµÃ ÂªÂ¾Ã ÂªÂ¨Ã Â«ÂÃ Âªâ€š Ã ÂªÂ¨Ã ÂªÂ¾Ã ÂªÂ®',
-    colQty: 'Ã ÂªÅ“Ã ÂªÂ¥Ã Â«ÂÃ ÂªÂ¥Ã Â«â€¹',
-    colDose: 'Ã ÂªÂ®Ã ÂªÂ¾Ã ÂªÂ¤Ã Â«ÂÃ ÂªÂ°Ã ÂªÂ¾',
-    colInstruction: 'Ã ÂªÂ¸Ã Â«â€šÃ ÂªÅ¡Ã ÂªÂ¨Ã ÂªÂ¾',
-    morning: 'Ã ÂªÂ¸Ã ÂªÂµÃ ÂªÂ¾Ã ÂªÂ°',
-    noon: 'Ã ÂªÂ¬Ã ÂªÂªÃ Â«â€¹Ã ÂªÂ°',
-    evening: 'Ã ÂªÂ¸Ã ÂªÂ¾Ã Âªâ€šÃ ÂªÅ“',
-    night: 'Ã ÂªÂ°Ã ÂªÂ¾Ã ÂªÂ¤',
-    beforeFood: 'Ã ÂªÅ“Ã ÂªÂ®Ã Â«ÂÃ ÂªÂ¯Ã ÂªÂ¾ Ã ÂªÂªÃ ÂªÂ¹Ã Â«â€¡Ã ÂªÂ²Ã ÂªÂ¾',
-    afterFood: 'Ã ÂªÅ“Ã ÂªÂ®Ã Â«ÂÃ ÂªÂ¯Ã ÂªÂ¾ Ã ÂªÂªÃ Âªâ€ºÃ Â«â‚¬',
-    asNeeded: 'Ã ÂªÅ“Ã ÂªÂ°Ã Â«â€šÃ ÂªÂ° Ã ÂªÂªÃ ÂªÂ¡Ã Â«ÂÃ ÂªÂ¯Ã Â«â€¡ (SOS)',
-    feverSos: 'Ã ÂªÂ¤Ã ÂªÂ¾Ã ÂªÂµ Ã Âªâ€ Ã ÂªÂµÃ Â«â€¡ Ã ÂªÂ¤Ã Â«ÂÃ ÂªÂ¯Ã ÂªÂ¾Ã ÂªÂ°Ã Â«â€¡ (SOS)',
-    dietaryTitle: 'Ã Âªâ€“Ã Â«â€¹Ã ÂªÂ°Ã ÂªÂ¾Ã Âªâ€¢ Ã Âªâ€¦Ã ÂªÂ¨Ã Â«â€¡ Ã ÂªÂªÃ ÂªÂ°Ã Â«â€¡Ã ÂªÅ“Ã Â«â‚¬ Ã Âªâ€¦Ã Âªâ€šÃ Âªâ€”Ã Â«â€¡Ã ÂªÂ¨Ã Â«â‚¬ Ã ÂªÂ¸Ã Â«â€šÃ ÂªÅ¡Ã ÂªÂ¨Ã ÂªÂ¾Ã Âªâ€œ:',
-    adviceTitle: 'Ã ÂªÂ¸Ã Â«â€šÃ ÂªÅ¡Ã ÂªÂ¨ / Ã ÂªÂªÃ ÂªÂ°Ã ÂªÂ¹Ã Â«â€¡Ã ÂªÅ“ (ADVICE):',
-    defaultAdvice: '---Ã Âªâ€¦Ã ÂªÂ¨Ã ÂªÂ¾Ã ÂªÅ“ [ Ã ÂªÂ°Ã Â«â€¹Ã ÂªÅ¸Ã ÂªÂ²Ã Â«â‚¬ , Ã ÂªÂ­Ã ÂªÂ¾Ã Âªâ€“Ã ÂªÂ°Ã Â«â‚¬ , Ã ÂªÂ°Ã Â«â€¹Ã ÂªÅ¸Ã ÂªÂ²Ã Â«â€¹ ] , Ã ÂªÂ¬Ã ÂªÅ¸Ã ÂªÂ¾Ã Âªâ€¢Ã ÂªÂ¾ , Ã ÂªÂ¦Ã Â«â€šÃ ÂªÂ§ Ã ÂªÂ¨Ã ÂªÂ¾ Ã ÂªÂ²Ã Â«â€¡Ã ÂªÂµÃ Â«Â----- --- Ã ÂªÂ¦Ã ÂªÂ¾Ã ÂªÂ³ Ã ÂªÂ­Ã ÂªÂ¾Ã ÂªÂ¤, Ã Âªâ€“Ã Â«â‚¬Ã ÂªÅ¡Ã ÂªÂ¡Ã Â«â‚¬ , Ã Âªâ€ºÃ ÂªÂ¾Ã ÂªÂ¶, Ã ÂªÂ¦Ã ÂªÂ¹Ã Â«â‚¬Ã Âªâ€š, Ã ÂªÂ²Ã Â«â‚¬Ã Âªâ€šÃ ÂªÂ¬Ã Â«Â Ã ÂªÂªÃ ÂªÂ¾Ã ÂªÂ£Ã Â«â‚¬, Ã ÂªÂ®Ã Â«â€¹Ã ÂªÂ¸Ã Âªâ€šÃ ÂªÂ¬Ã Â«â‚¬ Ã ÂªÂ¨Ã Â«Â Ã ÂªÅ“Ã Â«ÂÃ ÂªÂ¯Ã Â«ÂÃ ÂªÂ¸, Ã ÂªÂªÃ ÂªÂ¾Ã ÂªË†Ã ÂªÂ¨Ã Â«â€¡Ã ÂªÂªÃ ÂªÂ² Ã ÂªÂ¨Ã Â«Â Ã ÂªÅ“Ã Â«ÂÃ ÂªÂ¯Ã Â«ÂÃ ÂªÂ¸, Ã ÂªÂ²Ã ÂªÂ¸Ã Â«ÂÃ ÂªÂ¸Ã Â«â‚¬ Ã ÂªÂµÃ ÂªÂ§Ã ÂªÂ¾Ã ÂªÂ°Ã Â«â€¡ Ã ÂªÂ²Ã Â«â€¡Ã ÂªÂµÃ Â«â‚¬---',
-    noPrescription: 'Ã Âªâ€  Ã ÂªÂ®Ã Â«ÂÃ ÂªÂ²Ã ÂªÂ¾Ã Âªâ€¢Ã ÂªÂ¾Ã ÂªÂ¤ Ã ÂªÂ®Ã ÂªÂ¾Ã ÂªÅ¸Ã Â«â€¡ Ã Âªâ€¢Ã Â«â€¹Ã ÂªË† Ã ÂªÂ¦Ã ÂªÂµÃ ÂªÂ¾ Ã ÂªÂ²Ã Âªâ€“Ã Â«â€¡Ã ÂªÂ² Ã ÂªÂ¨Ã ÂªÂ¥Ã Â«â‚¬.',
-    footerAdvice: '* Ã Âªâ€¢Ã Â«Æ’Ã ÂªÂªÃ ÂªÂ¾ Ã Âªâ€¢Ã ÂªÂ°Ã Â«â‚¬Ã ÂªÂ¨Ã Â«â€¡ Ã ÂªÂ¦Ã ÂªÂµÃ ÂªÂ¾Ã Âªâ€œ Ã ÂªÂ¸Ã ÂªÂ®Ã ÂªÂ¯Ã ÂªÂ¸Ã ÂªÂ° Ã Âªâ€¦Ã ÂªÂ¨Ã Â«â€¡ Ã ÂªÂ¸Ã Â«â€šÃ ÂªÅ¡Ã ÂªÂ¨Ã ÂªÂ¾ Ã ÂªÂ®Ã Â«ÂÃ ÂªÅ“Ã ÂªÂ¬ Ã ÂªÂ²Ã Â«â€¹.',
-    opdTimings: 'Ã Âªâ€œÃ ÂªÂªÃ Â«â‚¬Ã ÂªÂ¡Ã Â«â‚¬ Ã ÂªÂ¸Ã ÂªÂ®Ã ÂªÂ¯: Ã ÂªÂ¸Ã Â«â€¹Ã ÂªÂ® - Ã ÂªÂ¶Ã ÂªÂ¨Ã ÂªÂ¿ (Ã ÂªÂ¸Ã ÂªÂµÃ ÂªÂ¾Ã ÂªÂ°Ã Â«â€¡ 9:00 - 1:00, Ã ÂªÂ¸Ã ÂªÂ¾Ã Âªâ€šÃ ÂªÅ“Ã Â«â€¡ 5:00 - 9:00)',
+    patientLabel: 'દર્દીનું નામ:',
+    dateLabel: 'તારીખ:',
+    ageLabel: 'ઉંમર:',
+    bpLabel: 'બી.પી.:',
+    mobileLabel: 'મોબાઇલ:',
+    sugarLabel: 'શુગર:',
+    colMedicine: 'દવાનું નામ',
+    colQty: 'જથ્થો',
+    colDose: 'માત્રા',
+    colInstruction: 'સૂચના',
+    morning: 'સવાર',
+    noon: 'બપોર',
+    evening: 'સાંજ',
+    night: 'રાત',
+    beforeFood: 'જમ્યા પહેલા',
+    afterFood: 'જમ્યા પછી',
+    asNeeded: 'જરૂર પડ્યે (SOS)',
+    feverSos: 'તાવ આવે ત્યારે (SOS)',
+    dietaryTitle: 'ખોરાક અને પરેજી અંગેની સૂચનાઓ:',
+    adviceTitle: 'સૂચન / પરહેજ (ADVICE):',
+    defaultAdvice: '---અનાજ [ રોટલી , ભાખરી , રોટલો ] , બટાકા , દૂધ ના લેવુ----- --- દાળ ભાત, ખીચડી , છાશ, દહીં, લીંબુ પાણી, મોસંબી નુ જ્યુસ, પાઈનેપલ નુ જ્યુસ, લસ્સી વધારે લેવી---',
+    noPrescription: 'આ મુલાકાત માટે કોઈ દવા લખેલ નથી.',
+    footerAdvice: '* કૃપા કરીને દવાઓ સમયસર અને સૂચના મુજબ લો.',
+    opdTimings: 'ઓપીડી સમય: સોમ - શનિ (સવારે 9:00 - 1:00, સાંજે 5:00 - 9:00)',
     timingHelp: (m, n, e, ng, timing, sosInstruction) => formatDoseInstruction(m, n, e, ng, timing, 'gu', sosInstruction),
   },
 };
@@ -205,8 +205,8 @@ const formatRxDate = (dateVal) => {
 const PRINT_LANGUAGES = [
   {
     key: 'gu',
-    title: 'Ã Âªâ€”Ã Â«ÂÃ ÂªÅ“Ã ÂªÂ°Ã ÂªÂ¾Ã ÂªÂ¤Ã Â«â‚¬ (Gujarati)',
-    sub: 'Ã ÂªÂ¸Ã ÂªÂµÃ ÂªÂ¾Ã ÂªÂ°-Ã ÂªÂ¬Ã ÂªÂªÃ Â«â€¹Ã ÂªÂ°-Ã ÂªÂ¸Ã ÂªÂ¾Ã Âªâ€šÃ ÂªÅ“-Ã ÂªÂ°Ã ÂªÂ¾Ã ÂªÂ¤, Ã ÂªÅ“Ã ÂªÂ®Ã Â«ÂÃ ÂªÂ¯Ã ÂªÂ¾ Ã ÂªÂªÃ ÂªÂ¹Ã Â«â€¡Ã ÂªÂ²Ã ÂªÂ¾ / Ã ÂªÅ“Ã ÂªÂ®Ã Â«ÂÃ ÂªÂ¯Ã ÂªÂ¾ Ã ÂªÂªÃ Âªâ€ºÃ Â«â‚¬, Ã ÂªÂªÃ ÂªÂ°Ã ÂªÂ¹Ã Â«â€¡Ã ÂªÅ“',
+    title: 'ગુજરાતી (Gujarati)',
+    sub: 'સવાર-બપોર-સાંજ-રાત, જમ્યા પહેલા / જમ્યા પછી, પરહેજ',
     code: 'IN',
     color: '#166534',
     bg: '#F0FDF4',
@@ -214,8 +214,8 @@ const PRINT_LANGUAGES = [
   },
   {
     key: 'hi',
-    title: 'Ã Â¤Â¹Ã Â¤Â¿Ã Â¤â€šÃ Â¤Â¦Ã Â¥â‚¬ (Hindi)',
-    sub: 'Ã Â¤Â¸Ã Â¥ÂÃ Â¤Â¬Ã Â¤Â¹-Ã Â¤Â¦Ã Â¥â€¹Ã Â¤ÂªÃ Â¤Â¹Ã Â¤Â°-Ã Â¤Â¶Ã Â¤Â¾Ã Â¤Â®-Ã Â¤Â°Ã Â¤Â¾Ã Â¤Â¤, Ã Â¤â€“Ã Â¤Â¾Ã Â¤Â¨Ã Â¥â€¡ Ã Â¤Â¸Ã Â¥â€¡ Ã Â¤ÂªÃ Â¤Â¹Ã Â¤Â²Ã Â¥â€¡ / Ã Â¤â€“Ã Â¤Â¾Ã Â¤Â¨Ã Â¥â€¡ Ã Â¤â€¢Ã Â¥â€¡ Ã Â¤Â¬Ã Â¤Â¾Ã Â¤Â¦, Ã Â¤ÂªÃ Â¤Â°Ã Â¤Â¹Ã Â¥â€¡Ã Â¤Å“Ã Â¤Â¼',
+    title: 'हिंदी (Hindi)',
+    sub: 'सुबह-दोपहर-शाम-रात, खाने से पहले / खाने के बाद, परहेज़',
     code: 'IN',
     color: '#9A3412',
     bg: '#FFF7ED',
@@ -2434,7 +2434,7 @@ export const PatientRecord = ({
                           }}
                           title="Clear current patient and search another"
                         >
-                          Ã¢Å“â€¢ Clear
+                          ✕ Clear
                         </button>
                         {!currentPatient.isNewPatient && (
                           <button
@@ -2519,7 +2519,7 @@ export const PatientRecord = ({
                                 Register New Patient: <span style={{ color: '#0D5C4E' }}>"{patientSearch.trim().toUpperCase()}"</span>
                               </div>
                               <div style={{ fontSize: 11, color: '#475569', marginTop: 2 }}>
-                                Patient not found in clinic records. Click here or press <kbd style={styles.enterKeyBadge}>Enter Ã¢â€ Âµ</kbd> to start new entry.
+                                Patient not found in clinic records. Click here or press <kbd style={styles.enterKeyBadge}>Enter â†µ</kbd> to start new entry.
                               </div>
                             </div>
                             <span style={styles.newPatientQuickActionBtn}>
@@ -2599,7 +2599,7 @@ export const PatientRecord = ({
                                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                                     {Number(p.totalDue || 0) > 0 && (
                                       <span style={{ fontSize: 11, fontWeight: 800, color: '#DC2626', backgroundColor: '#FEE2E2', padding: '2px 8px', borderRadius: 5, border: '1px solid #FECACA' }}>
-                                        Due: Ã¢â€šÂ¹{p.totalDue}
+                                        Due: ₹{p.totalDue}
                                       </span>
                                     )}
                                     <span style={{ fontSize: 10, color: '#0D5C4E', fontWeight: 700, backgroundColor: '#E6F4F1', padding: '2px 8px', borderRadius: 5, border: '1px solid #B2DFDB' }}>
@@ -2641,7 +2641,7 @@ export const PatientRecord = ({
 
                                   {displayedPastVisits.length === 0 ? (
                                     <div style={{ fontSize: 11, color: '#64748B', padding: '4px 0', display: 'flex', alignItems: 'center', gap: 6 }}>
-                                      <span style={{ color: '#0D9488', fontWeight: 800 }}>Ã¢â‚¬Â¢</span>
+                                      <span style={{ color: '#0D9488', fontWeight: 800 }}>•</span>
                                       <span>First Consultation (New Case)</span>
                                     </div>
                                   ) : (
@@ -2813,18 +2813,14 @@ export const PatientRecord = ({
                 <div style={{ ...styles.photoFieldGroup, position: 'relative' }} ref={familyHeadWrapRef}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                     <label style={styles.photoLabel}>Family Head / ID:</label>
-                    {currentPatient && !currentPatient.isNewPatient ? (
+                    {currentPatient && !currentPatient.isNewPatient && Number(currentPatient.totalDue || 0) > 0 ? (
                       <button
                         type="button"
                         onClick={handleOpenFamilyDueModal}
-                        style={{
-                          ...styles.photoDueLink,
-                          color: (currentPatient.totalDue || 0) > 0 ? '#DC2626' : '#64748B',
-                          fontWeight: (currentPatient.totalDue || 0) > 0 ? 700 : 500,
-                        }}
+                        style={styles.photoDueLink}
                         title="Click to view family due breakdown"
                       >
-                        Total Due: Ã¢â€šÂ¹{currentPatient.totalDue || 0}
+                        Total Due: ₹{currentPatient.totalDue}
                       </button>
                     ) : currentPatient?.isNewPatient ? (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -2832,7 +2828,7 @@ export const PatientRecord = ({
                           <>
                             <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#1D4ED8', backgroundColor: '#EFF6FF', border: '1px solid #BFDBFE', padding: '1px 6px', borderRadius: 4 }}>
                               Existing Family: FAM-{selectedFamily.familyId}
-                              {Number(selectedFamily.familyDue || 0) > 0 ? ` (Due: Ã¢â€šÂ¹${selectedFamily.familyDue})` : ''}
+                              {Number(selectedFamily.familyDue || 0) > 0 ? ` (Due: ₹${selectedFamily.familyDue})` : ''}
                             </span>
                             <button
                               type="button"
@@ -2843,7 +2839,7 @@ export const PatientRecord = ({
                               style={{ fontSize: '10.5px', color: '#DC2626', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, padding: 0 }}
                               title="Unlink and use a new family head instead"
                             >
-                              Ãƒâ€” Unlink
+                              × Unlink
                             </button>
                           </>
                         ) : (
@@ -2938,7 +2934,7 @@ export const PatientRecord = ({
                               }}
                             >
                               <span>+ Use New Family Head: "{familyHeadName.trim().toUpperCase()}"</span>
-                              <span style={{ fontSize: '10px', color: '#047857' }}>New Family (Enter Ã¢â€ Âµ)</span>
+                              <span style={{ fontSize: '10px', color: '#047857' }}>New Family (Enter â†µ)</span>
                             </div>
                           )}
 
@@ -2968,12 +2964,12 @@ export const PatientRecord = ({
                                     {fam.headName} <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#1D4ED8' }}>(FAM-{fam.familyId})</span>
                                   </div>
                                   <div style={{ fontSize: '10.5px', color: '#64748B' }}>
-                                    {[fam.society, fam.area, fam.phone].filter(Boolean).join(' Ã¢â‚¬Â¢ ') || 'Existing Family'}
+                                    {[fam.society, fam.area, fam.phone].filter(Boolean).join(' • ') || 'Existing Family'}
                                   </div>
                                 </div>
                                 {Number(fam.familyDue || 0) > 0 && (
                                   <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#DC2626', backgroundColor: '#FEF2F2', padding: '1px 6px', borderRadius: 4 }}>
-                                    Due: Ã¢â€šÂ¹{fam.familyDue}
+                                    Due: ₹{fam.familyDue}
                                   </span>
                                 )}
                               </div>
@@ -4155,7 +4151,7 @@ export const PatientRecord = ({
                         title={`${item.shortcut ? `[${item.shortcut}] ` : ''}${item.value}`}
                       >
                         <span>{code}</span>
-                        {isAlreadyAdded && <span>Ã¢Å“â€œ</span>}
+                        {isAlreadyAdded && <span>✓</span>}
                       </button>
                     );
                   })}
@@ -4209,7 +4205,7 @@ export const PatientRecord = ({
                     style={styles.photoCancelEditBtn}
                     title="Cancel editing and switch to fresh new case entry"
                   >
-                    Ã¢Å“â€¢ Cancel Edit (New Case)
+                    ✕ Cancel Edit (New Case)
                   </button>
                 )}
 
@@ -4234,7 +4230,7 @@ export const PatientRecord = ({
                   title={currentPatient && finalPatientDue > 0 ? "Click to view patient's pending visits" : ''}
                 >
                   <span>
-                    Patient Due: Ã¢â€šÂ¹{currentPatient ? finalPatientDue : 0}
+                    Patient Due: ₹{currentPatient ? finalPatientDue : 0}
                   </span>
                 </button>
 
@@ -4259,7 +4255,7 @@ export const PatientRecord = ({
                   title={currentPatient ? "Click to view full family breakdown across members" : ''}
                 >
                   <span>
-                    Family Due: Ã¢â€šÂ¹{currentPatient ? finalFamilyDue : 0}
+                    Family Due: ₹{currentPatient ? finalFamilyDue : 0}
                   </span>
                 </button>
               </div>
@@ -4269,7 +4265,7 @@ export const PatientRecord = ({
               {/* Charge Field Row: Only Charged Amount and Received Amount */}
               <div style={styles.photoRow2Col}>
                 <div style={styles.photoFieldGroup}>
-                  <label style={styles.photoLabel}>Charged Amount (Ã¢â€šÂ¹):</label>
+                  <label style={styles.photoLabel}>Charged Amount (₹):</label>
                   <input
                     ref={chargeInputRef}
                     type="number"
@@ -4283,7 +4279,7 @@ export const PatientRecord = ({
                 </div>
 
                 <div style={styles.photoFieldGroup}>
-                  <label style={styles.photoLabel}>Received Amount (Ã¢â€šÂ¹):</label>
+                  <label style={styles.photoLabel}>Received Amount (₹):</label>
                   <input
                     type="number"
                     min="0"
@@ -4436,8 +4432,8 @@ export const PatientRecord = ({
                           }}
                         >
                           {isDueCollection
-                            ? `Ã¢Å“â€œ Due Collected: Ã¢â€šÂ¹${visit.received || 0}`
-                            : (visit.due > 0 ? `Due: Ã¢â€šÂ¹${visit.due}` : 'Ã¢Å“â€œ Settled')}
+                            ? `✓ Due Collected: ₹${visit.received || 0}`
+                            : (visit.due > 0 ? `Due: ₹${visit.due}` : '✓ Settled')}
                         </span>
 
                         {visit.labReport && (
@@ -4587,9 +4583,9 @@ export const PatientRecord = ({
                           )}
                         </div>
                         <div style={{ display: 'flex', gap: 10, fontWeight: 600 }}>
-                          <span>Charge: Ã¢â€šÂ¹{visit.charge || 0}</span>
-                          <span style={{ color: '#15803D' }}>Received: Ã¢â€šÂ¹{visit.received || 0}</span>
-                          {Number(visit.due || 0) > 0 && <span style={{ color: '#DC2626' }}>Due: Ã¢â€šÂ¹{visit.due}</span>}
+                          <span>Charge: ₹{visit.charge || 0}</span>
+                          <span style={{ color: '#15803D' }}>Received: ₹{visit.received || 0}</span>
+                          {Number(visit.due || 0) > 0 && <span style={{ color: '#DC2626' }}>Due: ₹{visit.due}</span>}
                         </div>
                       </div>
                     )}
@@ -4876,7 +4872,7 @@ export const PatientRecord = ({
                     Select Prescription Language
                   </h3>
                   <span style={{ fontSize: '11px', color: '#16A34A', fontWeight: 600 }}>
-                    Use Ã¢â€ â€˜ / Ã¢â€ â€œ arrow keys & Enter to select & print (or press Esc)
+                    Use â†‘ / â†“ arrow keys & Enter to select & print (or press Esc)
                   </span>
                 </div>
               </div>
@@ -4970,7 +4966,7 @@ export const PatientRecord = ({
                             gap: '4px',
                           }}
                         >
-                          <span>Ã¢â€ Âµ Press Enter</span>
+                          <span>â†µ Press Enter</span>
                         </span>
                       )}
                       <Printer size={18} color={lang.color} />
@@ -5097,8 +5093,8 @@ export const PatientRecord = ({
                   <div style={styles.langPillsGroup}>
                     {[
                       { key: 'en', label: 'English' },
-                      { key: 'hi', label: 'Ã Â¤Â¹Ã Â¤Â¿Ã Â¤â€šÃ Â¤Â¦Ã Â¥â‚¬ (Hindi)' },
-                      { key: 'gu', label: 'Ã Âªâ€”Ã Â«ÂÃ ÂªÅ“Ã ÂªÂ°Ã ÂªÂ¾Ã ÂªÂ¤Ã Â«â‚¬ (Gujarati)' },
+                      { key: 'hi', label: 'हिंदी (Hindi)' },
+                      { key: 'gu', label: 'ગુજરાતી (Gujarati)' },
                     ].map((lang) => {
                       const isActive = printLanguage === lang.key;
                       return (
@@ -5212,7 +5208,7 @@ export const PatientRecord = ({
                               }}
                               title={d.shortcut ? `Shortcut: ${d.shortcut}` : ''}
                             >
-                              <span>{isSelected ? 'Ã¢Å“â€œ ' : '+ '}</span>
+                              <span>{isSelected ? '✓ ' : '+ '}</span>
                               {d.shortcut && <span style={{ opacity: 0.85, marginRight: '4px' }}>[{d.shortcut}]</span>}
                               <span>{d.value}</span>
                             </button>
@@ -5247,7 +5243,7 @@ export const PatientRecord = ({
 
                 {/* <div style={styles.printHelpNotice}>
                   {printMode === 'full' ? (
-                    <span>Ã¢â€žÂ¹Ã¯Â¸Â <strong>Full Letterhead Mode</strong>: Prints complete <strong>Dr. Chirag Paghdal</strong> letterpad with watermark, patient details, converted Rx dosage, dietary advice & Harsh Medical footer.</span>
+                    <span>ℹ️ <strong>Full Letterhead Mode</strong>: Prints complete <strong>Dr. Chirag Paghdal</strong> letterpad with watermark, patient details, converted Rx dosage, dietary advice & Harsh Medical footer.</span>
                   ) : (
                     <span><strong>Pre-Printed Pad Mode</strong>: Letterhead graphics are hidden during print so you can insert your <strong>physical printed paper pad</strong> directly into printer!</span>
                   )}
@@ -5289,7 +5285,7 @@ export const PatientRecord = ({
                     </text>
                     <text fill="#0B63AC" fontSize="12" fontWeight="800" letterSpacing="4" textAnchor="middle">
                       <textPath href="#watermarkBottomArc" startOffset="50%">
-                        Ã¢Ëœâ€¦ DHYEY CLINIC Ã¢Ëœâ€¦
+                        â˜… DHYEY CLINIC â˜…
                       </textPath>
                     </text>
                     <g transform="translate(150, 150) scale(0.9) translate(-50, -60)" stroke="#0B63AC" fill="none" strokeLinecap="round" strokeLinejoin="round">
@@ -5359,7 +5355,7 @@ export const PatientRecord = ({
                     <div style={styles.photoPatientColLeft}>
                       <span style={styles.photoPatientLabel}>Patient:</span>{' '}
                       <span style={styles.photoPatientValueBold}>
-                        {printVisit.patientName || currentPatient?.name || 'Ã¢â‚¬â€'}
+                        {printVisit.patientName || currentPatient?.name || '—'}
                       </span>
                     </div>
                     <div style={styles.photoPatientColRight}>
@@ -5403,7 +5399,7 @@ export const PatientRecord = ({
                           currentPatient?.age || printVisit.age,
                           currentPatient?.ageRecordedAt || currentPatient?.updatedAt || currentPatient?.createdAt,
                           patientDob || currentPatient?.dob || printVisit.dob
-                        ) || 'Ã¢â‚¬â€'}
+                        ) || '—'}
                       </span>
                     </div>
                     <div style={styles.photoPatientColRight}>
@@ -5433,7 +5429,7 @@ export const PatientRecord = ({
                 {/* Solid horizontal line across page */}
                 <div style={styles.photoBlackDivider} />
 
-                {/* 3. Ã¢â€žÅ¾ SYMBOL & PRESCRIPTION TABLE */}
+                {/* 3. ℞ SYMBOL & PRESCRIPTION TABLE */}
                 <div style={styles.photoRxRow}>
                   <span style={styles.photoRxSymbol}>&#8478;</span>
                 </div>
@@ -5530,11 +5526,11 @@ export const PatientRecord = ({
                   </tbody>
                 </table>
 
-                {/* 4. ADVICE BOX (Ã ÂªÂ¸Ã Â«â€šÃ ÂªÅ¡Ã ÂªÂ¨ / Ã ÂªÂªÃ ÂªÂ°Ã ÂªÂ¹Ã Â«â€¡Ã ÂªÅ“ (ADVICE)) - ONLY IF GIVEN */}
+                {/* 4. ADVICE BOX (સૂચન / પરહેજ (ADVICE)) - ONLY IF GIVEN */}
                 {Boolean(printDietary && printDietary.trim()) && (
                   <div className="photoAdviceBox" style={styles.photoAdviceBox}>
                     <span style={styles.photoAdviceTitle}>
-                      {t.adviceTitle || 'Ã ÂªÂ¸Ã Â«â€šÃ ÂªÅ¡Ã ÂªÂ¨ / Ã ÂªÂªÃ ÂªÂ°Ã ÂªÂ¹Ã Â«â€¡Ã ÂªÅ“ (ADVICE):'}{' '}
+                      {t.adviceTitle || 'સૂચન / પરહેજ (ADVICE):'}{' '}
                     </span>
                     <span style={styles.photoAdviceText}>
                       {printDietary.trim()}
@@ -5603,7 +5599,7 @@ export const PatientRecord = ({
         initialReport={attachedReport}
         onReportSaved={(reportData) => {
           setAttachedReport(reportData);
-          showToast('Ã¢Å“â€œ Diagnostic Lab Report saved & attached to current case!');
+          showToast('✓ Diagnostic Lab Report saved & attached to current case!');
         }}
       />
 
@@ -5617,7 +5613,7 @@ export const PatientRecord = ({
           initialReport={viewingPastReport}
           onReportSaved={() => {
             setViewingPastReport(null);
-            showToast('Ã¢Å“â€œ Attached Lab Report updated!');
+            showToast('✓ Attached Lab Report updated!');
             if (currentPatient?.patientId) {
               loadPatientVisits(currentPatient.patientId);
             }
@@ -5654,13 +5650,13 @@ export const PatientRecord = ({
               <div style={styles.dueKpiCard}>
                 <span style={styles.dueKpiLabel}>TOTAL CHARGED</span>
                 <span style={styles.dueKpiValue}>
-                  Ã¢â€šÂ¹{patientVisits.reduce((acc, v) => acc + (v.charge || 0), 0)}
+                  ₹{patientVisits.reduce((acc, v) => acc + (v.charge || 0), 0)}
                 </span>
               </div>
               <div style={styles.dueKpiCard}>
                 <span style={styles.dueKpiLabel}>TOTAL RECEIVED</span>
                 <span style={{ ...styles.dueKpiValue, color: '#16A34A' }}>
-                  Ã¢â€šÂ¹{patientVisits.reduce((acc, v) => acc + (v.received || 0), 0)}
+                  ₹{patientVisits.reduce((acc, v) => acc + (v.received || 0), 0)}
                 </span>
               </div>
               <div
@@ -5684,7 +5680,7 @@ export const PatientRecord = ({
                     color: (currentPatient.totalDue || 0) > 0 ? '#DC2626' : '#16A34A',
                   }}
                 >
-                  Ã¢â€šÂ¹{currentPatient.totalDue || 0}
+                  ₹{currentPatient.totalDue || 0}
                 </span>
               </div>
             </div>
@@ -5778,13 +5774,13 @@ export const PatientRecord = ({
                               )}
                             </td>
                             <td style={{ ...styles.dueTd, textAlign: 'right', fontWeight: 600 }}>
-                              Ã¢â€šÂ¹{v.charge || 0}
+                              ₹{v.charge || 0}
                             </td>
                             <td style={{ ...styles.dueTd, textAlign: 'right', color: '#16A34A', fontWeight: 600 }}>
-                              Ã¢â€šÂ¹{v.received || 0}
+                              ₹{v.received || 0}
                             </td>
                             <td style={{ ...styles.dueTd, textAlign: 'right', color: isDue ? '#DC2626' : '#16A34A', fontWeight: 700 }}>
-                              Ã¢â€šÂ¹{v.due || 0}
+                              ₹{v.due || 0}
                             </td>
                             <td style={{ ...styles.dueTd, textAlign: 'center' }}>
                               <span
@@ -5795,7 +5791,7 @@ export const PatientRecord = ({
                                   color: isDue ? '#DC2626' : '#16A34A',
                                 }}
                               >
-                                {isDue ? `Pending: Ã¢â€šÂ¹${v.due}` : 'Ã¢Å“â€œ Settled'}
+                                {isDue ? `Pending: ₹${v.due}` : '✓ Settled'}
                               </span>
                             </td>
                             <td style={{ ...styles.dueTd, textAlign: 'center' }}>
@@ -5890,7 +5886,7 @@ export const PatientRecord = ({
                         color: (currentPatient.family?.familyDue || familyData?.family?.familyDue || 0) > 0 ? '#DC2626' : '#16A34A',
                       }}
                     >
-                      Ã¢â€šÂ¹{currentPatient.family?.familyDue || familyData?.family?.familyDue || 0}
+                      ₹{currentPatient.family?.familyDue || familyData?.family?.familyDue || 0}
                     </span>
                   </div>
                   <div style={styles.dueKpiCard}>
@@ -6004,7 +6000,7 @@ export const PatientRecord = ({
                                     fontWeight: 700,
                                   }}
                                 >
-                                  {hasDue ? `Due: Ã¢â€šÂ¹${m.totalDue}` : 'Ã¢Å“â€œ Settled'}
+                                  {hasDue ? `Due: ₹${m.totalDue}` : '✓ Settled'}
                                 </span>
                               </td>
                               <td style={{ ...styles.dueTd, textAlign: 'center' }}>
@@ -6079,13 +6075,13 @@ export const PatientRecord = ({
                                     </div>
                                   </td>
                                   <td style={{ ...styles.dueTd, textAlign: 'right', fontWeight: 600 }}>
-                                    Ã¢â€šÂ¹{v.charge || 0}
+                                    ₹{v.charge || 0}
                                   </td>
                                   <td style={{ ...styles.dueTd, textAlign: 'right', color: '#16A34A', fontWeight: 600 }}>
-                                    Ã¢â€šÂ¹{v.received || 0}
+                                    ₹{v.received || 0}
                                   </td>
                                   <td style={{ ...styles.dueTd, textAlign: 'right', color: '#DC2626', fontWeight: 700 }}>
-                                    Ã¢â€šÂ¹{v.due || 0}
+                                    ₹{v.due || 0}
                                   </td>
                                   <td style={{ ...styles.dueTd, textAlign: 'center' }}>
                                     <button
@@ -6114,7 +6110,7 @@ export const PatientRecord = ({
                 {/* Footer */}
                 <div style={styles.dueModalFooter}>
                   <div style={{ fontSize: 11, color: '#64748B' }}>
-                    Family ID: <strong>FAM-{currentPatient.familyId}</strong> &bull; Total Pending: <strong style={{ color: '#DC2626' }}>Ã¢â€šÂ¹{currentPatient.family?.familyDue || familyData?.family?.familyDue || 0}</strong>
+                    Family ID: <strong>FAM-{currentPatient.familyId}</strong> &bull; Total Pending: <strong style={{ color: '#DC2626' }}>₹{currentPatient.family?.familyDue || familyData?.family?.familyDue || 0}</strong>
                   </div>
                   <button
                     type="button"
