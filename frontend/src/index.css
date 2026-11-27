@@ -81,8 +81,7 @@ input:focus, select:focus, textarea:focus {
 @media screen {
   .print-only,
   #printable-cert,
-  #printable-report,
-  #printable-lab-report {
+  #printable-report {
     display: none !important;
   }
 }
