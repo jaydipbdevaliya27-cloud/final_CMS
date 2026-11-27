@@ -110,6 +110,30 @@ export const cleanupCompositeMasterData = async () => {
       }
       console.log('[Master Data] Seeded default navigation shortcuts.');
     }
+
+    // Seed default SOS instruction entries if none exist
+    const sosCount = await MasterData.countDocuments({ type: 'sos' });
+    if (sosCount === 0) {
+      const defaultSos = [
+        { value: 'Only if severe pain', shortcut: 'PAIN' },
+        { value: 'Only if fever > 100°F', shortcut: 'FEV' },
+        { value: 'When headache occurs', shortcut: 'HEAD' },
+        { value: 'If vomiting occurs', shortcut: 'VOM' },
+        { value: 'At bedtime if needed', shortcut: 'BED' },
+        { value: 'Only during cough attack', shortcut: 'COF' },
+        { value: 'If gas or acidity occurs', shortcut: 'GAS' },
+        { value: 'તાવ આવે ત્યારે', shortcut: 'TAV' },
+        { value: 'દુખાવો થાય ત્યારે', shortcut: 'DUKH' },
+      ];
+      for (const s of defaultSos) {
+        await MasterData.create({
+          type: 'sos',
+          value: s.value,
+          shortcut: s.shortcut,
+        });
+      }
+      console.log('[Master Data] Seeded default SOS instruction entries.');
+    }
   } catch (e) {
     console.error('Error cleaning composite master data:', e.message);
   }

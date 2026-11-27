@@ -581,6 +581,7 @@ export const PatientRecord = ({
     preloadMasterData('investigation');
     preloadMasterData('allergy');
     preloadMasterData('ipd');
+    preloadMasterData('sos');
     preloadMasterData('area');
     preloadMasterData('society');
     preloadMasterData('dietary').then((items) => {
@@ -1458,10 +1459,11 @@ export const PatientRecord = ({
   const handleAddIpdDetail = (valToAdd = null) => {
     const raw = (typeof valToAdd === 'string' && valToAdd.trim() ? valToAdd : tempIpd).trim();
     if (!raw) return;
+    const resolvedIpd = resolveMasterShortcut('ipd', raw);
     setVisitForm((prev) => {
       const current = prev || visitFormRef.current || visitForm;
       const list = current.ipdDetails || [];
-      const updatedList = [...list, raw];
+      const updatedList = [...list, resolvedIpd];
       const updated = { ...current, ipdDetails: updatedList };
       visitFormRef.current = updated;
       return updated;
@@ -1508,6 +1510,8 @@ export const PatientRecord = ({
     const med = (rxForm.medicine || '').trim();
     if (!med) return;
     const resolvedMed = resolveMasterShortcut('medicine', med);
+    const rawSos = (rxForm.sosInstruction || '').trim();
+    const resolvedSos = rawSos ? resolveMasterShortcut('sos', rawSos) : '';
     const newRx = {
       id: Date.now() + '-' + Math.random(),
       medicine: resolvedMed,
@@ -1517,7 +1521,7 @@ export const PatientRecord = ({
       evening: String(rxForm.evening || '1').trim(),
       night: String(rxForm.night || '0').trim(),
       timing: rxForm.timing || 'AF',
-      sosInstruction: (rxForm.sosInstruction || '').trim(),
+      sosInstruction: resolvedSos,
     };
     setVisitForm((prev) => {
       const current = prev || visitFormRef.current || visitForm;
@@ -3348,7 +3352,7 @@ export const PatientRecord = ({
                   <MasterDataInput
                     ref={ipdInputRef}
                     inputRef={ipdInputRef}
-                    type="medicine"
+                    type="ipd"
                     value={tempIpd}
                     onChange={(val) => setTempIpd(val)}
                     onTabEmptyNext={() => {
@@ -3748,38 +3752,29 @@ export const PatientRecord = ({
                   </select>
                 </div>
 
-                {/* Custom SOS Datalist Input (Shown when SOS is selected) */}
+                {/* Custom SOS MasterData Input (Shown when SOS is selected) */}
                 {rxForm.timing === 'SOS' && (
-                  <div style={{ width: '135px', flexShrink: 0 }}>
-                    <input
-                      type="text"
-                      list="sosSuggestionsList"
+                  <div style={{ width: '165px', flexShrink: 0 }}>
+                    <MasterDataInput
+                      type="sos"
                       value={rxForm.sosInstruction || ''}
-                      onChange={(e) => setRxForm((prev) => ({ ...prev, sosInstruction: e.target.value }))}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
+                      onChange={(val) => setRxForm((prev) => ({ ...prev, sosInstruction: val }))}
+                      onSelectCallback={(chosen) => setRxForm((prev) => ({ ...prev, sosInstruction: chosen }))}
+                      onEnterNext={(chosen) => {
+                        const val = typeof chosen === 'string' && chosen.trim() ? chosen.trim() : (rxForm.sosInstruction || '').trim();
+                        if (val) {
+                          rxForm.sosInstruction = resolveMasterShortcut('sos', val);
+                        }
+                        handleAddPrescriptionItem();
+                      }}
+                      onTabEmptyNext={() => {
+                        if (rxForm.medicine && rxForm.medicine.trim()) {
                           handleAddPrescriptionItem();
-                        } else if (e.key === 'Tab' && !e.shiftKey) {
-                          if (rxForm.medicine && rxForm.medicine.trim()) {
-                            e.preventDefault();
-                            handleAddPrescriptionItem();
-                          }
                         }
                       }}
-                      placeholder="Custom SOS (e.g. In severe pain)..."
-                      style={styles.photoInput}
+                      placeholder="SOS (e.g. PAIN, In severe pain)..."
+                      inputStyle={styles.photoInput}
                     />
-                    <datalist id="sosSuggestionsList">
-                      <option value="Only if severe pain" />
-                      <option value="Only if fever > 100°F" />
-                      <option value="When headache occurs" />
-                      <option value="If vomiting occurs" />
-                      <option value="At bedtime if needed" />
-                      <option value="Only during cough attack" />
-                      <option value="If gas or acidity occurs" />
-                      <option value="When needed for allergy" />
-                    </datalist>
                   </div>
                 )}
                 <button

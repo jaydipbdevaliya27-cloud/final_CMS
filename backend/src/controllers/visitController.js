@@ -74,7 +74,12 @@ const dispatchAutoSaveMasterData = (complaint, investigation, cleanPrescriptions
         investigation.split(',').forEach((i) => { if (i.trim()) tasks.push(autoSaveMasterItem('investigation', i.trim())); });
       }
       if (Array.isArray(cleanPrescriptions)) {
-        cleanPrescriptions.forEach((rx) => { if (rx.medicine) tasks.push(autoSaveMasterItem('medicine', rx.medicine)); });
+        cleanPrescriptions.forEach((rx) => {
+          if (rx.medicine) tasks.push(autoSaveMasterItem('medicine', rx.medicine));
+          if (rx.timing === 'SOS' && rx.sosInstruction && rx.sosInstruction.trim()) {
+            tasks.push(autoSaveMasterItem('sos', rx.sosInstruction.trim()));
+          }
+        });
       }
       if (Array.isArray(cleanTreatments)) {
         cleanTreatments.forEach((tr) => { if (tr.item) tasks.push(autoSaveMasterItem('medicine', tr.item)); });
@@ -82,7 +87,7 @@ const dispatchAutoSaveMasterData = (complaint, investigation, cleanPrescriptions
       if (Array.isArray(ipdDetails)) {
         ipdDetails.forEach((ipdItem) => {
           const itemVal = typeof ipdItem === 'string' ? ipdItem : ipdItem?.item;
-          if (itemVal && itemVal.trim()) tasks.push(autoSaveMasterItem('medicine', itemVal.trim()));
+          if (itemVal && itemVal.trim()) tasks.push(autoSaveMasterItem('ipd', itemVal.trim()));
         });
       }
       if (dietary && typeof dietary === 'string') {
