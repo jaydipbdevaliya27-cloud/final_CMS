@@ -501,24 +501,19 @@ export const PatientRecord = ({
     }
   }, [isActiveTab]);
 
-  // Age calculation helper in Years, Months, and Days
+  // Age calculation helper in Years, Months, and Days (relative to Entry Date)
   const calculateDetailedAge = (dobString) => {
-    return calculateContinuousAge(patientAge, patientAgeRecordedAt, dobString);
+    return calculateContinuousAge(patientAge, patientAgeRecordedAt, dobString, visitForm.visitDate || null);
   };
 
   const handleDobChange = (dobVal) => {
     setPatientDob(dobVal);
     setAgeManuallyEdited(false);
     if (dobVal) {
-      const birthDate = new Date(dobVal);
-      if (!isNaN(birthDate.getTime())) {
-        const today = new Date();
-        let y = today.getFullYear() - birthDate.getFullYear();
-        const m = today.getMonth() - birthDate.getMonth();
-        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-          y--;
-        }
-        setPatientAge(String(Math.max(0, y)));
+      const detailed = calculateContinuousAge('', null, dobVal, visitForm.visitDate || null);
+      const yMatch = detailed.match(/^(\d+)Y/i);
+      if (yMatch) {
+        setPatientAge(yMatch[1]);
         setPatientAgeRecordedAt(null);
       }
     }
@@ -2621,7 +2616,15 @@ export const PatientRecord = ({
                   <input
                     type="date"
                     value={visitForm.visitDate}
-                    onChange={(e) => updateFormField('visitDate', e.target.value)}
+                    onChange={(e) => {
+                      const nextDate = e.target.value;
+                      updateFormField('visitDate', nextDate);
+                      if (patientDob) {
+                        const detailed = calculateContinuousAge('', null, patientDob, nextDate || null);
+                        const yMatch = detailed.match(/^(\d+)Y/i);
+                        if (yMatch) setPatientAge(yMatch[1]);
+                      }
+                    }}
                     onKeyDown={(e) => handlePatientDetailEnter(e, visitForm.visitDate, patientSearchInputRef)}
                     style={{
                       ...styles.photoInput,
@@ -5819,7 +5822,8 @@ export const PatientRecord = ({
                         {calculateContinuousAge(
                           currentPatient?.age || printVisit.age,
                           currentPatient?.ageRecordedAt || currentPatient?.createdAt || currentPatient?.updatedAt,
-                          patientDob || currentPatient?.dob || printVisit.dob
+                          patientDob || currentPatient?.dob || printVisit.dob,
+                          visitForm.visitDate || printVisit.visitDate || null
                         ) || '—'}
                       </span>
                     </div>

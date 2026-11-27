@@ -5,7 +5,19 @@
  *   so an age saved as 19 becomes "19Y 2M" after 2 months.
  */
 
-export const calculateAgeFromDob = (dobString) => {
+const parseLocalDate = (dateInput) => {
+  if (!dateInput) return new Date();
+  if (dateInput instanceof Date) return isNaN(dateInput.getTime()) ? new Date() : dateInput;
+  const str = String(dateInput).trim();
+  const ymdMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (ymdMatch) {
+    return new Date(Number(ymdMatch[1]), Number(ymdMatch[2]) - 1, Number(ymdMatch[3]));
+  }
+  const parsed = new Date(str);
+  return isNaN(parsed.getTime()) ? new Date() : parsed;
+};
+
+export const calculateAgeFromDob = (dobString, asOfDate = null) => {
   if (!dobString) return '';
   const str = String(dobString).trim();
   const ymdMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -14,7 +26,7 @@ export const calculateAgeFromDob = (dobString) => {
     : new Date(str);
   if (isNaN(birthDate.getTime())) return '';
 
-  const today = new Date();
+  const today = parseLocalDate(asOfDate);
   let years = today.getFullYear() - birthDate.getFullYear();
   let months = today.getMonth() - birthDate.getMonth();
   let days = today.getDate() - birthDate.getDate();
@@ -33,9 +45,9 @@ export const calculateAgeFromDob = (dobString) => {
   return `${years}Y ${months}M ${days}D`;
 };
 
-export const calculateContinuousAge = (baseAgeStr, ageRecordedAt = null, dobString = '') => {
+export const calculateContinuousAge = (baseAgeStr, ageRecordedAt = null, dobString = '', asOfDate = null) => {
   if (dobString && String(dobString).trim()) {
-    return calculateAgeFromDob(dobString);
+    return calculateAgeFromDob(dobString, asOfDate);
   }
 
   const raw = String(baseAgeStr || '').trim();
@@ -60,9 +72,9 @@ export const calculateContinuousAge = (baseAgeStr, ageRecordedAt = null, dobStri
 
   let elapsedMonths = 0;
   if (ageRecordedAt) {
-    const refDate = new Date(ageRecordedAt);
+    const refDate = parseLocalDate(ageRecordedAt);
     if (!isNaN(refDate.getTime())) {
-      const today = new Date();
+      const today = parseLocalDate(asOfDate);
       elapsedMonths =
         (today.getFullYear() - refDate.getFullYear()) * 12 +
         (today.getMonth() - refDate.getMonth());
