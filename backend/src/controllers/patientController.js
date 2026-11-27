@@ -68,7 +68,7 @@ export const addPatientMember = async (req, res) => {
         registrationDoneBy: 'Individual Patient',
       });
 
-      if (newPatient.area) await autoSaveMasterItem('area', newPatient.area);
+      if (newPatient.area || newPatient.society) await autoSaveMasterItem('area', newPatient.area || newPatient.society);
       if (patientAllergies.length > 0) {
         for (const al of patientAllergies) {
           await autoSaveMasterItem('allergy', al);
@@ -126,7 +126,7 @@ export const addPatientMember = async (req, res) => {
     await family.save();
 
     // Auto-save any new area or allergies to Master Data
-    if (newPatient.area) await autoSaveMasterItem('area', newPatient.area);
+    if (newPatient.area || newPatient.society) await autoSaveMasterItem('area', newPatient.area || newPatient.society);
     if (patientAllergies.length > 0) {
       for (const al of patientAllergies) {
         await autoSaveMasterItem('allergy', al);

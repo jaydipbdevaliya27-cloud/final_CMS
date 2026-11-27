@@ -2179,7 +2179,7 @@ export const PatientRecord = ({
               phone: String(patientPhone || '').trim(),
               houseNo: upper(patientHouseNo),
               society: upper(patientSociety),
-              area: upper(patientArea),
+              area: upper(patientArea || patientSociety),
             });
           } else if (familyHeadName && familyHeadName.trim()) {
             regRes = await familyAPI.registerHead({
@@ -2191,7 +2191,7 @@ export const PatientRecord = ({
               phone: String(patientPhone || '').trim(),
               houseNo: upper(patientHouseNo),
               society: upper(patientSociety),
-              area: upper(patientArea),
+              area: upper(patientArea || patientSociety),
             });
           } else {
             regRes = await patientAPI.addMember({
@@ -2204,7 +2204,7 @@ export const PatientRecord = ({
               phone: String(patientPhone || '').trim(),
               houseNo: upper(patientHouseNo),
               society: upper(patientSociety),
-              area: upper(patientArea),
+              area: upper(patientArea || patientSociety),
             });
           }
 
@@ -2261,7 +2261,7 @@ export const PatientRecord = ({
         phone: String(patientPhone || '').trim(),
         houseNo: upper(patientHouseNo),
         society: upper(patientSociety),
-        area: upper(patientArea),
+        area: upper(patientArea || patientSociety),
         bp: upper(form.bp),
         sugar: upper(form.sugar),
         other: upper(form.other),

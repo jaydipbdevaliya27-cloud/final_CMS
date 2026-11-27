@@ -95,8 +95,11 @@ const dispatchAutoSaveMasterData = (complaint, investigation, cleanPrescriptions
       if (dietary && typeof dietary === 'string') {
         dietary.split(',').forEach((d) => { if (d.trim()) tasks.push(autoSaveMasterItem('dietary', d.trim())); });
       }
-      if (reqBody.area && typeof reqBody.area === 'string' && reqBody.area.trim()) {
-        tasks.push(autoSaveMasterItem('area', reqBody.area.trim()));
+      const areaToSave = (reqBody.area && typeof reqBody.area === 'string' && reqBody.area.trim())
+        || (reqBody.society && typeof reqBody.society === 'string' && reqBody.society.trim())
+        || '';
+      if (areaToSave) {
+        tasks.push(autoSaveMasterItem('area', areaToSave));
       }
       if (Array.isArray(allergies)) {
         allergies.forEach((alg) => {
