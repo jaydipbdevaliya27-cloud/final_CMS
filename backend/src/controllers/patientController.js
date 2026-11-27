@@ -87,8 +87,7 @@ export const addPatientMember = async (req, res) => {
     family.membersCount = nextSeq;
     await family.save();
 
-    // Auto-save any new society, area, or allergies to Master Data
-    if (newPatient.society) await autoSaveMasterItem('society', newPatient.society);
+    // Auto-save any new area or allergies to Master Data
     if (newPatient.area) await autoSaveMasterItem('area', newPatient.area);
     if (patientAllergies.length > 0) {
       for (const al of patientAllergies) {
@@ -378,7 +377,6 @@ export const updatePatient = async (req, res) => {
     }
 
     // Auto-save updated Master Data
-    if (patient.society) await autoSaveMasterItem('society', patient.society);
     if (patient.area) await autoSaveMasterItem('area', patient.area);
     if (patient.allergies?.length > 0) {
       for (const al of patient.allergies) {

@@ -138,9 +138,6 @@ export const registerFamilyHead = async (req, res) => {
     });
 
     // 3. Auto-save location & allergy entries into Master Data for future autocomplete
-    if (society) {
-      await autoSaveMasterItem('society', society);
-    }
     if (area) {
       await autoSaveMasterItem('area', area);
     }
@@ -355,8 +352,7 @@ export const updateFamily = async (req, res) => {
       { new: true }
     );
 
-    // Auto-save any new society, area, or allergies to Master Data
-    if (family.society) await autoSaveMasterItem('society', family.society);
+    // Auto-save any new area or allergies to Master Data
     if (family.area) await autoSaveMasterItem('area', family.area);
     if (patientAllergies.length > 0) {
       for (const al of patientAllergies) {

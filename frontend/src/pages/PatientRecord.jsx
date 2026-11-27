@@ -583,7 +583,6 @@ export const PatientRecord = ({
     preloadMasterData('ipd');
     preloadMasterData('sos');
     preloadMasterData('area');
-    preloadMasterData('society');
     preloadMasterData('dietary').then((items) => {
       if (Array.isArray(items) && items.length > 0) {
         setDietaryMasterList(items);
@@ -4831,7 +4830,7 @@ export const PatientRecord = ({
                 <div style={styles.formGroup}>
                   <label style={styles.formLabel}>Society / Flat</label>
                   <MasterDataInput
-                    type="society"
+                    type="area"
                     value={editFormData.society}
                     onChange={(val) =>
                       setEditFormData({ ...editFormData, society: val })

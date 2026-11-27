@@ -503,7 +503,7 @@ export const FamilyHeadRegistration = ({ onNavigateToAddMember, onNavigateToPati
               <div style={styles.inputGroup}>
                 <label style={styles.label}>SOCIETY / FLAT</label>
                 <MasterDataInput
-                  type="society"
+                  type="area"
                   placeholder="e.g. Shanti Niketan"
                   value={formData.society}
                   onChange={(val) => handleInputChange('society', val)}

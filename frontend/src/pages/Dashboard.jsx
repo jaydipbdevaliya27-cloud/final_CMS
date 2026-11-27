@@ -119,7 +119,7 @@ export const Dashboard = () => {
   // Background pre-fetch all clinical master data & patients into RAM for instant 0ms search
   useEffect(() => {
     preloadPatients().catch(() => {});
-    const categories = ['medicine', 'complaint', 'investigation', 'dietary', 'allergy', 'navigation', 'society', 'area'];
+    const categories = ['medicine', 'complaint', 'investigation', 'dietary', 'allergy', 'navigation', 'area'];
     categories.forEach((cat) => {
       preloadMasterData(cat).catch(() => {});
     });

@@ -588,7 +588,7 @@ export const AddMember = ({ initialFamilyId, onProceedToCaseEntry, onNavigateToF
                   SOCIETY / FLAT <span style={styles.autoFilledTag}>(AUTO-FILLED, EDITABLE)</span>
                 </label>
                 <MasterDataInput
-                  type="society"
+                  type="area"
                   placeholder="e.g. Shanti Niketan"
                   value={formData.society}
                   onChange={(val) => handleInputChange('society', val)}
