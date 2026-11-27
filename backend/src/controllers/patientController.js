@@ -136,7 +136,8 @@ export const getPatients = async (req, res) => {
       searchUpper = rawSearch.toUpperCase();
       const tokens = rawSearch.split(/\s+/).filter(Boolean);
 
-      const isFamExplicit = /^fam[-\s]*/i.test(rawSearch);
+      const isFamExplicit = /^fam[-\s]*\d+/i.test(rawSearch);
+      const isPidExplicit = /^p[-\s]*\d+/i.test(rawSearch);
       const famStripped = rawSearch.replace(/^fam[-\s]*/i, '').trim();
       const pidStripped = rawSearch.replace(/^p[-\s]*/i, '').trim();
       const isDigitsOnly = /^\d+$/.test(rawSearch);
@@ -155,7 +156,7 @@ export const getPatients = async (req, res) => {
           { phone: new RegExp(escapeRegex(rawSearch), 'i') },
           { patientId: new RegExp(escapeRegex(rawSearch), 'i') },
         ];
-      } else if (/^p[-\s]*/i.test(rawSearch) && pidStripped) {
+      } else if (isPidExplicit && pidStripped) {
         // Explicit patient ID search (e.g. P-00001)
         query.patientId = new RegExp(escapeRegex(pidStripped), 'i');
       } else {

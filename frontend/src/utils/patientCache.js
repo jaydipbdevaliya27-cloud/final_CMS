@@ -172,7 +172,7 @@ export const searchPatientsInMemory = (rawQuery, maxResults = 35) => {
   if (tokens.length === 0) return [];
 
   const isPureDigits = /^\d+$/.test(query);
-  const isPidQuery = query.startsWith('P-') || query.startsWith('PAT-') || (query.startsWith('P') && /^\d+$/.test(query.slice(1)));
+  const isPidQuery = /^(P|PAT)[-\s]*\d+/i.test(query) || /^P\d+$/i.test(query);
 
   const exactMatches = [];
   const namePrefixMatches = [];
@@ -228,4 +228,60 @@ export const searchPatientsInMemory = (rawQuery, maxResults = 35) => {
   nameTokenMatches.sort((a, b) => a._nameUpper.length - b._nameUpper.length || a._nameUpper.localeCompare(b._nameUpper));
 
   return [...exactMatches, ...namePrefixMatches, ...nameTokenMatches, ...idOrPhoneMatches].slice(0, maxResults);
+};
+
+/**
+ * Fast in-memory search for unique Families / Family Heads from cached patients.
+ */
+export const searchFamiliesInMemory = (rawQuery = '', maxResults = 25) => {
+  if (!Array.isArray(patientCache) || patientCache.length === 0) return [];
+  const query = (rawQuery || '').trim().toUpperCase();
+  const tokens = query ? query.split(/\s+/).filter(Boolean) : [];
+
+  const famMap = new Map();
+  for (let i = 0; i < patientCache.length; i++) {
+    const p = patientCache[i];
+    const famId = String(p.familyId || p.family?.familyId || '').trim();
+    if (!famId || famId === 'NEW') continue;
+
+    if (!famMap.has(famId)) {
+      const headName = String(
+        p.family?.headName || (p.isHead ? p.name : '') || ''
+      ).trim();
+      famMap.set(famId, {
+        familyId: famId,
+        headName: headName || p.name || 'Family Head',
+        society: p.family?.society || p.society || '',
+        area: p.family?.area || p.area || '',
+        houseNo: p.family?.houseNo || p.houseNo || '',
+        phone: p.family?.phone || p.phone || '',
+        familyDue: p.family?.familyDue ?? p.totalDue ?? 0,
+      });
+    } else if (p.isHead && p.name) {
+      const existing = famMap.get(famId);
+      if (!existing.headName || existing.headName === 'Family Head') {
+        existing.headName = p.name;
+      }
+    }
+  }
+
+  const allFamilies = Array.from(famMap.values());
+  if (tokens.length === 0) {
+    return allFamilies.slice(0, maxResults);
+  }
+
+  const matches = allFamilies.filter((fam) => {
+    const hay = `${fam.headName} FAM-${fam.familyId} ${fam.familyId} ${fam.phone} ${fam.area} ${fam.society}`.toUpperCase();
+    return tokens.every((t) => hay.includes(t));
+  });
+
+  matches.sort((a, b) => {
+    const aStarts = (a.headName || '').toUpperCase().startsWith(query);
+    const bStarts = (b.headName || '').toUpperCase().startsWith(query);
+    if (aStarts && !bStarts) return -1;
+    if (!aStarts && bStarts) return 1;
+    return (a.headName || '').localeCompare(b.headName || '');
+  });
+
+  return matches.slice(0, maxResults);
 };

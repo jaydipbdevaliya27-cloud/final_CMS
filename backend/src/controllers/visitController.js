@@ -139,38 +139,120 @@ export const recordVisit = async (req, res) => {
     let finalPatientId = patientId;
     let finalFamilyId = familyId;
 
-    // Auto-create Family and Patient if new unregistered patient
+    // Auto-create Family and/or Patient if new unregistered patient
     if ((!finalPatientId || finalPatientId === 'NEW' || !finalFamilyId || finalFamilyId === 'NEW') && patientName && patientName.trim()) {
       try {
-        const nextFamId = await getNextFamilyIdValue();
-        const patId = `P-${nextFamId}-1`;
-        await Family.create({
-          familyId: nextFamId,
-          headName: patientName.trim(),
-          phone: req.body.phone || '',
-          houseNo: req.body.houseNo || '',
-          society: req.body.society || '',
-          area: req.body.area || '',
-          age: req.body.age ? String(req.body.age).trim() : '',
-          gender: req.body.gender || 'Male',
-        });
-        const createdPat = await Patient.create({
-          patientId: patId,
-          familyId: nextFamId,
-          name: patientName.trim(),
-          isHead: true,
-          relation: 'Self',
-          phone: req.body.phone || '',
-          houseNo: req.body.houseNo || '',
-          society: req.body.society || '',
-          area: req.body.area || '',
-          age: req.body.age ? String(req.body.age).trim() : '',
-          dob: req.body.dob || '',
-          gender: req.body.gender || 'Male',
-          allergies: Array.isArray(allergies) ? allergies : (allergies ? [allergies] : []),
-        });
-        finalPatientId = patId;
-        finalFamilyId = nextFamId;
+        const cleanPatName = patientName.trim();
+        const requestedHeadName = (req.body.familyHeadName && String(req.body.familyHeadName).trim())
+          ? String(req.body.familyHeadName).trim()
+          : cleanPatName;
+
+        // Case A: Joining an EXISTING Family Head
+        if (finalFamilyId && finalFamilyId !== 'NEW') {
+          const existingFamily = await Family.findOne({ familyId: finalFamilyId });
+          if (existingFamily) {
+            const existingCount = await Patient.countDocuments({ familyId: finalFamilyId });
+            let nextSeq = existingCount + 1;
+            let patId = `P-${finalFamilyId}-${nextSeq}`;
+            while (await Patient.exists({ patientId: patId })) {
+              nextSeq += 1;
+              patId = `P-${finalFamilyId}-${nextSeq}`;
+            }
+
+            await Patient.create({
+              patientId: patId,
+              familyId: finalFamilyId,
+              name: cleanPatName,
+              isHead: false,
+              relation: 'Member',
+              phone: req.body.phone || existingFamily.phone || '',
+              houseNo: req.body.houseNo || existingFamily.houseNo || '',
+              society: req.body.society || existingFamily.society || '',
+              area: req.body.area || existingFamily.area || '',
+              age: req.body.age ? String(req.body.age).trim() : '',
+              dob: req.body.dob || '',
+              gender: req.body.gender || 'Male',
+              allergies: Array.isArray(allergies) ? allergies : (allergies ? [allergies] : []),
+            });
+            existingFamily.membersCount = nextSeq;
+            await existingFamily.save();
+            finalPatientId = patId;
+          } else {
+            finalFamilyId = 'NEW';
+          }
+        }
+
+        // Case B: Creating a BRAND NEW Family (either self as head, or a different new family head)
+        if (!finalFamilyId || finalFamilyId === 'NEW') {
+          const nextFamId = await getNextFamilyIdValue();
+          const isSameAsPatient = requestedHeadName.toUpperCase() === cleanPatName.toUpperCase();
+
+          await Family.create({
+            familyId: nextFamId,
+            headName: requestedHeadName,
+            phone: req.body.phone || '',
+            houseNo: req.body.houseNo || '',
+            society: req.body.society || '',
+            area: req.body.area || '',
+            age: isSameAsPatient && req.body.age ? String(req.body.age).trim() : '',
+            gender: req.body.gender || 'Male',
+            membersCount: isSameAsPatient ? 1 : 2,
+          });
+
+          if (isSameAsPatient) {
+            const patId = `P-${nextFamId}-1`;
+            await Patient.create({
+              patientId: patId,
+              familyId: nextFamId,
+              name: cleanPatName,
+              isHead: true,
+              relation: 'Self',
+              phone: req.body.phone || '',
+              houseNo: req.body.houseNo || '',
+              society: req.body.society || '',
+              area: req.body.area || '',
+              age: req.body.age ? String(req.body.age).trim() : '',
+              dob: req.body.dob || '',
+              gender: req.body.gender || 'Male',
+              allergies: Array.isArray(allergies) ? allergies : (allergies ? [allergies] : []),
+            });
+            finalPatientId = patId;
+          } else {
+            // Create the new Family Head first, then the patient as a member under that family
+            const headPatId = `P-${nextFamId}-1`;
+            await Patient.create({
+              patientId: headPatId,
+              familyId: nextFamId,
+              name: requestedHeadName,
+              isHead: true,
+              relation: 'Self',
+              phone: req.body.phone || '',
+              houseNo: req.body.houseNo || '',
+              society: req.body.society || '',
+              area: req.body.area || '',
+              gender: 'Male',
+            });
+
+            const memberPatId = `P-${nextFamId}-2`;
+            await Patient.create({
+              patientId: memberPatId,
+              familyId: nextFamId,
+              name: cleanPatName,
+              isHead: false,
+              relation: 'Member',
+              phone: req.body.phone || '',
+              houseNo: req.body.houseNo || '',
+              society: req.body.society || '',
+              area: req.body.area || '',
+              age: req.body.age ? String(req.body.age).trim() : '',
+              dob: req.body.dob || '',
+              gender: req.body.gender || 'Male',
+              allergies: Array.isArray(allergies) ? allergies : (allergies ? [allergies] : []),
+            });
+            finalPatientId = memberPatId;
+          }
+          finalFamilyId = nextFamId;
+        }
       } catch (autoErr) {
         console.error('Error auto-creating patient in recordVisit:', autoErr.message);
       }

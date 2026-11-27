@@ -9,6 +9,7 @@ import {
 import {
   preloadPatients,
   searchPatientsInMemory,
+  searchFamiliesInMemory,
   updateCachedPatient,
 } from '../utils/patientCache';
 import { useDebounce } from '../hooks/useDebounce';
@@ -249,6 +250,14 @@ export const PatientRecord = ({
   const patientSearchInputRef = useRef(null);
   const ageInputRef = useRef(null);
   const [recentPatientsList, setRecentPatientsList] = useState([]);
+
+  // --- Family Head Selection State for New Patients ---
+  const [familyHeadName, setFamilyHeadName] = useState('');
+  const [selectedFamily, setSelectedFamily] = useState(null);
+  const [familyHeadResults, setFamilyHeadResults] = useState([]);
+  const [showFamilyHeadDropdown, setShowFamilyHeadDropdown] = useState(false);
+  const [familyHeadHighlightIndex, setFamilyHeadHighlightIndex] = useState(0);
+  const familyHeadWrapRef = useRef(null);
 
   const [currentPatient, setCurrentPatient] = useState(null);
   const [patientVisits, setPatientVisits] = useState([]);
@@ -1089,6 +1098,9 @@ export const PatientRecord = ({
       if (searchWrapRef.current && !searchWrapRef.current.contains(e.target)) {
         setShowSearchDropdown(false);
       }
+      if (familyHeadWrapRef.current && !familyHeadWrapRef.current.contains(e.target)) {
+        setShowFamilyHeadDropdown(false);
+      }
       if (dietaryCodeWrapRef.current && !dietaryCodeWrapRef.current.contains(e.target)) {
         setShowDietaryDropdown(false);
       }
@@ -1125,6 +1137,12 @@ export const PatientRecord = ({
     if (!patient) return;
     if (!patient.isNewPatient) {
       addToRecentSearched(patient);
+      const existingHead = patient.family?.headName || (patient.isHead ? patient.name : '');
+      setFamilyHeadName(existingHead);
+      setSelectedFamily(
+        patient.family || (patient.familyId ? { familyId: patient.familyId, headName: existingHead } : null)
+      );
+      setShowFamilyHeadDropdown(false);
     }
     setCurrentPatient(patient);
     setPatientDob(patient.dob || '');
@@ -1141,6 +1159,48 @@ export const PatientRecord = ({
     }
   };
 
+  // --- Search & Select Family Head for New Patient ---
+  const handleFamilyHeadSearchChange = async (val) => {
+    setFamilyHeadName(val);
+    setSelectedFamily(null);
+    setFamilyHeadHighlightIndex(0);
+    const instantFams = searchFamiliesInMemory(val, 20);
+    setFamilyHeadResults(instantFams);
+    setShowFamilyHeadDropdown(true);
+
+    if (val && val.trim().length >= 2) {
+      try {
+        const res = await familyAPI.getAll(val.trim());
+        if (res?.success && Array.isArray(res.data)) {
+          const mapped = res.data.slice(0, 20).map((f) => ({
+            familyId: f.familyId,
+            headName: f.headName || 'Family Head',
+            society: f.society || '',
+            area: f.area || '',
+            houseNo: f.houseNo || '',
+            phone: f.phone || '',
+            familyDue: f.familyDue ?? 0,
+          }));
+          setFamilyHeadResults(mapped);
+        }
+      } catch (err) {
+        // Keep instant RAM matches on network failure
+      }
+    }
+  };
+
+  const handleSelectExistingFamilyHead = (fam) => {
+    if (!fam) return;
+    setSelectedFamily(fam);
+    setFamilyHeadName(fam.headName || '');
+    setShowFamilyHeadDropdown(false);
+    // Auto-populate address & phone from selected family if currently blank
+    if (!patientHouseNo && fam.houseNo) setPatientHouseNo(fam.houseNo);
+    if (!patientSociety && fam.society) setPatientSociety(fam.society);
+    if (!patientArea && fam.area) setPatientArea(fam.area);
+    if (!patientPhone && fam.phone) setPatientPhone(fam.phone);
+  };
+
   // --- Immediate inline creation of a new patient directly from search input ---
   const handleCreateNewPatientEntry = (nameToUse = null) => {
     const raw = (nameToUse || patientSearch || '').trim();
@@ -1148,6 +1208,10 @@ export const PatientRecord = ({
     const newName = raw.toUpperCase();
     setShowSearchDropdown(false);
     setPatientSearch('');
+    setFamilyHeadName(newName);
+    setSelectedFamily(null);
+    setFamilyHeadResults(searchFamiliesInMemory(newName, 20));
+    setShowFamilyHeadDropdown(false);
     const newPat = {
       name: newName,
       patientId: 'NEW',
@@ -1157,7 +1221,7 @@ export const PatientRecord = ({
       deposit: 0,
     };
     handleSelectPatient(newPat, true);
-    showToast(`New patient "${newName}" initialized. Enter Age & details to proceed.`);
+    showToast(`New patient "${newName}" initialized. Family Head set to "${newName}" (change or choose existing if needed).`);
     setTimeout(() => {
       if (ageInputRef.current) {
         ageInputRef.current.focus();
@@ -1172,6 +1236,10 @@ export const PatientRecord = ({
   const handleClearActivePatient = () => {
     setCurrentPatient(null);
     currentPatientRef.current = null;
+    setFamilyHeadName('');
+    setSelectedFamily(null);
+    setFamilyHeadResults([]);
+    setShowFamilyHeadDropdown(false);
     setPatientDob('');
     setPatientAge('');
     setPatientPhone('');
@@ -1906,9 +1974,17 @@ export const PatientRecord = ({
     try {
       isSavingVisitRef.current = true;
       setIsSavingVisit(true);
+      const resolvedFamilyId = patient.isNewPatient
+        ? (selectedFamily?.familyId || 'NEW')
+        : patient.familyId;
+      const resolvedHeadName = (familyHeadName && familyHeadName.trim())
+        ? familyHeadName.trim()
+        : patient.name;
+
       const payload = {
         patientId: patient.patientId,
-        familyId: patient.familyId,
+        familyId: resolvedFamilyId,
+        familyHeadName: resolvedHeadName,
         patientName: patient.name,
         visitDate: form.visitDate || getTodayDateStr(),
         dob: patientDob,
@@ -1958,16 +2034,39 @@ export const PatientRecord = ({
             : 'New visit saved successfully and dues updated!'
         );
 
-        addToRecentSearched(patient);
+        const savedPatientObj = {
+          ...patient,
+          patientId: res.visit?.patientId || patient.patientId,
+          familyId: res.visit?.familyId || resolvedFamilyId,
+          isNewPatient: false,
+          isHead: !selectedFamily && resolvedHeadName.toUpperCase() === (patient.name || '').trim().toUpperCase(),
+          age: patientAge || patient.age,
+          dob: patientDob || patient.dob,
+          phone: patientPhone || patient.phone,
+          houseNo: patientHouseNo || patient.houseNo,
+          society: patientSociety || patient.society,
+          area: patientArea || patient.area,
+          family: selectedFamily || {
+            familyId: res.visit?.familyId || resolvedFamilyId,
+            headName: resolvedHeadName,
+            society: patientSociety,
+            area: patientArea,
+            houseNo: patientHouseNo,
+            phone: patientPhone,
+          },
+          totalDue: res.totalDue !== undefined ? res.totalDue : patient.totalDue,
+          deposit: res.deposit !== undefined ? res.deposit : (patient.deposit || 0),
+        };
+
+        if (patient.isNewPatient && res.visit?.patientId) {
+          setCurrentPatient(savedPatientObj);
+          currentPatientRef.current = savedPatientObj;
+        }
+
+        addToRecentSearched(savedPatientObj);
 
         // Update cached patient directly in memory with new due / deposit balances
-        if (patient) {
-          updateCachedPatient({
-            ...patient,
-            totalDue: res.totalDue !== undefined ? res.totalDue : patient.totalDue,
-            deposit: res.deposit !== undefined ? res.deposit : (patient.deposit || 0),
-          });
-        }
+        updateCachedPatient(savedPatientObj);
 
         if (andPrint) {
           const visitForPrint = res.visit || {
@@ -2364,21 +2463,6 @@ export const PatientRecord = ({
                         </div>
                       ) : (
                         <>
-                          {/* Quick New Patient Option above results */}
-                          <div
-                            onClick={() => handleCreateNewPatientEntry(patientSearch)}
-                            style={styles.newPatientQuickHeader}
-                            title="Register a brand new patient with this typed name instead of choosing existing"
-                          >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <UserPlus size={14} color="#0D5C4E" />
-                              <span>
-                                Register New Patient: <strong>"{patientSearch.trim().toUpperCase()}"</strong>
-                              </span>
-                            </div>
-                            <span style={styles.newPatientQuickHint}>+ New Entry (Enter)</span>
-                          </div>
-
                           {searchResults.map((p, idx) => {
                             const isHighlighted = idx === patientHighlightIndex;
                             const rawVisits = (p.recentVisits && p.recentVisits.length > 0)
@@ -2630,6 +2714,26 @@ export const PatientRecord = ({
                               </div>
                             );
                           })}
+
+                          {/* Quick New Patient Option below existing matches */}
+                          <div
+                            onClick={() => handleCreateNewPatientEntry(patientSearch)}
+                            style={{
+                              ...styles.newPatientQuickHeader,
+                              borderBottom: 'none',
+                              borderTop: '1px solid #CBD5E1',
+                              marginTop: 4,
+                            }}
+                            title="Register a brand new patient with this typed name instead of choosing existing"
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <UserPlus size={14} color="#0D5C4E" />
+                              <span>
+                                Not in list? Register New Patient: <strong>"{patientSearch.trim().toUpperCase()}"</strong>
+                              </span>
+                            </div>
+                            <span style={styles.newPatientQuickHint}>+ New Entry</span>
+                          </div>
                         </>
                       )}
                     </div>
@@ -2639,10 +2743,10 @@ export const PatientRecord = ({
 
               {/* Row 2: Family Head / ID: (Auto address & due) */}
               <div style={styles.photoRow1Col}>
-                <div style={styles.photoFieldGroup}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ ...styles.photoFieldGroup, position: 'relative' }} ref={familyHeadWrapRef}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                     <label style={styles.photoLabel}>Family Head / ID: (Auto address & due)</label>
-                    {currentPatient && !currentPatient.isNewPatient && (
+                    {currentPatient && !currentPatient.isNewPatient ? (
                       <button
                         type="button"
                         onClick={handleOpenFamilyDueModal}
@@ -2655,26 +2759,170 @@ export const PatientRecord = ({
                       >
                         Total Due: ₹{currentPatient.totalDue || 0}
                       </button>
-                    )}
+                    ) : currentPatient?.isNewPatient ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        {selectedFamily ? (
+                          <>
+                            <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#1D4ED8', backgroundColor: '#EFF6FF', border: '1px solid #BFDBFE', padding: '1px 6px', borderRadius: 4 }}>
+                              Existing Family: FAM-{selectedFamily.familyId}
+                              {Number(selectedFamily.familyDue || 0) > 0 ? ` (Due: ₹${selectedFamily.familyDue})` : ''}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedFamily(null);
+                                setFamilyHeadName(currentPatient.name || '');
+                              }}
+                              style={{ fontSize: '10.5px', color: '#DC2626', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, padding: 0 }}
+                              title="Unlink and use a new family head instead"
+                            >
+                              × Unlink
+                            </button>
+                          </>
+                        ) : (
+                          <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#047857' }}>
+                            New Family Head (Auto-creates FAM ID on Save)
+                          </span>
+                        )}
+                      </div>
+                    ) : null}
                   </div>
-                  <input
-                    type="text"
-                    readOnly
-                    value={
-                      currentPatient
-                        ? currentPatient.isNewPatient
-                          ? 'New Family (Auto-generated on Save)'
-                          : `${currentPatient.family?.headName || (currentPatient.isHead ? currentPatient.name : 'Family Head')} (FAM ID: ${currentPatient.familyId || currentPatient.family?.familyId || '-'})`
-                        : ''
-                    }
-                    placeholder="AUTO-POPULATED UPON PATIENT SELECTION"
-                    style={{
-                      ...styles.photoInput,
-                      backgroundColor: '#F8FAFC',
-                      color: currentPatient?.isNewPatient ? '#047857' : '#334155',
-                      fontWeight: currentPatient?.isNewPatient ? 700 : 500,
-                    }}
-                  />
+
+                  {currentPatient?.isNewPatient ? (
+                    <>
+                      <input
+                        type="text"
+                        value={familyHeadName}
+                        onChange={(e) => handleFamilyHeadSearchChange(e.target.value)}
+                        onFocus={() => {
+                          const instantFams = searchFamiliesInMemory(familyHeadName, 20);
+                          setFamilyHeadResults(instantFams);
+                          setShowFamilyHeadDropdown(true);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'ArrowDown' && familyHeadResults.length > 0) {
+                            e.preventDefault();
+                            setShowFamilyHeadDropdown(true);
+                            setFamilyHeadHighlightIndex((prev) => (prev < familyHeadResults.length - 1 ? prev + 1 : 0));
+                          } else if (e.key === 'ArrowUp' && familyHeadResults.length > 0) {
+                            e.preventDefault();
+                            setShowFamilyHeadDropdown(true);
+                            setFamilyHeadHighlightIndex((prev) => (prev > 0 ? prev - 1 : familyHeadResults.length - 1));
+                          } else if (e.key === 'Enter' && showFamilyHeadDropdown && familyHeadResults.length > 0) {
+                            e.preventDefault();
+                            const chosen = familyHeadResults[familyHeadHighlightIndex];
+                            if (chosen) handleSelectExistingFamilyHead(chosen);
+                          } else if (e.key === 'Escape') {
+                            setShowFamilyHeadDropdown(false);
+                          }
+                        }}
+                        placeholder="TYPE NEW FAMILY HEAD OR SEARCH EXISTING..."
+                        style={{
+                          ...styles.photoInput,
+                          backgroundColor: selectedFamily ? '#EFF6FF' : '#F0FDF4',
+                          color: selectedFamily ? '#1E40AF' : '#047857',
+                          borderColor: selectedFamily ? '#3B82F6' : '#16A34A',
+                          fontWeight: 700,
+                        }}
+                      />
+
+                      {showFamilyHeadDropdown && (
+                        <div style={{
+                          position: 'absolute',
+                          top: '100%',
+                          left: 0,
+                          right: 0,
+                          zIndex: 60,
+                          backgroundColor: '#FFFFFF',
+                          border: '1px solid #CBD5E1',
+                          borderRadius: '6px',
+                          boxShadow: '0 8px 20px rgba(15, 23, 42, 0.14)',
+                          maxHeight: '220px',
+                          overflowY: 'auto',
+                          marginTop: '2px',
+                        }}>
+                          {familyHeadName.trim() && (
+                            <div
+                              onClick={() => {
+                                setSelectedFamily(null);
+                                setShowFamilyHeadDropdown(false);
+                              }}
+                              style={{
+                                padding: '7px 10px',
+                                borderBottom: '1px solid #E2E8F0',
+                                backgroundColor: '#F0FDF4',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                fontSize: '11.5px',
+                                color: '#065F46',
+                                fontWeight: 700,
+                              }}
+                            >
+                              <span>+ Use New Family Head: "{familyHeadName.trim().toUpperCase()}"</span>
+                              <span style={{ fontSize: '10px', color: '#047857' }}>New Family</span>
+                            </div>
+                          )}
+
+                          {familyHeadResults.length === 0 ? (
+                            <div style={{ padding: '8px 10px', fontSize: '11px', color: '#64748B' }}>
+                              No matching existing family heads. Will create a new family on Save.
+                            </div>
+                          ) : (
+                            familyHeadResults.map((fam, fIdx) => (
+                              <div
+                                key={fam.familyId}
+                                onClick={() => handleSelectExistingFamilyHead(fam)}
+                                onMouseEnter={() => setFamilyHeadHighlightIndex(fIdx)}
+                                style={{
+                                  padding: '7px 10px',
+                                  borderBottom: '1px solid #F1F5F9',
+                                  cursor: 'pointer',
+                                  backgroundColor: fIdx === familyHeadHighlightIndex ? '#EFF6FF' : '#FFFFFF',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  gap: 8,
+                                }}
+                              >
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                  <div style={{ fontSize: '12px', fontWeight: 700, color: '#0F172A' }}>
+                                    {fam.headName} <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#1D4ED8' }}>(FAM-{fam.familyId})</span>
+                                  </div>
+                                  <div style={{ fontSize: '10.5px', color: '#64748B' }}>
+                                    {[fam.society, fam.area, fam.phone].filter(Boolean).join(' • ') || 'Existing Family'}
+                                  </div>
+                                </div>
+                                {Number(fam.familyDue || 0) > 0 && (
+                                  <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#DC2626', backgroundColor: '#FEF2F2', padding: '1px 6px', borderRadius: 4 }}>
+                                    Due: ₹{fam.familyDue}
+                                  </span>
+                                )}
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <input
+                      type="text"
+                      readOnly
+                      value={
+                        currentPatient
+                          ? `${currentPatient.family?.headName || (currentPatient.isHead ? currentPatient.name : 'Family Head')} (FAM ID: ${currentPatient.familyId || currentPatient.family?.familyId || '-'})`
+                          : ''
+                      }
+                      placeholder="AUTO-POPULATED UPON PATIENT SELECTION"
+                      style={{
+                        ...styles.photoInput,
+                        backgroundColor: '#F8FAFC',
+                        color: '#334155',
+                        fontWeight: 500,
+                      }}
+                    />
+                  )}
                 </div>
               </div>
 

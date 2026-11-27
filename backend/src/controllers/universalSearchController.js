@@ -30,13 +30,13 @@ export const universalSearch = async (req, res) => {
 
     // 1. Determine whether this search is explicitly for a Family ID:
     // Examples of Family ID search: "FAM-00001", "fam 00001", "FAM-1", "FAM 1", "fam1"
-    const isExplicitFamSearch = /^fam[-\s]*/i.test(rawQuery);
+    const isExplicitFamSearch = /^fam[-\s]*\d+/i.test(rawQuery);
 
     // Pure digits like "00001" or "1" (without "P" or sequence hyphens)
     const isPureDigits = /^\d+$/.test(rawQuery);
 
-    // Patient ID pattern: starts with "P-" or "p-", or sequence like "00001-2"
-    const isPidPattern = /^p[-\s]*/i.test(rawQuery) || /\d+-\d+/.test(rawQuery);
+    // Patient ID pattern: starts with "P-" or "p-" + digits, or sequence like "00001-2"
+    const isPidPattern = /^p[-\s]*\d+/i.test(rawQuery) || /\d+-\d+/.test(rawQuery);
 
     const isFamSearch = isExplicitFamSearch || (isPureDigits && !isPidPattern);
 
