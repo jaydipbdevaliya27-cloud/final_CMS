@@ -1435,13 +1435,13 @@ export const RecentHistory = ({
               <div className="rhPatientInfoBlock" style={styles.rhPatientInfoBlock}>
                 <div style={styles.rhPatientRow}>
                   <div style={{ width: '58%', display: 'flex', gap: '4px' }}>
-                    <span style={{ fontWeight: 700 }}>{t.patientLabel}</span>{' '}
+                    <span style={{ fontWeight: 700 }}>Patient:</span>{' '}
                     <span style={{ fontWeight: 800, textTransform: 'uppercase' }}>
                       {visitToPrint.patientName}
                     </span>
                   </div>
                   <div style={{ width: '42%', display: 'flex', gap: '4px' }}>
-                    <span style={{ fontWeight: 700 }}>{t.dateLabel}</span>{' '}
+                    <span style={{ fontWeight: 700 }}>Date:</span>{' '}
                     <span>
                       {(() => {
                         let d = visitToPrint.visitDate || '';
@@ -1463,22 +1463,22 @@ export const RecentHistory = ({
 
                 <div style={styles.rhPatientRow}>
                   <div style={{ width: '58%', display: 'flex', gap: '4px' }}>
-                    <span style={{ fontWeight: 700 }}>{t.ageLabel}</span>{' '}
+                    <span style={{ fontWeight: 700 }}>Age:</span>{' '}
                     <span>{visitToPrint.age ? `${visitToPrint.age} Y` : '—'}</span>
                   </div>
                   <div style={{ width: '42%', display: 'flex', gap: '4px' }}>
-                    <span style={{ fontWeight: 700 }}>{t.bpLabel}</span>{' '}
+                    <span style={{ fontWeight: 700 }}>B.P.:</span>{' '}
                     <span>{visitToPrint.bp || '-'}</span>
                   </div>
                 </div>
 
                 <div style={styles.rhPatientRow}>
                   <div style={{ width: '58%', display: 'flex', gap: '4px' }}>
-                    <span style={{ fontWeight: 700 }}>{t.mobileLabel}</span>{' '}
+                    <span style={{ fontWeight: 700 }}>Mobile:</span>{' '}
                     <span>{visitToPrint.phone || '-'}</span>
                   </div>
                   <div style={{ width: '42%', display: 'flex', gap: '4px' }}>
-                    <span style={{ fontWeight: 700 }}>{t.sugarLabel}</span>{' '}
+                    <span style={{ fontWeight: 700 }}>Sugar:</span>{' '}
                     <span>{visitToPrint.sugar || '-'}</span>
                   </div>
                 </div>

@@ -5224,17 +5224,17 @@ export const PatientRecord = ({
                   </div>
                 </div>
 
-                {/* 2. PATIENT INFO BLOCK (EXACT MATCH TO USER PHOTO) */}
+                {/* 2. PATIENT INFO BLOCK (ALWAYS ENGLISH) */}
                 <div className="photoPatientInfoBlock" style={styles.photoPatientInfoBlock}>
                   <div style={styles.photoPatientInfoRow}>
                     <div style={styles.photoPatientColLeft}>
-                      <span style={styles.photoPatientLabel}>{t.patientLabel || 'Patient:'}</span>{' '}
+                      <span style={styles.photoPatientLabel}>Patient:</span>{' '}
                       <span style={styles.photoPatientValueBold}>
                         {printVisit.patientName || currentPatient?.name || '—'}
                       </span>
                     </div>
                     <div style={styles.photoPatientColRight}>
-                      <span style={styles.photoPatientLabel}>{t.dateLabel || 'Date:'}</span>{' '}
+                      <span style={styles.photoPatientLabel}>Date:</span>{' '}
                       <span style={styles.photoPatientValue}>
                         {(() => {
                           let dPart = '';
@@ -5268,13 +5268,13 @@ export const PatientRecord = ({
 
                   <div style={styles.photoPatientInfoRow}>
                     <div style={styles.photoPatientColLeft}>
-                      <span style={styles.photoPatientLabel}>{t.ageLabel || 'Age:'}</span>{' '}
+                      <span style={styles.photoPatientLabel}>Age:</span>{' '}
                       <span style={styles.photoPatientValue}>
                         {currentPatient?.age ? `${currentPatient.age} Y` : (printVisit.age ? `${printVisit.age} Y` : '—')}
                       </span>
                     </div>
                     <div style={styles.photoPatientColRight}>
-                      <span style={styles.photoPatientLabel}>{t.bpLabel || 'B.P.:'}</span>{' '}
+                      <span style={styles.photoPatientLabel}>B.P.:</span>{' '}
                       <span style={styles.photoPatientValue}>
                         {printVisit.bp ? printVisit.bp : '-'}
                       </span>
@@ -5283,13 +5283,13 @@ export const PatientRecord = ({
 
                   <div style={styles.photoPatientInfoRow}>
                     <div style={styles.photoPatientColLeft}>
-                      <span style={styles.photoPatientLabel}>{t.mobileLabel || 'Mobile:'}</span>{' '}
+                      <span style={styles.photoPatientLabel}>Mobile:</span>{' '}
                       <span style={styles.photoPatientValue}>
                         {currentPatient?.phone || printVisit.phone || '-'}
                       </span>
                     </div>
                     <div style={styles.photoPatientColRight}>
-                      <span style={styles.photoPatientLabel}>{t.sugarLabel || 'Sugar:'}</span>{' '}
+                      <span style={styles.photoPatientLabel}>Sugar:</span>{' '}
                       <span style={styles.photoPatientValue}>
                         {printVisit.sugar ? printVisit.sugar : '-'}
                       </span>
