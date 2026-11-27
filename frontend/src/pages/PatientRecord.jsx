@@ -3184,16 +3184,28 @@ export const PatientRecord = ({
                   />
                 </div>
 
-                <div style={{ ...styles.photoFieldGroup, flex: 1 }}>
+                <div style={{ ...styles.photoFieldGroup, flex: 1, position: 'relative' }}>
                   <label style={styles.photoLabel}>Society / Area: <span style={{ color: '#DC2626' }}>*</span></label>
-                  <input
+                  <MasterDataInput
                     ref={societyInputRef}
-                    type="text"
+                    inputRef={societyInputRef}
+                    type="area"
                     value={patientSociety}
-                    onChange={(e) => setPatientSociety(e.target.value)}
-                    onKeyDown={(e) => handlePatientDetailEnter(e, patientSociety, bpInputRef)}
+                    onChange={(val) => setPatientSociety(val)}
+                    onSelectCallback={(chosen) => setPatientSociety(chosen)}
+                    onEnterNext={(chosen) => {
+                      const val = chosen !== undefined ? chosen : patientSociety;
+                      if (chosen) setPatientSociety(chosen);
+                      if (String(val || '').trim()) {
+                        bpInputRef.current?.focus();
+                        bpInputRef.current?.select?.();
+                      }
+                    }}
+                    onTabEmptyNext={() => {
+                      bpInputRef.current?.focus();
+                    }}
                     placeholder="Society / Area"
-                    style={styles.photoInput}
+                    inputStyle={styles.photoInput}
                   />
                 </div>
               </div>
