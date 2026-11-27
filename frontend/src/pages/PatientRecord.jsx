@@ -2090,33 +2090,34 @@ export const PatientRecord = ({
             : (patientAgeRecordedAt || (patientAge ? new Date().toISOString() : null));
 
           let regRes;
+          const upper = (v) => String(v || '').trim().toUpperCase();
           if (selectedFamily?.familyId) {
             regRes = await patientAPI.addMember({
               familyId: selectedFamily.familyId,
-              name: patient.name,
-              age: patientAge,
+              name: upper(patient.name),
+              age: upper(patientAge),
               dob: patientDob,
               ageRecordedAt: resolvedAgeRecordedAt,
               gender: patientGender || 'Male',
-              phone: patientPhone,
-              houseNo: patientHouseNo,
-              society: patientSociety,
-              area: patientArea,
+              phone: String(patientPhone || '').trim(),
+              houseNo: upper(patientHouseNo),
+              society: upper(patientSociety),
+              area: upper(patientArea),
             });
           } else {
             const resolvedHeadName = (familyHeadName && familyHeadName.trim())
-              ? familyHeadName.trim()
-              : patient.name;
+              ? upper(familyHeadName)
+              : upper(patient.name);
             regRes = await familyAPI.registerHead({
               headName: resolvedHeadName,
-              age: patientAge,
+              age: upper(patientAge),
               dob: patientDob,
               ageRecordedAt: resolvedAgeRecordedAt,
               gender: patientGender || 'Male',
-              phone: patientPhone,
-              houseNo: patientHouseNo,
-              society: patientSociety,
-              area: patientArea,
+              phone: String(patientPhone || '').trim(),
+              houseNo: upper(patientHouseNo),
+              society: upper(patientSociety),
+              area: upper(patientArea),
             });
           }
 
@@ -2158,34 +2159,44 @@ export const PatientRecord = ({
         ? familyHeadName.trim()
         : patient.name;
 
+      const upper = (v) => String(v || '').trim().toUpperCase();
       const payload = {
         patientId: patient.patientId,
         familyId: resolvedFamilyId,
-        familyHeadName: resolvedHeadName,
-        patientName: patient.name,
+        familyHeadName: upper(resolvedHeadName),
+        patientName: upper(patient.name),
         visitDate: form.visitDate || getTodayDateStr(),
         dob: patientDob,
-        age: patientAge,
+        age: upper(patientAge),
         gender: patientGender || 'Male',
         ageRecordedAt: patientAgeRecordedAt,
         ageManuallyEdited,
-        phone: patientPhone,
-        houseNo: patientHouseNo,
-        society: patientSociety,
-        area: patientArea,
-        bp: form.bp || '',
-        sugar: form.sugar || '',
-        other: form.other || '',
-        reference: form.reference || '',
-        investigation: cleanInvestigations,
-        investigationList: form.investigationList || [],
-        complaint: cleanComplaints,
-        complaintList: form.complaintList || [],
-        allergies: cleanAllergies,
-        ipdDetails: cleanIpd,
-        treatments: validTreatments,
-        prescriptions: validPrescriptions,
-        dietary: form.dietary || '',
+        phone: String(patientPhone || '').trim(),
+        houseNo: upper(patientHouseNo),
+        society: upper(patientSociety),
+        area: upper(patientArea),
+        bp: upper(form.bp),
+        sugar: upper(form.sugar),
+        other: upper(form.other),
+        reference: upper(form.reference),
+        investigation: upper(cleanInvestigations),
+        investigationList: (form.investigationList || []).map((i) => ({
+          ...i,
+          reportType: upper(i?.reportType),
+          labName: upper(i?.labName || 'CARE'),
+        })),
+        complaint: upper(cleanComplaints),
+        complaintList: (form.complaintList || []).map((c) => upper(c)).filter(Boolean),
+        allergies: cleanAllergies.map((a) => upper(a)).filter(Boolean),
+        ipdDetails: cleanIpd.map((i) => upper(i)).filter(Boolean),
+        treatments: validTreatments.map((t) => ({ ...t, item: upper(t.item), qty: upper(t.qty) })),
+        prescriptions: validPrescriptions.map((p) => ({
+          ...p,
+          medicine: upper(p.medicine),
+          qty: upper(p.qty),
+          sosInstruction: upper(p.sosInstruction),
+        })),
+        dietary: upper(form.dietary),
         charge: formCharge,
         received: formReceived,
         labReport: labReport || null,

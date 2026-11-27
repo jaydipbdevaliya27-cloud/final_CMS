@@ -7,6 +7,7 @@ import Doctor from '../models/Doctor.js';
 import { autoSaveMasterItem } from './masterDataController.js';
 import { getNextReportId, generateLabSummary } from './labReportController.js';
 import { getNextFamilyIdValue } from './familyController.js';
+import { toUpperTrim, toUpperArray } from '../utils/textUtils.js';
 
 // Helper to recalculate dues and deposits for patient & family concurrently using fast aggregation
 export const recalculateDues = async (patientId, familyId, additionalPatientUpdates = {}) => {
@@ -148,9 +149,9 @@ export const recordVisit = async (req, res) => {
     // Auto-create Family and/or Patient if new unregistered patient
     if ((!finalPatientId || finalPatientId === 'NEW' || !finalFamilyId || finalFamilyId === 'NEW') && patientName && patientName.trim()) {
       try {
-        const cleanPatName = patientName.trim();
+        const cleanPatName = toUpperTrim(patientName);
         const requestedHeadName = (req.body.familyHeadName && String(req.body.familyHeadName).trim())
-          ? String(req.body.familyHeadName).trim()
+          ? toUpperTrim(req.body.familyHeadName)
           : cleanPatName;
 
         // Case A: Joining an EXISTING Family Head
@@ -170,16 +171,16 @@ export const recordVisit = async (req, res) => {
               familyId: finalFamilyId,
               name: cleanPatName,
               isHead: false,
-              relation: 'Member',
-              phone: req.body.phone || existingFamily.phone || '',
-              houseNo: req.body.houseNo || existingFamily.houseNo || '',
-              society: req.body.society || existingFamily.society || '',
-              area: req.body.area || existingFamily.area || '',
-              age: req.body.age ? String(req.body.age).trim() : '',
+              relation: 'MEMBER',
+              phone: req.body.phone ? String(req.body.phone).trim() : (existingFamily.phone || ''),
+              houseNo: toUpperTrim(req.body.houseNo) || toUpperTrim(existingFamily.houseNo),
+              society: toUpperTrim(req.body.society) || toUpperTrim(existingFamily.society),
+              area: toUpperTrim(req.body.area) || toUpperTrim(existingFamily.area),
+              age: toUpperTrim(req.body.age),
               dob: req.body.dob || '',
               ageRecordedAt: req.body.age ? new Date() : null,
               gender: req.body.gender || 'Male',
-              allergies: Array.isArray(allergies) ? allergies : (allergies ? [allergies] : []),
+              allergies: toUpperArray(allergies),
             });
             existingFamily.membersCount = nextSeq;
             await existingFamily.save();
@@ -197,11 +198,11 @@ export const recordVisit = async (req, res) => {
           await Family.create({
             familyId: nextFamId,
             headName: requestedHeadName,
-            phone: req.body.phone || '',
-            houseNo: req.body.houseNo || '',
-            society: req.body.society || '',
-            area: req.body.area || '',
-            age: isSameAsPatient && req.body.age ? String(req.body.age).trim() : '',
+            phone: req.body.phone ? String(req.body.phone).trim() : '',
+            houseNo: toUpperTrim(req.body.houseNo),
+            society: toUpperTrim(req.body.society),
+            area: toUpperTrim(req.body.area),
+            age: isSameAsPatient && req.body.age ? toUpperTrim(req.body.age) : '',
             gender: req.body.gender || 'Male',
             membersCount: isSameAsPatient ? 1 : 2,
           });
@@ -213,17 +214,16 @@ export const recordVisit = async (req, res) => {
               familyId: nextFamId,
               name: cleanPatName,
               isHead: true,
-              relation: 'Self',
-              phone: req.body.phone || '',
-              houseNo: req.body.houseNo || '',
-              society: req.body.society || '',
-              area: req.body.area || '',
-              age: req.body.age ? String(req.body.age).trim() : '',
+              relation: 'SELF',
+              phone: req.body.phone ? String(req.body.phone).trim() : '',
+              houseNo: toUpperTrim(req.body.houseNo),
+              society: toUpperTrim(req.body.society),
+              area: toUpperTrim(req.body.area),
+              age: toUpperTrim(req.body.age),
               dob: req.body.dob || '',
               ageRecordedAt: req.body.age ? new Date() : null,
-              ageRecordedAt: req.body.age ? new Date() : null,
               gender: req.body.gender || 'Male',
-              allergies: Array.isArray(allergies) ? allergies : (allergies ? [allergies] : []),
+              allergies: toUpperArray(allergies),
             });
             finalPatientId = patId;
           } else {
@@ -234,11 +234,11 @@ export const recordVisit = async (req, res) => {
               familyId: nextFamId,
               name: requestedHeadName,
               isHead: true,
-              relation: 'Self',
-              phone: req.body.phone || '',
-              houseNo: req.body.houseNo || '',
-              society: req.body.society || '',
-              area: req.body.area || '',
+              relation: 'SELF',
+              phone: req.body.phone ? String(req.body.phone).trim() : '',
+              houseNo: toUpperTrim(req.body.houseNo),
+              society: toUpperTrim(req.body.society),
+              area: toUpperTrim(req.body.area),
               gender: 'Male',
             });
 
@@ -248,16 +248,16 @@ export const recordVisit = async (req, res) => {
               familyId: nextFamId,
               name: cleanPatName,
               isHead: false,
-              relation: 'Member',
-              phone: req.body.phone || '',
-              houseNo: req.body.houseNo || '',
-              society: req.body.society || '',
-              area: req.body.area || '',
-              age: req.body.age ? String(req.body.age).trim() : '',
+              relation: 'MEMBER',
+              phone: req.body.phone ? String(req.body.phone).trim() : '',
+              houseNo: toUpperTrim(req.body.houseNo),
+              society: toUpperTrim(req.body.society),
+              area: toUpperTrim(req.body.area),
+              age: toUpperTrim(req.body.age),
               dob: req.body.dob || '',
               ageRecordedAt: req.body.age ? new Date() : null,
               gender: req.body.gender || 'Male',
-              allergies: Array.isArray(allergies) ? allergies : (allergies ? [allergies] : []),
+              allergies: toUpperArray(allergies),
             });
             finalPatientId = memberPatId;
           }
@@ -308,29 +308,34 @@ export const recordVisit = async (req, res) => {
       : cleanCompList.join(', ');
 
     // Format clean IPD details (injections, IV bottles, procedures)
-    const cleanIpdList = Array.isArray(ipdDetails)
-      ? ipdDetails.map((i) => (typeof i === 'string' ? i.trim() : (i?.item || '').trim())).filter(Boolean)
-      : (typeof ipdDetails === 'string' && ipdDetails.trim()
-          ? ipdDetails.split(',').map((s) => s.trim()).filter(Boolean)
-          : []);
+    const cleanIpdList = toUpperArray(ipdDetails);
 
     // Format clean treatments and prescriptions arrays
     const cleanTreatments = Array.isArray(treatments)
-      ? treatments.filter((t) => t.item && t.item.trim())
+      ? treatments
+          .filter((t) => t.item && t.item.trim())
+          .map((t) => ({
+            ...t,
+            item: toUpperTrim(t.item),
+            qty: toUpperTrim(t.qty || '1'),
+            morning: toUpperTrim(t.morning || '1'),
+            noon: toUpperTrim(t.noon || '0'),
+            evening: toUpperTrim(t.evening || '1'),
+          }))
       : [];
 
     const cleanPrescriptions = Array.isArray(prescriptions)
       ? prescriptions
           .filter((p) => p.medicine && p.medicine.trim())
           .map((p) => ({
-            medicine: p.medicine.trim(),
-            qty: p.qty !== undefined && p.qty !== null ? String(p.qty).trim() : '',
-            morning: p.morning !== undefined ? String(p.morning).trim() : '1',
-            noon: p.noon !== undefined ? String(p.noon).trim() : '0',
-            evening: p.evening !== undefined ? String(p.evening).trim() : '1',
-            night: p.night !== undefined ? String(p.night).trim() : '0',
-            timing: p.timing || 'AF',
-            sosInstruction: p.sosInstruction ? String(p.sosInstruction).trim() : '',
+            medicine: toUpperTrim(p.medicine),
+            qty: p.qty !== undefined && p.qty !== null ? toUpperTrim(p.qty) : '',
+            morning: p.morning !== undefined ? toUpperTrim(p.morning) : '1',
+            noon: p.noon !== undefined ? toUpperTrim(p.noon) : '0',
+            evening: p.evening !== undefined ? toUpperTrim(p.evening) : '1',
+            night: p.night !== undefined ? toUpperTrim(p.night) : '0',
+            timing: toUpperTrim(p.timing || 'AF'),
+            sosInstruction: p.sosInstruction ? toUpperTrim(p.sosInstruction) : '',
           }))
       : [];
 
@@ -373,21 +378,21 @@ export const recordVisit = async (req, res) => {
     const visit = await Visit.create({
       patientId: finalPatientId.trim(),
       familyId: finalFamilyId.trim(),
-      patientName: patientName || 'Patient',
+      patientName: toUpperTrim(patientName) || 'PATIENT',
       visitDate: visitDate || new Date().toISOString().split('T')[0],
-      bp: bp ? bp.trim() : '120/80',
-      sugar: sugar ? sugar.trim() : '',
-      other: other ? other.trim() : '',
-      reference: reference ? reference.trim() : '',
+      bp: bp ? toUpperTrim(bp) : '120/80',
+      sugar: toUpperTrim(sugar),
+      other: toUpperTrim(other),
+      reference: toUpperTrim(reference),
       investigation: cleanInvString,
       investigationList: cleanInvList,
       complaint: cleanCompString,
       complaintList: cleanCompList,
       treatments: cleanTreatments,
       prescriptions: cleanPrescriptions,
-      dietary: dietary ? dietary.trim() : '',
+      dietary: toUpperTrim(dietary),
       ipdDetails: cleanIpdList,
-      allergies: Array.isArray(allergies) ? allergies : (allergies ? [allergies] : []),
+      allergies: toUpperArray(allergies),
       charge: numCharge,
       received: numReceived,
       due: numDue,
@@ -528,21 +533,30 @@ export const updateVisit = async (req, res) => {
     const numDue = Math.max(0, numCharge - numReceived);
 
     const cleanTreatments = Array.isArray(treatments)
-      ? treatments.filter((t) => t.item && t.item.trim())
+      ? treatments
+          .filter((t) => t.item && t.item.trim())
+          .map((t) => ({
+            ...t,
+            item: toUpperTrim(t.item),
+            qty: toUpperTrim(t.qty || '1'),
+            morning: toUpperTrim(t.morning || '1'),
+            noon: toUpperTrim(t.noon || '0'),
+            evening: toUpperTrim(t.evening || '1'),
+          }))
       : [];
 
     const cleanPrescriptions = Array.isArray(prescriptions)
       ? prescriptions
           .filter((p) => p.medicine && p.medicine.trim())
           .map((p) => ({
-            medicine: p.medicine.trim(),
-            qty: p.qty !== undefined && p.qty !== null ? String(p.qty).trim() : '',
-            morning: p.morning !== undefined ? String(p.morning).trim() : '1',
-            noon: p.noon !== undefined ? String(p.noon).trim() : '0',
-            evening: p.evening !== undefined ? String(p.evening).trim() : '1',
-            night: p.night !== undefined ? String(p.night).trim() : '0',
-            timing: p.timing || 'AF',
-            sosInstruction: p.sosInstruction ? String(p.sosInstruction).trim() : '',
+            medicine: toUpperTrim(p.medicine),
+            qty: p.qty !== undefined && p.qty !== null ? toUpperTrim(p.qty) : '',
+            morning: p.morning !== undefined ? toUpperTrim(p.morning) : '1',
+            noon: p.noon !== undefined ? toUpperTrim(p.noon) : '0',
+            evening: p.evening !== undefined ? toUpperTrim(p.evening) : '1',
+            night: p.night !== undefined ? toUpperTrim(p.night) : '0',
+            timing: toUpperTrim(p.timing || 'AF'),
+            sosInstruction: p.sosInstruction ? toUpperTrim(p.sosInstruction) : '',
           }))
       : [];
 
@@ -575,17 +589,15 @@ export const updateVisit = async (req, res) => {
       : (cleanCompList.length > 0 ? cleanCompList.join(', ') : visit.complaint);
 
     // Format clean IPD details
-    const cleanIpdList = Array.isArray(ipdDetails)
-      ? ipdDetails.map((i) => (typeof i === 'string' ? i.trim() : (i?.item || '').trim())).filter(Boolean)
-      : (typeof ipdDetails === 'string' && ipdDetails.trim()
-          ? ipdDetails.split(',').map((s) => s.trim()).filter(Boolean)
-          : (visit.ipdDetails || []));
+    const cleanIpdList = ipdDetails !== undefined
+      ? toUpperArray(ipdDetails)
+      : (visit.ipdDetails || []);
 
     visit.visitDate = visitDate || visit.visitDate;
-    visit.bp = bp !== undefined ? bp : visit.bp;
-    visit.sugar = sugar !== undefined ? sugar : visit.sugar;
-    visit.other = other !== undefined ? other : visit.other;
-    visit.reference = reference !== undefined ? reference : visit.reference;
+    visit.bp = bp !== undefined ? toUpperTrim(bp) : visit.bp;
+    visit.sugar = sugar !== undefined ? toUpperTrim(sugar) : visit.sugar;
+    visit.other = other !== undefined ? toUpperTrim(other) : visit.other;
+    visit.reference = reference !== undefined ? toUpperTrim(reference) : visit.reference;
     visit.investigation = cleanInvString;
     visit.investigationList = cleanInvList;
     visit.markModified('investigationList');
@@ -596,11 +608,11 @@ export const updateVisit = async (req, res) => {
     visit.markModified('treatments');
     visit.prescriptions = cleanPrescriptions;
     visit.markModified('prescriptions');
-    if (dietary !== undefined) visit.dietary = dietary ? dietary.trim() : '';
+    if (dietary !== undefined) visit.dietary = toUpperTrim(dietary);
     visit.ipdDetails = cleanIpdList;
     visit.markModified('ipdDetails');
     if (allergies !== undefined) {
-      visit.allergies = Array.isArray(allergies) ? allergies : (allergies ? [allergies] : []);
+      visit.allergies = toUpperArray(allergies);
       visit.markModified('allergies');
     }
     visit.charge = numCharge;

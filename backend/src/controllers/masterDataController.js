@@ -1,4 +1,5 @@
 import MasterData from '../models/MasterData.js';
+import { toUpperTrim } from '../utils/textUtils.js';
 
 // Escape regex special characters
 const escapeRegex = (str) => {
@@ -32,8 +33,8 @@ export const autoSaveMasterItem = async (type, value, shortcut = '') => {
     if (!existing) {
       await MasterData.create({
         type,
-        value: trimmed,
-        shortcut: shortcut ? shortcut.trim().toUpperCase() : '',
+        value: toUpperTrim(trimmed),
+        shortcut: toUpperTrim(shortcut),
       });
     }
   } catch (err) {
@@ -250,8 +251,8 @@ export const addMasterItem = async (req, res) => {
       });
     }
 
-    const trimmedValue = value.trim();
-    const trimmedShortcut = shortcut ? shortcut.trim().toUpperCase() : '';
+    const trimmedValue = toUpperTrim(value);
+    const trimmedShortcut = toUpperTrim(shortcut);
 
     const existing = await MasterData.findOne({
       type,
@@ -302,10 +303,10 @@ export const updateMasterItem = async (req, res) => {
     }
 
     if (value && value.trim()) {
-      item.value = value.trim();
+      item.value = toUpperTrim(value);
     }
     if (shortcut !== undefined) {
-      item.shortcut = shortcut.trim().toUpperCase();
+      item.shortcut = toUpperTrim(shortcut);
     }
 
     await item.save();

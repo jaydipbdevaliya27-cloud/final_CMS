@@ -5,6 +5,7 @@ import Visit from '../models/Visit.js';
 import LabReport from '../models/LabReport.js';
 import Certificate from '../models/Certificate.js';
 import { autoSaveMasterItem } from './masterDataController.js';
+import { toUpperTrim, toUpperArray } from '../utils/textUtils.js';
 
 // @desc    Add a new Patient Member under an existing Family Head
 // @route   POST /api/patients
@@ -60,31 +61,23 @@ export const addPatientMember = async (req, res) => {
     }
 
     // Normalize allergies
-    let patientAllergies = [];
-    if (Array.isArray(allergies)) {
-      patientAllergies = allergies.map((a) => String(a).trim()).filter(Boolean);
-    } else if (typeof allergies === 'string' && allergies.trim()) {
-      patientAllergies = allergies
-        .split(',')
-        .map((a) => a.trim())
-        .filter(Boolean);
-    }
+    const patientAllergies = toUpperArray(allergies);
 
     // Create Patient record in MongoDB
     const newPatient = await Patient.create({
       patientId,
       familyId: familyId.trim(),
-      name: name.trim(),
-      relation: relation ? relation.trim() : 'Member',
-      age: age ? String(age).trim() : '',
+      name: toUpperTrim(name),
+      relation: relation ? toUpperTrim(relation) : 'MEMBER',
+      age: toUpperTrim(age),
       dob: dob ? String(dob).trim() : '',
       ageRecordedAt: ageRecordedAt ? new Date(ageRecordedAt) : (age ? new Date() : null),
       gender: gender || 'Male',
-      bloodGroup: bloodGroup || '',
+      bloodGroup: toUpperTrim(bloodGroup),
       allergies: patientAllergies,
-      society: society ? society.trim() : family.society || '',
-      area: area ? area.trim() : family.area || '',
-      houseNo: houseNo ? String(houseNo).trim() : family.houseNo || '',
+      society: society ? toUpperTrim(society) : toUpperTrim(family.society),
+      area: area ? toUpperTrim(area) : toUpperTrim(family.area),
+      houseNo: houseNo ? toUpperTrim(houseNo) : toUpperTrim(family.houseNo),
       phone: phone ? phone.trim() : family.phone || '',
       isHead: false,
       registrationDoneBy: 'Family Member',
@@ -359,14 +352,16 @@ export const updatePatient = async (req, res) => {
     delete updateData._id;
     delete updateData.patientId;
 
-    // Process allergies if provided
-    if (updateData.allergies) {
-      if (typeof updateData.allergies === 'string') {
-        updateData.allergies = updateData.allergies
-          .split(',')
-          .map((a) => a.trim())
-          .filter(Boolean);
-      }
+    // Normalize text fields to UPPERCASE
+    if (updateData.name !== undefined) updateData.name = toUpperTrim(updateData.name);
+    if (updateData.relation !== undefined) updateData.relation = toUpperTrim(updateData.relation);
+    if (updateData.age !== undefined) updateData.age = toUpperTrim(updateData.age);
+    if (updateData.bloodGroup !== undefined) updateData.bloodGroup = toUpperTrim(updateData.bloodGroup);
+    if (updateData.society !== undefined) updateData.society = toUpperTrim(updateData.society);
+    if (updateData.area !== undefined) updateData.area = toUpperTrim(updateData.area);
+    if (updateData.houseNo !== undefined) updateData.houseNo = toUpperTrim(updateData.houseNo);
+    if (updateData.allergies !== undefined) {
+      updateData.allergies = toUpperArray(updateData.allergies);
     }
 
     const oldName = patient.name;

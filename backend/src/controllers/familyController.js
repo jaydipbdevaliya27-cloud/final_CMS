@@ -5,6 +5,7 @@ import Visit from '../models/Visit.js';
 import LabReport from '../models/LabReport.js';
 import Certificate from '../models/Certificate.js';
 import { autoSaveMasterItem } from './masterDataController.js';
+import { toUpperTrim, toUpperArray } from '../utils/textUtils.js';
 
 // Helper: Get or initialize next 5-digit sequence starting with 00001
 export const getNextFamilyIdValue = async () => {
@@ -102,23 +103,21 @@ export const registerFamilyHead = async (req, res) => {
       patientId = `P-${familyId}-${patientSeq}`;
     }
 
-    const patientAllergies = Array.isArray(allergies)
-      ? allergies
-      : allergies ? [allergies] : [];
+    const patientAllergies = toUpperArray(allergies);
 
     const patient = await Patient.create({
       patientId,
       familyId,
-      name: headName.trim(),
-      age: age ? String(age).trim() : '',
+      name: toUpperTrim(headName),
+      age: toUpperTrim(age),
       dob: dob ? String(dob).trim() : '',
       ageRecordedAt: ageRecordedAt ? new Date(ageRecordedAt) : (age ? new Date() : null),
       gender: gender || 'Male',
-      bloodGroup: bloodGroup || '',
+      bloodGroup: toUpperTrim(bloodGroup),
       allergies: patientAllergies,
-      society: society ? society.trim() : '',
-      area: area ? area.trim() : '',
-      houseNo: houseNo ? String(houseNo).trim() : '',
+      society: toUpperTrim(society),
+      area: toUpperTrim(area),
+      houseNo: toUpperTrim(houseNo),
       phone: phone ? phone.trim() : '',
       relation: 'Self',
       isHead: true,
@@ -128,11 +127,11 @@ export const registerFamilyHead = async (req, res) => {
     // 2. Create the Family record linking to the Patient
     const family = await Family.create({
       familyId,
-      headName: headName.trim(),
+      headName: toUpperTrim(headName),
       headPatientId: patient._id,
-      society: society ? society.trim() : '',
-      area: area ? area.trim() : '',
-      houseNo: houseNo ? String(houseNo).trim() : '',
+      society: toUpperTrim(society),
+      area: toUpperTrim(area),
+      houseNo: toUpperTrim(houseNo),
       phone: phone ? phone.trim() : '',
       registrationDoneBy: registrationDoneBy || 'Self (Head of Family)',
       membersCount: 1,
@@ -324,31 +323,31 @@ export const updateFamily = async (req, res) => {
     }
 
     if (headName && headName.trim()) {
-      family.headName = headName.trim();
+      family.headName = toUpperTrim(headName);
     }
-    if (society !== undefined) family.society = society.trim();
-    if (area !== undefined) family.area = area.trim();
+    if (society !== undefined) family.society = toUpperTrim(society);
+    if (area !== undefined) family.area = toUpperTrim(area);
+    if (houseNo !== undefined) family.houseNo = toUpperTrim(houseNo);
     if (phone !== undefined) family.phone = phone.trim();
     if (registrationDoneBy) family.registrationDoneBy = registrationDoneBy;
 
     await family.save();
 
     // Also update the linked Head Patient record
-    const patientAllergies = Array.isArray(allergies)
-      ? allergies
-      : allergies ? [allergies] : [];
+    const patientAllergies = toUpperArray(allergies);
 
     const headPatient = await Patient.findOneAndUpdate(
       { familyId, isHead: true },
       {
         $set: {
           name: family.headName,
-          age: age ? Number(age) : undefined,
+          age: age ? toUpperTrim(age) : undefined,
           gender: gender || 'Male',
-          bloodGroup: bloodGroup || '',
+          bloodGroup: toUpperTrim(bloodGroup),
           allergies: patientAllergies,
           society: family.society,
           area: family.area,
+          houseNo: family.houseNo,
           phone: family.phone,
           registrationDoneBy: family.registrationDoneBy,
         },
