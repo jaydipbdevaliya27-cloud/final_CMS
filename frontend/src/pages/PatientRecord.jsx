@@ -542,6 +542,8 @@ export const PatientRecord = ({
     timing: 'AF',
     sosInstruction: '',
   });
+  const [editingTreatmentId, setEditingTreatmentId] = useState(null);
+  const [editingRxId, setEditingRxId] = useState(null);
 
   // --- New Visit Entry Form State (Matching Image) ---
   const getTodayDateStr = () => {
@@ -1485,8 +1487,8 @@ export const PatientRecord = ({
     const med = (clinicMedForm.medicine || '').trim();
     if (!med) return;
     const resolvedMed = resolveMasterShortcut('medicine', med);
-    const newTr = {
-      id: Date.now() + '-' + Math.random(),
+    const updatedItem = {
+      id: editingTreatmentId || Date.now() + '-' + Math.random(),
       item: resolvedMed,
       qty: String(clinicMedForm.qty || '1').trim() || '1',
       morning: String(clinicMedForm.morning || '1').trim(),
@@ -1495,15 +1497,33 @@ export const PatientRecord = ({
     };
     setVisitForm((prev) => {
       const current = prev || visitFormRef.current || visitForm;
-      const treatments = [...(current.treatments || []), newTr];
+      const list = current.treatments || [];
+      const treatments = editingTreatmentId
+        ? list.map((tr, i) => ((tr.id || i) === editingTreatmentId ? { ...tr, ...updatedItem } : tr))
+        : [...list, updatedItem];
       const updated = { ...current, treatments };
       visitFormRef.current = updated;
       return updated;
     });
+    setEditingTreatmentId(null);
     setClinicMedForm({ medicine: '', qty: '1', morning: '1', noon: '0', evening: '1' });
     setTimeout(() => {
       clinicMedInputRef.current?.focus();
     }, 40);
+  };
+
+  const handleEditClinicMedicine = (tr, idx) => {
+    setEditingTreatmentId(tr.id || idx);
+    setClinicMedForm({
+      medicine: tr.item || '',
+      qty: String(tr.qty || '1'),
+      morning: String(tr.morning ?? '1'),
+      noon: String(tr.noon ?? '0'),
+      evening: String(tr.evening ?? '1'),
+    });
+    setTimeout(() => {
+      clinicMedInputRef.current?.focus();
+    }, 30);
   };
 
   const handleAddPrescriptionItem = () => {
@@ -1512,8 +1532,8 @@ export const PatientRecord = ({
     const resolvedMed = resolveMasterShortcut('medicine', med);
     const rawSos = (rxForm.sosInstruction || '').trim();
     const resolvedSos = rawSos ? resolveMasterShortcut('sos', rawSos) : '';
-    const newRx = {
-      id: Date.now() + '-' + Math.random(),
+    const updatedRx = {
+      id: editingRxId || Date.now() + '-' + Math.random(),
       medicine: resolvedMed,
       qty: String(rxForm.qty || '').trim(),
       morning: String(rxForm.morning || '1').trim(),
@@ -1525,15 +1545,36 @@ export const PatientRecord = ({
     };
     setVisitForm((prev) => {
       const current = prev || visitFormRef.current || visitForm;
-      const prescriptions = [...(current.prescriptions || []), newRx];
+      const list = current.prescriptions || [];
+      const prescriptions = editingRxId
+        ? list.map((rx, i) => ((rx.id || i) === editingRxId ? { ...rx, ...updatedRx } : rx))
+        : [...list, updatedRx];
       const updated = { ...current, prescriptions };
       visitFormRef.current = updated;
       return updated;
     });
+    setEditingRxId(null);
     setRxForm({ medicine: '', qty: '10', morning: '1', noon: '0', evening: '1', night: '0', timing: 'AF', sosInstruction: '' });
     setTimeout(() => {
       rxMedInputRef.current?.focus();
     }, 40);
+  };
+
+  const handleEditPrescriptionItem = (rx, idx) => {
+    setEditingRxId(rx.id || idx);
+    setRxForm({
+      medicine: rx.medicine || '',
+      qty: String(rx.qty || '10'),
+      morning: String(rx.morning ?? '1'),
+      noon: String(rx.noon ?? '0'),
+      evening: String(rx.evening ?? '1'),
+      night: String(rx.night ?? '0'),
+      timing: rx.timing || 'AF',
+      sosInstruction: rx.sosInstruction || '',
+    });
+    setTimeout(() => {
+      rxMedInputRef.current?.focus();
+    }, 30);
   };
 
   const handleDietaryCodeChange = (rawVal) => {
@@ -3539,11 +3580,29 @@ export const PatientRecord = ({
                       }
                     }
                   }}
-                  style={styles.photoAddBtnBlue}
-                  title="Add clinic medicine (Enter / Tab)"
+                  style={{
+                    ...styles.photoAddBtnBlue,
+                    width: editingTreatmentId !== null ? 'auto' : styles.photoAddBtnBlue.width,
+                    padding: editingTreatmentId !== null ? '0 10px' : undefined,
+                    backgroundColor: editingTreatmentId !== null ? '#D97706' : styles.photoAddBtnBlue.backgroundColor,
+                  }}
+                  title={editingTreatmentId !== null ? 'Update selected clinic medicine' : 'Add clinic medicine (Enter / Tab)'}
                 >
-                  +
+                  {editingTreatmentId !== null ? 'Update' : '+'}
                 </button>
+                {editingTreatmentId !== null && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingTreatmentId(null);
+                      setClinicMedForm({ medicine: '', qty: '1', morning: '1', noon: '0', evening: '1' });
+                    }}
+                    style={{ ...styles.photoRowDeleteBtn, height: '28px', width: '28px', border: '1px solid #CBD5E1', borderRadius: '4px' }}
+                    title="Cancel edit"
+                  >
+                    <X size={13} color="#475569" />
+                  </button>
+                )}
               </div>
 
               {/* Clinic Medicines Table (Expands to fill available space) */}
@@ -3554,7 +3613,7 @@ export const PatientRecord = ({
                       <th style={styles.photoTh}>Medicine</th>
                       <th style={{ ...styles.photoTh, width: '45px', textAlign: 'center' }}>Qty</th>
                       <th style={{ ...styles.photoTh, width: '70px', textAlign: 'center' }}>M N E</th>
-                      <th style={{ ...styles.photoTh, width: '32px', textAlign: 'center' }}>X</th>
+                      <th style={{ ...styles.photoTh, width: '62px', textAlign: 'center' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -3567,26 +3626,46 @@ export const PatientRecord = ({
                     ) : (
                       (visitForm.treatments || [])
                         .filter((tr) => tr && tr.item && tr.item.trim())
-                        .map((tr, idx) => (
-                          <tr key={tr.id || idx} style={styles.photoTableTr}>
+                        .map((tr, idx) => {
+                          const isEditingRow = editingTreatmentId !== null && (tr.id || idx) === editingTreatmentId;
+                          return (
+                          <tr key={tr.id || idx} style={{ ...styles.photoTableTr, backgroundColor: isEditingRow ? '#FEF3C7' : undefined }}>
                             <td style={styles.photoTdBold}>{tr.item}</td>
                             <td style={{ ...styles.photoTd, textAlign: 'center' }}>{tr.qty || '1'}</td>
                             <td style={{ ...styles.photoTd, textAlign: 'center' }}>
                               {tr.morning || '1'}-{tr.noon || '0'}-{tr.evening || '1'}
                             </td>
                             <td style={{ ...styles.photoTd, textAlign: 'center' }}>
-                              <button
-                                type="button"
-                                tabIndex={-1}
-                                onClick={() => handleRemoveTreatment(tr.id, idx)}
-                                style={styles.photoRowDeleteBtn}
-                                title="Remove medicine"
-                              >
-                                <X size={12} color="#DC2626" />
-                              </button>
+                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                <button
+                                  type="button"
+                                  tabIndex={-1}
+                                  onClick={() => handleEditClinicMedicine(tr, idx)}
+                                  style={styles.photoRowDeleteBtn}
+                                  title="Edit / Update medicine"
+                                >
+                                  <Edit3 size={12} color="#D97706" />
+                                </button>
+                                <button
+                                  type="button"
+                                  tabIndex={-1}
+                                  onClick={() => {
+                                    if (isEditingRow) {
+                                      setEditingTreatmentId(null);
+                                      setClinicMedForm({ medicine: '', qty: '1', morning: '1', noon: '0', evening: '1' });
+                                    }
+                                    handleRemoveTreatment(tr.id, idx);
+                                  }}
+                                  style={styles.photoRowDeleteBtn}
+                                  title="Delete medicine"
+                                >
+                                  <Trash2 size={12} color="#DC2626" />
+                                </button>
+                              </div>
                             </td>
                           </tr>
-                        ))
+                          );
+                        })
                     )}
                   </tbody>
                 </table>
@@ -3790,11 +3869,29 @@ export const PatientRecord = ({
                       }
                     }
                   }}
-                  style={styles.photoAddBtnBlue}
-                  title="Add prescription item (Enter / Tab)"
+                  style={{
+                    ...styles.photoAddBtnBlue,
+                    width: editingRxId !== null ? 'auto' : styles.photoAddBtnBlue.width,
+                    padding: editingRxId !== null ? '0 10px' : undefined,
+                    backgroundColor: editingRxId !== null ? '#D97706' : styles.photoAddBtnBlue.backgroundColor,
+                  }}
+                  title={editingRxId !== null ? 'Update selected prescription' : 'Add prescription item (Enter / Tab)'}
                 >
-                  +
+                  {editingRxId !== null ? 'Update' : '+'}
                 </button>
+                {editingRxId !== null && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingRxId(null);
+                      setRxForm({ medicine: '', qty: '10', morning: '1', noon: '0', evening: '1', night: '0', timing: 'AF', sosInstruction: '' });
+                    }}
+                    style={{ ...styles.photoRowDeleteBtn, height: '28px', width: '28px', border: '1px solid #CBD5E1', borderRadius: '4px' }}
+                    title="Cancel edit"
+                  >
+                    <X size={13} color="#475569" />
+                  </button>
+                )}
               </div>
 
               {/* Prescription Table (Expands to fill available space) */}
@@ -3806,7 +3903,7 @@ export const PatientRecord = ({
                       <th style={{ ...styles.photoTh, width: '42px', textAlign: 'center' }}>Qty</th>
                       <th style={{ ...styles.photoTh, width: '76px', textAlign: 'center' }}>M-N-E-Nt</th>
                       <th style={{ ...styles.photoTh, width: '95px', textAlign: 'center' }}>Meal/Instruction</th>
-                      <th style={{ ...styles.photoTh, width: '32px', textAlign: 'center' }}>X</th>
+                      <th style={{ ...styles.photoTh, width: '62px', textAlign: 'center' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -3819,8 +3916,10 @@ export const PatientRecord = ({
                     ) : (
                       (visitForm.prescriptions || [])
                         .filter((rx) => rx && rx.medicine && rx.medicine.trim())
-                        .map((rx, idx) => (
-                          <tr key={rx.id || idx} style={styles.photoTableTr}>
+                        .map((rx, idx) => {
+                          const isEditingRow = editingRxId !== null && (rx.id || idx) === editingRxId;
+                          return (
+                          <tr key={rx.id || idx} style={{ ...styles.photoTableTr, backgroundColor: isEditingRow ? '#FEF3C7' : undefined }}>
                             <td style={styles.photoTdBold}>{rx.medicine}</td>
                             <td style={{ ...styles.photoTd, textAlign: 'center' }}>{rx.qty || '-'}</td>
                             <td style={{ ...styles.photoTd, textAlign: 'center' }}>
@@ -3834,18 +3933,36 @@ export const PatientRecord = ({
                                   : 'After Food'}
                             </td>
                             <td style={{ ...styles.photoTd, textAlign: 'center' }}>
-                              <button
-                                type="button"
-                                tabIndex={-1}
-                                onClick={() => handleRemovePrescription(rx.id, idx)}
-                                style={styles.photoRowDeleteBtn}
-                                title="Remove prescription"
-                              >
-                                <X size={12} color="#DC2626" />
-                              </button>
+                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                <button
+                                  type="button"
+                                  tabIndex={-1}
+                                  onClick={() => handleEditPrescriptionItem(rx, idx)}
+                                  style={styles.photoRowDeleteBtn}
+                                  title="Edit / Update prescription"
+                                >
+                                  <Edit3 size={12} color="#D97706" />
+                                </button>
+                                <button
+                                  type="button"
+                                  tabIndex={-1}
+                                  onClick={() => {
+                                    if (isEditingRow) {
+                                      setEditingRxId(null);
+                                      setRxForm({ medicine: '', qty: '10', morning: '1', noon: '0', evening: '1', night: '0', timing: 'AF', sosInstruction: '' });
+                                    }
+                                    handleRemovePrescription(rx.id, idx);
+                                  }}
+                                  style={styles.photoRowDeleteBtn}
+                                  title="Delete prescription"
+                                >
+                                  <Trash2 size={12} color="#DC2626" />
+                                </button>
+                              </div>
                             </td>
                           </tr>
-                        ))
+                          );
+                        })
                     )}
                   </tbody>
                 </table>
