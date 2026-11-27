@@ -256,8 +256,9 @@ export const PatientRecord = ({
   const [selectedFamily, setSelectedFamily] = useState(null);
   const [familyHeadResults, setFamilyHeadResults] = useState([]);
   const [showFamilyHeadDropdown, setShowFamilyHeadDropdown] = useState(false);
-  const [familyHeadHighlightIndex, setFamilyHeadHighlightIndex] = useState(0);
+  const [familyHeadHighlightIndex, setFamilyHeadHighlightIndex] = useState(-1);
   const familyHeadWrapRef = useRef(null);
+  const familyHeadInputRef = useRef(null);
 
   const [currentPatient, setCurrentPatient] = useState(null);
   const [patientVisits, setPatientVisits] = useState([]);
@@ -1159,11 +1160,20 @@ export const PatientRecord = ({
     }
   };
 
+  const focusAgeField = () => {
+    setTimeout(() => {
+      if (ageInputRef.current) {
+        ageInputRef.current.focus();
+        ageInputRef.current.select?.();
+      }
+    }, 30);
+  };
+
   // --- Search & Select Family Head for New Patient ---
   const handleFamilyHeadSearchChange = async (val) => {
     setFamilyHeadName(val);
     setSelectedFamily(null);
-    setFamilyHeadHighlightIndex(0);
+    setFamilyHeadHighlightIndex(-1);
     const instantFams = searchFamiliesInMemory(val, 20);
     setFamilyHeadResults(instantFams);
     setShowFamilyHeadDropdown(true);
@@ -1199,6 +1209,7 @@ export const PatientRecord = ({
     if (!patientSociety && fam.society) setPatientSociety(fam.society);
     if (!patientArea && fam.area) setPatientArea(fam.area);
     if (!patientPhone && fam.phone) setPatientPhone(fam.phone);
+    focusAgeField();
   };
 
   // --- Immediate inline creation of a new patient directly from search input ---
@@ -1210,6 +1221,7 @@ export const PatientRecord = ({
     setPatientSearch('');
     setFamilyHeadName(newName);
     setSelectedFamily(null);
+    setFamilyHeadHighlightIndex(-1);
     setFamilyHeadResults(searchFamiliesInMemory(newName, 20));
     setShowFamilyHeadDropdown(false);
     const newPat = {
@@ -1221,15 +1233,15 @@ export const PatientRecord = ({
       deposit: 0,
     };
     handleSelectPatient(newPat, true);
-    showToast(`New patient "${newName}" initialized. Family Head set to "${newName}" (change or choose existing if needed).`);
+    showToast(`New patient "${newName}" initialized. Select or enter Family Head, then press Enter to move to Age.`);
     setTimeout(() => {
-      if (ageInputRef.current) {
+      if (familyHeadInputRef.current) {
+        familyHeadInputRef.current.focus();
+        familyHeadInputRef.current.select?.();
+      } else if (ageInputRef.current) {
         ageInputRef.current.focus();
-        ageInputRef.current.select?.();
-      } else if (bpInputRef.current) {
-        bpInputRef.current.focus();
       }
-    }, 80);
+    }, 100);
   };
 
   // --- Cleanly clear active patient and reset all clinical form fields to pristine state ---
@@ -2791,12 +2803,14 @@ export const PatientRecord = ({
                   {currentPatient?.isNewPatient ? (
                     <>
                       <input
+                        ref={familyHeadInputRef}
                         type="text"
                         value={familyHeadName}
                         onChange={(e) => handleFamilyHeadSearchChange(e.target.value)}
                         onFocus={() => {
                           const instantFams = searchFamiliesInMemory(familyHeadName, 20);
                           setFamilyHeadResults(instantFams);
+                          setFamilyHeadHighlightIndex(-1);
                           setShowFamilyHeadDropdown(true);
                         }}
                         onKeyDown={(e) => {
@@ -2807,11 +2821,18 @@ export const PatientRecord = ({
                           } else if (e.key === 'ArrowUp' && familyHeadResults.length > 0) {
                             e.preventDefault();
                             setShowFamilyHeadDropdown(true);
-                            setFamilyHeadHighlightIndex((prev) => (prev > 0 ? prev - 1 : familyHeadResults.length - 1));
-                          } else if (e.key === 'Enter' && showFamilyHeadDropdown && familyHeadResults.length > 0) {
+                            setFamilyHeadHighlightIndex((prev) => (prev > 0 ? prev - 1 : -1));
+                          } else if (e.key === 'Enter') {
                             e.preventDefault();
-                            const chosen = familyHeadResults[familyHeadHighlightIndex];
-                            if (chosen) handleSelectExistingFamilyHead(chosen);
+                            if (showFamilyHeadDropdown && familyHeadHighlightIndex >= 0 && familyHeadResults[familyHeadHighlightIndex]) {
+                              handleSelectExistingFamilyHead(familyHeadResults[familyHeadHighlightIndex]);
+                            } else {
+                              setSelectedFamily(null);
+                              setShowFamilyHeadDropdown(false);
+                              focusAgeField();
+                            }
+                          } else if (e.key === 'Tab') {
+                            setShowFamilyHeadDropdown(false);
                           } else if (e.key === 'Escape') {
                             setShowFamilyHeadDropdown(false);
                           }
@@ -2846,11 +2867,12 @@ export const PatientRecord = ({
                               onClick={() => {
                                 setSelectedFamily(null);
                                 setShowFamilyHeadDropdown(false);
+                                focusAgeField();
                               }}
                               style={{
                                 padding: '7px 10px',
                                 borderBottom: '1px solid #E2E8F0',
-                                backgroundColor: '#F0FDF4',
+                                backgroundColor: familyHeadHighlightIndex === -1 ? '#DCFCE7' : '#F0FDF4',
                                 cursor: 'pointer',
                                 display: 'flex',
                                 alignItems: 'center',
@@ -2861,7 +2883,7 @@ export const PatientRecord = ({
                               }}
                             >
                               <span>+ Use New Family Head: "{familyHeadName.trim().toUpperCase()}"</span>
-                              <span style={{ fontSize: '10px', color: '#047857' }}>New Family</span>
+                              <span style={{ fontSize: '10px', color: '#047857' }}>New Family (Enter ↵)</span>
                             </div>
                           )}
 
