@@ -61,31 +61,31 @@ const formatDoseInstruction = (m, n, e, ng, timing, langKey, sosInstruction = ''
 
   if (isSos) {
     const customText = sosInstruction ? ` (${sosInstruction})` : '';
-    if (langKey === 'hi') return `ज़रूरत पड़ने पर (SOS)${customText}`;
-    if (langKey === 'gu') return `જરૂર પડ્યે (SOS)${customText}`;
+    if (langKey === 'hi') return `à¤œà¤¼à¤°à¥‚à¤°à¤¤ à¤ªà¤¡à¤¼à¤¨à¥‡ à¤ªà¤° (SOS)${customText}`;
+    if (langKey === 'gu') return `àªœàª°à«‚àª° àªªàª¡à«àª¯à«‡ (SOS)${customText}`;
     return `As Needed (SOS)${customText}`;
   }
 
   const parts = [];
 
   if (langKey === 'hi') {
-    if (mVal && mVal !== '0') parts.push(`${mVal} सुबह (Morning)`);
-    if (nVal && nVal !== '0') parts.push(`${nVal} दोपहर (Afternoon)`);
-    if (eVal && eVal !== '0') parts.push(`${eVal} शाम (Evening)`);
-    if (ngVal && ngVal !== '0') parts.push(`${ngVal} रात (Night)`);
-    const timingStr = isBf ? 'खाने से पहले (भूखे पेट)' : 'खाने के बाद';
-    const doseText = parts.length > 0 ? parts.join(', ') : 'डॉक्टर के निर्देशानुसार';
-    return `${doseText} — ${timingStr}`;
+    if (mVal && mVal !== '0') parts.push(`${mVal} à¤¸à¥à¤¬à¤¹ (Morning)`);
+    if (nVal && nVal !== '0') parts.push(`${nVal} à¤¦à¥‹à¤ªà¤¹à¤° (Afternoon)`);
+    if (eVal && eVal !== '0') parts.push(`${eVal} à¤¶à¤¾à¤® (Evening)`);
+    if (ngVal && ngVal !== '0') parts.push(`${ngVal} à¤°à¤¾à¤¤ (Night)`);
+    const timingStr = isBf ? 'à¤–à¤¾à¤¨à¥‡ à¤¸à¥‡ à¤ªà¤¹à¤²à¥‡ (à¤­à¥‚à¤–à¥‡ à¤ªà¥‡à¤Ÿ)' : 'à¤–à¤¾à¤¨à¥‡ à¤•à¥‡ à¤¬à¤¾à¤¦';
+    const doseText = parts.length > 0 ? parts.join(', ') : 'à¤¡à¥‰à¤•à¥à¤Ÿà¤° à¤•à¥‡ à¤¨à¤¿à¤°à¥à¤¦à¥‡à¤¶à¤¾à¤¨à¥à¤¸à¤¾à¤°';
+    return `${doseText} â€” ${timingStr}`;
   }
 
   if (langKey === 'gu') {
-    if (mVal && mVal !== '0') parts.push(`${mVal} સવારે (Morning)`);
-    if (nVal && nVal !== '0') parts.push(`${nVal} બપોરે (Afternoon)`);
-    if (eVal && eVal !== '0') parts.push(`${eVal} સાંજે (Evening)`);
-    if (ngVal && ngVal !== '0') parts.push(`${ngVal} રાત્રે (Night)`);
-    const timingStr = isBf ? 'જમ્યા પહેલાં (ભૂખ્યા પેટે)' : 'જમ્યા પછી';
-    const doseText = parts.length > 0 ? parts.join(', ') : 'ડોક્ટરની સલાહ મુજબ';
-    return `${doseText} — ${timingStr}`;
+    if (mVal && mVal !== '0') parts.push(`${mVal} àª¸àªµàª¾àª°à«‡ (Morning)`);
+    if (nVal && nVal !== '0') parts.push(`${nVal} àª¬àªªà«‹àª°à«‡ (Afternoon)`);
+    if (eVal && eVal !== '0') parts.push(`${eVal} àª¸àª¾àª‚àªœà«‡ (Evening)`);
+    if (ngVal && ngVal !== '0') parts.push(`${ngVal} àª°àª¾àª¤à«àª°à«‡ (Night)`);
+    const timingStr = isBf ? 'àªœàª®à«àª¯àª¾ àªªàª¹à«‡àª²àª¾àª‚ (àª­à«‚àª–à«àª¯àª¾ àªªà«‡àªŸà«‡)' : 'àªœàª®à«àª¯àª¾ àªªàª›à«€';
+    const doseText = parts.length > 0 ? parts.join(', ') : 'àª¡à«‹àª•à«àªŸàª°àª¨à«€ àª¸àª²àª¾àª¹ àª®à«àªœàª¬';
+    return `${doseText} â€” ${timingStr}`;
   }
 
   // English default
@@ -95,7 +95,7 @@ const formatDoseInstruction = (m, n, e, ng, timing, langKey, sosInstruction = ''
   if (ngVal && ngVal !== '0') parts.push(`${ngVal} Night`);
   const timingStr = isBf ? 'Before Food' : 'After Food';
   const doseText = parts.length > 0 ? parts.join(', ') : 'As Directed';
-  return `${doseText} — ${timingStr}`;
+  return `${doseText} â€” ${timingStr}`;
 };
 
 const RX_TRANSLATIONS = {
@@ -131,62 +131,62 @@ const RX_TRANSLATIONS = {
   },
   hi: {
     langKey: 'hi',
-    langName: 'हिंदी',
+    langName: 'à¤¹à¤¿à¤‚à¤¦à¥€',
     flag: '',
-    patientLabel: 'मरीज़ का नाम:',
-    dateLabel: 'दिनांक:',
-    ageLabel: 'उम्र:',
-    bpLabel: 'बी.पी.:',
-    mobileLabel: 'मोबाइल:',
-    sugarLabel: 'शुगर:',
-    colMedicine: 'दवा का नाम',
-    colQty: 'मात्रा',
-    colDose: 'खुराक',
-    colInstruction: 'निर्देश',
-    morning: 'सुबह',
-    noon: 'दोपहर',
-    evening: 'शाम',
-    night: 'रात',
-    beforeFood: 'खाने से पहले (भूखे पेट)',
-    afterFood: 'खाने के बाद',
-    asNeeded: 'ज़रूरत पड़ने पर (SOS)',
-    feverSos: 'बुखार आने पर (SOS)',
-    dietaryTitle: 'आहार एवं परहेज़ संबंधी सलाह:',
-    adviceTitle: 'सलाह एवं परहेज़ (ADVICE):',
-    defaultAdvice: '---अनाज [रोटी, भाखरी, रोटला], आलू, दूध न लें----- ---दाल-चावल, खिचड़ी, छाछ, दही, नींबू पानी, मौसंबी का जूस, पाइनएप्पल का जूस, लस्सी ज्यादा लें---',
-    noPrescription: 'इस विज़िट के लिए कोई दवा नहीं लिखी गई है।',
-    footerAdvice: '* कृपया दवाइयाँ समय पर और निर्देशानुसार लें।',
-    opdTimings: 'ओपीडी समय: सोम - शनि (सुबह 9:00 - 1:00, शाम 5:00 - 9:00)',
+    patientLabel: 'à¤®à¤°à¥€à¤œà¤¼ à¤•à¤¾ à¤¨à¤¾à¤®:',
+    dateLabel: 'à¤¦à¤¿à¤¨à¤¾à¤‚à¤•:',
+    ageLabel: 'à¤‰à¤®à¥à¤°:',
+    bpLabel: 'à¤¬à¥€.à¤ªà¥€.:',
+    mobileLabel: 'à¤®à¥‹à¤¬à¤¾à¤‡à¤²:',
+    sugarLabel: 'à¤¶à¥à¤—à¤°:',
+    colMedicine: 'à¤¦à¤µà¤¾ à¤•à¤¾ à¤¨à¤¾à¤®',
+    colQty: 'à¤®à¤¾à¤¤à¥à¤°à¤¾',
+    colDose: 'à¤–à¥à¤°à¤¾à¤•',
+    colInstruction: 'à¤¨à¤¿à¤°à¥à¤¦à¥‡à¤¶',
+    morning: 'à¤¸à¥à¤¬à¤¹',
+    noon: 'à¤¦à¥‹à¤ªà¤¹à¤°',
+    evening: 'à¤¶à¤¾à¤®',
+    night: 'à¤°à¤¾à¤¤',
+    beforeFood: 'à¤–à¤¾à¤¨à¥‡ à¤¸à¥‡ à¤ªà¤¹à¤²à¥‡ (à¤­à¥‚à¤–à¥‡ à¤ªà¥‡à¤Ÿ)',
+    afterFood: 'à¤–à¤¾à¤¨à¥‡ à¤•à¥‡ à¤¬à¤¾à¤¦',
+    asNeeded: 'à¤œà¤¼à¤°à¥‚à¤°à¤¤ à¤ªà¤¡à¤¼à¤¨à¥‡ à¤ªà¤° (SOS)',
+    feverSos: 'à¤¬à¥à¤–à¤¾à¤° à¤†à¤¨à¥‡ à¤ªà¤° (SOS)',
+    dietaryTitle: 'à¤†à¤¹à¤¾à¤° à¤à¤µà¤‚ à¤ªà¤°à¤¹à¥‡à¤œà¤¼ à¤¸à¤‚à¤¬à¤‚à¤§à¥€ à¤¸à¤²à¤¾à¤¹:',
+    adviceTitle: 'à¤¸à¤²à¤¾à¤¹ à¤à¤µà¤‚ à¤ªà¤°à¤¹à¥‡à¤œà¤¼ (ADVICE):',
+    defaultAdvice: '---à¤…à¤¨à¤¾à¤œ [à¤°à¥‹à¤Ÿà¥€, à¤­à¤¾à¤–à¤°à¥€, à¤°à¥‹à¤Ÿà¤²à¤¾], à¤†à¤²à¥‚, à¤¦à¥‚à¤§ à¤¨ à¤²à¥‡à¤‚----- ---à¤¦à¤¾à¤²-à¤šà¤¾à¤µà¤², à¤–à¤¿à¤šà¤¡à¤¼à¥€, à¤›à¤¾à¤›, à¤¦à¤¹à¥€, à¤¨à¥€à¤‚à¤¬à¥‚ à¤ªà¤¾à¤¨à¥€, à¤®à¥Œà¤¸à¤‚à¤¬à¥€ à¤•à¤¾ à¤œà¥‚à¤¸, à¤ªà¤¾à¤‡à¤¨à¤à¤ªà¥à¤ªà¤² à¤•à¤¾ à¤œà¥‚à¤¸, à¤²à¤¸à¥à¤¸à¥€ à¤œà¥à¤¯à¤¾à¤¦à¤¾ à¤²à¥‡à¤‚---',
+    noPrescription: 'à¤‡à¤¸ à¤µà¤¿à¤œà¤¼à¤¿à¤Ÿ à¤•à¥‡ à¤²à¤¿à¤ à¤•à¥‹à¤ˆ à¤¦à¤µà¤¾ à¤¨à¤¹à¥€à¤‚ à¤²à¤¿à¤–à¥€ à¤—à¤ˆ à¤¹à¥ˆà¥¤',
+    footerAdvice: '* à¤•à¥ƒà¤ªà¤¯à¤¾ à¤¦à¤µà¤¾à¤‡à¤¯à¤¾à¤ à¤¸à¤®à¤¯ à¤ªà¤° à¤”à¤° à¤¨à¤¿à¤°à¥à¤¦à¥‡à¤¶à¤¾à¤¨à¥à¤¸à¤¾à¤° à¤²à¥‡à¤‚à¥¤',
+    opdTimings: 'à¤“à¤ªà¥€à¤¡à¥€ à¤¸à¤®à¤¯: à¤¸à¥‹à¤® - à¤¶à¤¨à¤¿ (à¤¸à¥à¤¬à¤¹ 9:00 - 1:00, à¤¶à¤¾à¤® 5:00 - 9:00)',
     timingHelp: (m, n, e, ng, timing, sosInstruction) => formatDoseInstruction(m, n, e, ng, timing, 'hi', sosInstruction),
   },
   gu: {
     langKey: 'gu',
-    langName: 'ગુજરાતી',
+    langName: 'àª—à«àªœàª°àª¾àª¤à«€',
     flag: '',
-    patientLabel: 'દર્દીનું નામ:',
-    dateLabel: 'તારીખ:',
-    ageLabel: 'ઉંમર:',
-    bpLabel: 'બી.પી.:',
-    mobileLabel: 'મોબાઇલ:',
-    sugarLabel: 'શુગર:',
-    colMedicine: 'દવાનું નામ',
-    colQty: 'જથ્થો',
-    colDose: 'માત્રા',
-    colInstruction: 'સૂચના',
-    morning: 'સવાર',
-    noon: 'બપોર',
-    evening: 'સાંજ',
-    night: 'રાત',
-    beforeFood: 'જમ્યા પહેલા',
-    afterFood: 'જમ્યા પછી',
-    asNeeded: 'જરૂર પડ્યે (SOS)',
-    feverSos: 'તાવ આવે ત્યારે (SOS)',
-    dietaryTitle: 'ખોરાક અને પરેજી અંગેની સૂચનાઓ:',
-    adviceTitle: 'સૂચન / પરહેજ (ADVICE):',
-    defaultAdvice: '---અનાજ [ રોટલી , ભાખરી , રોટલો ] , બટાકા , દૂધ ના લેવુ----- --- દાળ ભાત, ખીચડી , છાશ, દહીં, લીંબુ પાણી, મોસંબી નુ જ્યુસ, પાઈનેપલ નુ જ્યુસ, લસ્સી વધારે લેવી---',
-    noPrescription: 'આ મુલાકાત માટે કોઈ દવા લખેલ નથી.',
-    footerAdvice: '* કૃપા કરીને દવાઓ સમયસર અને સૂચના મુજબ લો.',
-    opdTimings: 'ઓપીડી સમય: સોમ - શનિ (સવારે 9:00 - 1:00, સાંજે 5:00 - 9:00)',
+    patientLabel: 'àª¦àª°à«àª¦à«€àª¨à«àª‚ àª¨àª¾àª®:',
+    dateLabel: 'àª¤àª¾àª°à«€àª–:',
+    ageLabel: 'àª‰àª‚àª®àª°:',
+    bpLabel: 'àª¬à«€.àªªà«€.:',
+    mobileLabel: 'àª®à«‹àª¬àª¾àª‡àª²:',
+    sugarLabel: 'àª¶à«àª—àª°:',
+    colMedicine: 'àª¦àªµàª¾àª¨à«àª‚ àª¨àª¾àª®',
+    colQty: 'àªœàª¥à«àª¥à«‹',
+    colDose: 'àª®àª¾àª¤à«àª°àª¾',
+    colInstruction: 'àª¸à«‚àªšàª¨àª¾',
+    morning: 'àª¸àªµàª¾àª°',
+    noon: 'àª¬àªªà«‹àª°',
+    evening: 'àª¸àª¾àª‚àªœ',
+    night: 'àª°àª¾àª¤',
+    beforeFood: 'àªœàª®à«àª¯àª¾ àªªàª¹à«‡àª²àª¾',
+    afterFood: 'àªœàª®à«àª¯àª¾ àªªàª›à«€',
+    asNeeded: 'àªœàª°à«‚àª° àªªàª¡à«àª¯à«‡ (SOS)',
+    feverSos: 'àª¤àª¾àªµ àª†àªµà«‡ àª¤à«àª¯àª¾àª°à«‡ (SOS)',
+    dietaryTitle: 'àª–à«‹àª°àª¾àª• àª…àª¨à«‡ àªªàª°à«‡àªœà«€ àª…àª‚àª—à«‡àª¨à«€ àª¸à«‚àªšàª¨àª¾àª“:',
+    adviceTitle: 'àª¸à«‚àªšàª¨ / àªªàª°àª¹à«‡àªœ (ADVICE):',
+    defaultAdvice: '---àª…àª¨àª¾àªœ [ àª°à«‹àªŸàª²à«€ , àª­àª¾àª–àª°à«€ , àª°à«‹àªŸàª²à«‹ ] , àª¬àªŸàª¾àª•àª¾ , àª¦à«‚àª§ àª¨àª¾ àª²à«‡àªµà«----- --- àª¦àª¾àª³ àª­àª¾àª¤, àª–à«€àªšàª¡à«€ , àª›àª¾àª¶, àª¦àª¹à«€àª‚, àª²à«€àª‚àª¬à« àªªàª¾àª£à«€, àª®à«‹àª¸àª‚àª¬à«€ àª¨à« àªœà«àª¯à«àª¸, àªªàª¾àªˆàª¨à«‡àªªàª² àª¨à« àªœà«àª¯à«àª¸, àª²àª¸à«àª¸à«€ àªµàª§àª¾àª°à«‡ àª²à«‡àªµà«€---',
+    noPrescription: 'àª† àª®à«àª²àª¾àª•àª¾àª¤ àª®àª¾àªŸà«‡ àª•à«‹àªˆ àª¦àªµàª¾ àª²àª–à«‡àª² àª¨àª¥à«€.',
+    footerAdvice: '* àª•à«ƒàªªàª¾ àª•àª°à«€àª¨à«‡ àª¦àªµàª¾àª“ àª¸àª®àª¯àª¸àª° àª…àª¨à«‡ àª¸à«‚àªšàª¨àª¾ àª®à«àªœàª¬ àª²à«‹.',
+    opdTimings: 'àª“àªªà«€àª¡à«€ àª¸àª®àª¯: àª¸à«‹àª® - àª¶àª¨àª¿ (àª¸àªµàª¾àª°à«‡ 9:00 - 1:00, àª¸àª¾àª‚àªœà«‡ 5:00 - 9:00)',
     timingHelp: (m, n, e, ng, timing, sosInstruction) => formatDoseInstruction(m, n, e, ng, timing, 'gu', sosInstruction),
   },
 };
@@ -205,8 +205,8 @@ const formatRxDate = (dateVal) => {
 const PRINT_LANGUAGES = [
   {
     key: 'gu',
-    title: 'ગુજરાતી (Gujarati)',
-    sub: 'સવાર-બપોર-સાંજ-રાત, જમ્યા પહેલા / જમ્યા પછી, પરહેજ',
+    title: 'àª—à«àªœàª°àª¾àª¤à«€ (Gujarati)',
+    sub: 'àª¸àªµàª¾àª°-àª¬àªªà«‹àª°-àª¸àª¾àª‚àªœ-àª°àª¾àª¤, àªœàª®à«àª¯àª¾ àªªàª¹à«‡àª²àª¾ / àªœàª®à«àª¯àª¾ àªªàª›à«€, àªªàª°àª¹à«‡àªœ',
     code: 'IN',
     color: '#166534',
     bg: '#F0FDF4',
@@ -214,8 +214,8 @@ const PRINT_LANGUAGES = [
   },
   {
     key: 'hi',
-    title: 'हिंदी (Hindi)',
-    sub: 'सुबह-दोपहर-शाम-रात, खाने से पहले / खाने के बाद, परहेज़',
+    title: 'à¤¹à¤¿à¤‚à¤¦à¥€ (Hindi)',
+    sub: 'à¤¸à¥à¤¬à¤¹-à¤¦à¥‹à¤ªà¤¹à¤°-à¤¶à¤¾à¤®-à¤°à¤¾à¤¤, à¤–à¤¾à¤¨à¥‡ à¤¸à¥‡ à¤ªà¤¹à¤²à¥‡ / à¤–à¤¾à¤¨à¥‡ à¤•à¥‡ à¤¬à¤¾à¤¦, à¤ªà¤°à¤¹à¥‡à¤œà¤¼',
     code: 'IN',
     color: '#9A3412',
     bg: '#FFF7ED',
@@ -2300,7 +2300,7 @@ export const PatientRecord = ({
         {/* LEFT COLUMN (~50% width on desktop, 100% on mobile/tablet) */}
         <div className="patient-record-left-col" style={styles.photoLeftCol}>
           {/* CARD 1: Patient Details (Blue Theme) */}
-          <div style={{ ...styles.photoCard, borderColor: '#93C5FD', position: 'relative', zIndex: 50, overflow: 'visible' }}>
+          <div className="pr-section-card" style={{ ...styles.photoCard, borderColor: '#93C5FD', position: 'relative', zIndex: 50, overflow: 'visible' }}>
             <div style={styles.photoHeaderBlue}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <User size={14} color="#1E40AF" />
@@ -2429,7 +2429,7 @@ export const PatientRecord = ({
                           }}
                           title="Clear current patient and search another"
                         >
-                          ✕ Clear
+                          âœ• Clear
                         </button>
                         {!currentPatient.isNewPatient && (
                           <button
@@ -2514,7 +2514,7 @@ export const PatientRecord = ({
                                 Register New Patient: <span style={{ color: '#0D5C4E' }}>"{patientSearch.trim().toUpperCase()}"</span>
                               </div>
                               <div style={{ fontSize: 11, color: '#475569', marginTop: 2 }}>
-                                Patient not found in clinic records. Click here or press <kbd style={styles.enterKeyBadge}>Enter ↵</kbd> to start new entry.
+                                Patient not found in clinic records. Click here or press <kbd style={styles.enterKeyBadge}>Enter â†µ</kbd> to start new entry.
                               </div>
                             </div>
                             <span style={styles.newPatientQuickActionBtn}>
@@ -2594,7 +2594,7 @@ export const PatientRecord = ({
                                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                                     {Number(p.totalDue || 0) > 0 && (
                                       <span style={{ fontSize: 11, fontWeight: 800, color: '#DC2626', backgroundColor: '#FEE2E2', padding: '2px 8px', borderRadius: 5, border: '1px solid #FECACA' }}>
-                                        Due: ₹{p.totalDue}
+                                        Due: â‚¹{p.totalDue}
                                       </span>
                                     )}
                                     <span style={{ fontSize: 10, color: '#0D5C4E', fontWeight: 700, backgroundColor: '#E6F4F1', padding: '2px 8px', borderRadius: 5, border: '1px solid #B2DFDB' }}>
@@ -2636,7 +2636,7 @@ export const PatientRecord = ({
 
                                   {displayedPastVisits.length === 0 ? (
                                     <div style={{ fontSize: 11, color: '#64748B', padding: '4px 0', display: 'flex', alignItems: 'center', gap: 6 }}>
-                                      <span style={{ color: '#0D9488', fontWeight: 800 }}>•</span>
+                                      <span style={{ color: '#0D9488', fontWeight: 800 }}>â€¢</span>
                                       <span>First Consultation (New Case)</span>
                                     </div>
                                   ) : (
@@ -2819,7 +2819,7 @@ export const PatientRecord = ({
                         }}
                         title="Click to view family due breakdown"
                       >
-                        Total Due: ₹{currentPatient.totalDue || 0}
+                        Total Due: â‚¹{currentPatient.totalDue || 0}
                       </button>
                     ) : currentPatient?.isNewPatient ? (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -2827,7 +2827,7 @@ export const PatientRecord = ({
                           <>
                             <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#1D4ED8', backgroundColor: '#EFF6FF', border: '1px solid #BFDBFE', padding: '1px 6px', borderRadius: 4 }}>
                               Existing Family: FAM-{selectedFamily.familyId}
-                              {Number(selectedFamily.familyDue || 0) > 0 ? ` (Due: ₹${selectedFamily.familyDue})` : ''}
+                              {Number(selectedFamily.familyDue || 0) > 0 ? ` (Due: â‚¹${selectedFamily.familyDue})` : ''}
                             </span>
                             <button
                               type="button"
@@ -2838,7 +2838,7 @@ export const PatientRecord = ({
                               style={{ fontSize: '10.5px', color: '#DC2626', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700, padding: 0 }}
                               title="Unlink and use a new family head instead"
                             >
-                              × Unlink
+                              Ã— Unlink
                             </button>
                           </>
                         ) : (
@@ -2933,7 +2933,7 @@ export const PatientRecord = ({
                               }}
                             >
                               <span>+ Use New Family Head: "{familyHeadName.trim().toUpperCase()}"</span>
-                              <span style={{ fontSize: '10px', color: '#047857' }}>New Family (Enter ↵)</span>
+                              <span style={{ fontSize: '10px', color: '#047857' }}>New Family (Enter â†µ)</span>
                             </div>
                           )}
 
@@ -2963,12 +2963,12 @@ export const PatientRecord = ({
                                     {fam.headName} <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#1D4ED8' }}>(FAM-{fam.familyId})</span>
                                   </div>
                                   <div style={{ fontSize: '10.5px', color: '#64748B' }}>
-                                    {[fam.society, fam.area, fam.phone].filter(Boolean).join(' • ') || 'Existing Family'}
+                                    {[fam.society, fam.area, fam.phone].filter(Boolean).join(' â€¢ ') || 'Existing Family'}
                                   </div>
                                 </div>
                                 {Number(fam.familyDue || 0) > 0 && (
                                   <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#DC2626', backgroundColor: '#FEF2F2', padding: '1px 6px', borderRadius: 4 }}>
-                                    Due: ₹{fam.familyDue}
+                                    Due: â‚¹{fam.familyDue}
                                   </span>
                                 )}
                               </div>
@@ -3122,7 +3122,7 @@ export const PatientRecord = ({
           </div>
 
           {/* CARD 2: Allergy (Red Theme) */}
-          <div style={{ ...styles.photoCard, borderColor: '#FCA5A5', position: 'relative', zIndex: 40, overflow: 'visible' }}>
+          <div className="pr-section-card" style={{ ...styles.photoCard, borderColor: '#FCA5A5', position: 'relative', zIndex: 40, overflow: 'visible' }}>
             <div style={styles.photoHeaderRed}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <ShieldAlert size={14} color="#DC2626" />
@@ -3187,7 +3187,7 @@ export const PatientRecord = ({
           </div>
 
           {/* CARD 3: Complaints (Green Theme) */}
-          <div style={{ ...styles.photoCard, borderColor: '#6EE7B7', position: 'relative', zIndex: 30, overflow: 'visible' }}>
+          <div className="pr-section-card" style={{ ...styles.photoCard, borderColor: '#6EE7B7', position: 'relative', zIndex: 30, overflow: 'visible' }}>
             <div style={styles.photoHeaderGreen}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Stethoscope size={14} color="#059669" />
@@ -3251,7 +3251,7 @@ export const PatientRecord = ({
           </div>
 
           {/* CARD 4: Lab Investigation (Purple Theme) */}
-          <div style={{ ...styles.photoCard, borderColor: '#C4B5FD', position: 'relative', zIndex: 20, overflow: 'visible' }}>
+          <div className="pr-section-card" style={{ ...styles.photoCard, borderColor: '#C4B5FD', position: 'relative', zIndex: 20, overflow: 'visible' }}>
             <div style={styles.photoHeaderPurple}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <FlaskConical size={14} color="#7C3AED" />
@@ -3373,7 +3373,7 @@ export const PatientRecord = ({
           </div>
 
           {/* CARD 5: IPD Detail (Amber/Orange Theme) - Injections & IV Bottles */}
-          <div className="patient-card-ipd" style={{ ...styles.photoCard, ...styles.photoCardIpd, borderColor: '#FDBA74', position: 'relative', zIndex: 10, overflow: 'visible' }}>
+          <div className="pr-section-card patient-card-ipd" style={{ ...styles.photoCard, ...styles.photoCardIpd, borderColor: '#FDBA74', position: 'relative', zIndex: 10, overflow: 'visible' }}>
             <div style={styles.photoHeaderAmber}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Syringe size={14} color="#EA580C" />
@@ -3442,7 +3442,7 @@ export const PatientRecord = ({
         {/* RIGHT COLUMN (~50% width on desktop, 100% on mobile/tablet) */}
         <div className="patient-record-right-col" style={styles.photoRightCol}>
           {/* CARD 1: 1. Clinic Medicine (Blue Theme) */}
-          <div className="patient-card-clinic-med" style={{ ...styles.photoCard, ...styles.photoCardClinicMed, borderColor: '#93C5FD', position: 'relative', zIndex: 40, overflow: 'visible' }}>
+          <div className="pr-section-card patient-card-clinic-med" style={{ ...styles.photoCard, ...styles.photoCardClinicMed, borderColor: '#93C5FD', position: 'relative', zIndex: 40, overflow: 'visible' }}>
             <div style={styles.photoHeaderBlue}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Pill size={14} color="#1E40AF" />
@@ -3668,7 +3668,7 @@ export const PatientRecord = ({
           </div>
 
           {/* CARD 2: 2. Prescription (Blue Theme) */}
-          <div className="patient-card-prescription" style={{ ...styles.photoCard, ...styles.photoCardPrescription, borderColor: '#93C5FD', position: 'relative', zIndex: 30, overflow: 'visible' }}>
+          <div className="pr-section-card patient-card-prescription" style={{ ...styles.photoCard, ...styles.photoCardPrescription, borderColor: '#93C5FD', position: 'relative', zIndex: 30, overflow: 'visible' }}>
             <div style={styles.photoHeaderBlue}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <FileText size={14} color="#1E40AF" />
@@ -3965,7 +3965,7 @@ export const PatientRecord = ({
           </div>
 
           {/* CARD 3: 3. Advice / Diet / Food Instructions (Green Theme) */}
-          <div style={{ ...styles.photoCard, borderColor: '#86EFAC', position: 'relative', zIndex: 20, overflow: 'visible' }}>
+          <div className="pr-section-card" style={{ ...styles.photoCard, borderColor: '#86EFAC', position: 'relative', zIndex: 20, overflow: 'visible' }}>
             <div style={styles.photoHeaderGreen}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <UtensilsCrossed size={14} color="#166534" />
@@ -4019,13 +4019,15 @@ export const PatientRecord = ({
                         } else {
                           handleApplyDietary();
                         }
-                      } else if (e.key === 'Tab') {
-                        if (showDietaryDropdown && dietarySuggestions.length > 0 && dietaryHighlightIndex >= 0) {
+                      } else if (e.key === 'Tab' && !e.shiftKey) {
+                        setShowDietaryDropdown(false);
+                        if (dietaryCodeInput.trim() && showDietaryDropdown && dietarySuggestions.length > 0 && dietaryHighlightIndex >= 0) {
                           const item = dietarySuggestions[dietaryHighlightIndex];
                           setDietaryCodeInput(item.shortcut || '');
                           setDietaryTextInput(item.value || '');
-                          setShowDietaryDropdown(false);
                         }
+                        e.preventDefault();
+                        dietaryAdviceInputRef.current?.focus();
                       } else if (e.key === 'Escape') {
                         setShowDietaryDropdown(false);
                       }
@@ -4084,7 +4086,9 @@ export const PatientRecord = ({
                         handleApplyDietary();
                       } else if (e.key === 'Tab' && !e.shiftKey && !dietaryTextInput.trim()) {
                         e.preventDefault();
-                        chargeInputRef.current?.focus();
+                        if (chargeInputRef.current && !chargeInputRef.current.disabled) {
+                          chargeInputRef.current.focus();
+                        }
                       }
                     }}
                     placeholder="SPECIFIC FOOD ADVICE (AUTO-FILLS FROM CODE OR TYPE DIRECTLY)..."
@@ -4098,7 +4102,9 @@ export const PatientRecord = ({
                   onKeyDown={(e) => {
                     if (e.key === 'Tab' && !e.shiftKey) {
                       e.preventDefault();
-                      chargeInputRef.current?.focus();
+                      if (chargeInputRef.current && !chargeInputRef.current.disabled) {
+                        chargeInputRef.current.focus();
+                      }
                     }
                   }}
                   style={styles.photoApplyBtnGreen}
@@ -4137,7 +4143,7 @@ export const PatientRecord = ({
                         title={`${item.shortcut ? `[${item.shortcut}] ` : ''}${item.value}`}
                       >
                         <span>{code}</span>
-                        {isAlreadyAdded && <span>✓</span>}
+                        {isAlreadyAdded && <span>âœ“</span>}
                       </button>
                     );
                   })}
@@ -4172,7 +4178,7 @@ export const PatientRecord = ({
           </div>
 
           {/* CARD 4: Billing Details (Amber/Yellow Theme) */}
-          <div style={{ ...styles.photoCard, borderColor: '#FCD34D', position: 'relative', zIndex: 10, overflow: 'visible' }}>
+          <div className="pr-section-card" style={{ ...styles.photoCard, borderColor: '#FCD34D', position: 'relative', zIndex: 10, overflow: 'visible' }}>
             <div style={styles.photoHeaderAmber}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Receipt size={14} color="#854D0E" />
@@ -4191,7 +4197,7 @@ export const PatientRecord = ({
                     style={styles.photoCancelEditBtn}
                     title="Cancel editing and switch to fresh new case entry"
                   >
-                    ✕ Cancel Edit (New Case)
+                    âœ• Cancel Edit (New Case)
                   </button>
                 )}
 
@@ -4216,7 +4222,7 @@ export const PatientRecord = ({
                   title={currentPatient && finalPatientDue > 0 ? "Click to view patient's pending visits" : ''}
                 >
                   <span>
-                    Patient Due: ₹{currentPatient ? finalPatientDue : 0}
+                    Patient Due: â‚¹{currentPatient ? finalPatientDue : 0}
                   </span>
                 </button>
 
@@ -4241,7 +4247,7 @@ export const PatientRecord = ({
                   title={currentPatient ? "Click to view full family breakdown across members" : ''}
                 >
                   <span>
-                    Family Due: ₹{currentPatient ? finalFamilyDue : 0}
+                    Family Due: â‚¹{currentPatient ? finalFamilyDue : 0}
                   </span>
                 </button>
               </div>
@@ -4251,7 +4257,7 @@ export const PatientRecord = ({
               {/* Charge Field Row: Only Charged Amount and Received Amount */}
               <div style={styles.photoRow2Col}>
                 <div style={styles.photoFieldGroup}>
-                  <label style={styles.photoLabel}>Charged Amount (₹):</label>
+                  <label style={styles.photoLabel}>Charged Amount (â‚¹):</label>
                   <input
                     ref={chargeInputRef}
                     type="number"
@@ -4265,7 +4271,7 @@ export const PatientRecord = ({
                 </div>
 
                 <div style={styles.photoFieldGroup}>
-                  <label style={styles.photoLabel}>Received Amount (₹):</label>
+                  <label style={styles.photoLabel}>Received Amount (â‚¹):</label>
                   <input
                     type="number"
                     min="0"
@@ -4418,8 +4424,8 @@ export const PatientRecord = ({
                           }}
                         >
                           {isDueCollection
-                            ? `✓ Due Collected: ₹${visit.received || 0}`
-                            : (visit.due > 0 ? `Due: ₹${visit.due}` : '✓ Settled')}
+                            ? `âœ“ Due Collected: â‚¹${visit.received || 0}`
+                            : (visit.due > 0 ? `Due: â‚¹${visit.due}` : 'âœ“ Settled')}
                         </span>
 
                         {visit.labReport && (
@@ -4569,9 +4575,9 @@ export const PatientRecord = ({
                           )}
                         </div>
                         <div style={{ display: 'flex', gap: 10, fontWeight: 600 }}>
-                          <span>Charge: ₹{visit.charge || 0}</span>
-                          <span style={{ color: '#15803D' }}>Received: ₹{visit.received || 0}</span>
-                          {Number(visit.due || 0) > 0 && <span style={{ color: '#DC2626' }}>Due: ₹{visit.due}</span>}
+                          <span>Charge: â‚¹{visit.charge || 0}</span>
+                          <span style={{ color: '#15803D' }}>Received: â‚¹{visit.received || 0}</span>
+                          {Number(visit.due || 0) > 0 && <span style={{ color: '#DC2626' }}>Due: â‚¹{visit.due}</span>}
                         </div>
                       </div>
                     )}
@@ -4858,7 +4864,7 @@ export const PatientRecord = ({
                     Select Prescription Language
                   </h3>
                   <span style={{ fontSize: '11px', color: '#16A34A', fontWeight: 600 }}>
-                    Use ↑ / ↓ arrow keys & Enter to select & print (or press Esc)
+                    Use â†‘ / â†“ arrow keys & Enter to select & print (or press Esc)
                   </span>
                 </div>
               </div>
@@ -4952,7 +4958,7 @@ export const PatientRecord = ({
                             gap: '4px',
                           }}
                         >
-                          <span>↵ Press Enter</span>
+                          <span>â†µ Press Enter</span>
                         </span>
                       )}
                       <Printer size={18} color={lang.color} />
@@ -5079,8 +5085,8 @@ export const PatientRecord = ({
                   <div style={styles.langPillsGroup}>
                     {[
                       { key: 'en', label: 'English' },
-                      { key: 'hi', label: 'हिंदी (Hindi)' },
-                      { key: 'gu', label: 'ગુજરાતી (Gujarati)' },
+                      { key: 'hi', label: 'à¤¹à¤¿à¤‚à¤¦à¥€ (Hindi)' },
+                      { key: 'gu', label: 'àª—à«àªœàª°àª¾àª¤à«€ (Gujarati)' },
                     ].map((lang) => {
                       const isActive = printLanguage === lang.key;
                       return (
@@ -5194,7 +5200,7 @@ export const PatientRecord = ({
                               }}
                               title={d.shortcut ? `Shortcut: ${d.shortcut}` : ''}
                             >
-                              <span>{isSelected ? '✓ ' : '+ '}</span>
+                              <span>{isSelected ? 'âœ“ ' : '+ '}</span>
                               {d.shortcut && <span style={{ opacity: 0.85, marginRight: '4px' }}>[{d.shortcut}]</span>}
                               <span>{d.value}</span>
                             </button>
@@ -5229,7 +5235,7 @@ export const PatientRecord = ({
 
                 {/* <div style={styles.printHelpNotice}>
                   {printMode === 'full' ? (
-                    <span>ℹ️ <strong>Full Letterhead Mode</strong>: Prints complete <strong>Dr. Chirag Paghdal</strong> letterpad with watermark, patient details, converted Rx dosage, dietary advice & Harsh Medical footer.</span>
+                    <span>â„¹ï¸ <strong>Full Letterhead Mode</strong>: Prints complete <strong>Dr. Chirag Paghdal</strong> letterpad with watermark, patient details, converted Rx dosage, dietary advice & Harsh Medical footer.</span>
                   ) : (
                     <span><strong>Pre-Printed Pad Mode</strong>: Letterhead graphics are hidden during print so you can insert your <strong>physical printed paper pad</strong> directly into printer!</span>
                   )}
@@ -5271,7 +5277,7 @@ export const PatientRecord = ({
                     </text>
                     <text fill="#0B63AC" fontSize="12" fontWeight="800" letterSpacing="4" textAnchor="middle">
                       <textPath href="#watermarkBottomArc" startOffset="50%">
-                        ★ DHYEY CLINIC ★
+                        â˜… DHYEY CLINIC â˜…
                       </textPath>
                     </text>
                     <g transform="translate(150, 150) scale(0.9) translate(-50, -60)" stroke="#0B63AC" fill="none" strokeLinecap="round" strokeLinejoin="round">
@@ -5341,7 +5347,7 @@ export const PatientRecord = ({
                     <div style={styles.photoPatientColLeft}>
                       <span style={styles.photoPatientLabel}>Patient:</span>{' '}
                       <span style={styles.photoPatientValueBold}>
-                        {printVisit.patientName || currentPatient?.name || '—'}
+                        {printVisit.patientName || currentPatient?.name || 'â€”'}
                       </span>
                     </div>
                     <div style={styles.photoPatientColRight}>
@@ -5385,7 +5391,7 @@ export const PatientRecord = ({
                           currentPatient?.age || printVisit.age,
                           currentPatient?.ageRecordedAt || currentPatient?.updatedAt || currentPatient?.createdAt,
                           patientDob || currentPatient?.dob || printVisit.dob
-                        ) || '—'}
+                        ) || 'â€”'}
                       </span>
                     </div>
                     <div style={styles.photoPatientColRight}>
@@ -5415,7 +5421,7 @@ export const PatientRecord = ({
                 {/* Solid horizontal line across page */}
                 <div style={styles.photoBlackDivider} />
 
-                {/* 3. ℞ SYMBOL & PRESCRIPTION TABLE */}
+                {/* 3. â„ž SYMBOL & PRESCRIPTION TABLE */}
                 <div style={styles.photoRxRow}>
                   <span style={styles.photoRxSymbol}>&#8478;</span>
                 </div>
@@ -5512,11 +5518,11 @@ export const PatientRecord = ({
                   </tbody>
                 </table>
 
-                {/* 4. ADVICE BOX (સૂચન / પરહેજ (ADVICE)) - ONLY IF GIVEN */}
+                {/* 4. ADVICE BOX (àª¸à«‚àªšàª¨ / àªªàª°àª¹à«‡àªœ (ADVICE)) - ONLY IF GIVEN */}
                 {Boolean(printDietary && printDietary.trim()) && (
                   <div className="photoAdviceBox" style={styles.photoAdviceBox}>
                     <span style={styles.photoAdviceTitle}>
-                      {t.adviceTitle || 'સૂચન / પરહેજ (ADVICE):'}{' '}
+                      {t.adviceTitle || 'àª¸à«‚àªšàª¨ / àªªàª°àª¹à«‡àªœ (ADVICE):'}{' '}
                     </span>
                     <span style={styles.photoAdviceText}>
                       {printDietary.trim()}
@@ -5585,7 +5591,7 @@ export const PatientRecord = ({
         initialReport={attachedReport}
         onReportSaved={(reportData) => {
           setAttachedReport(reportData);
-          showToast('✓ Diagnostic Lab Report saved & attached to current case!');
+          showToast('âœ“ Diagnostic Lab Report saved & attached to current case!');
         }}
       />
 
@@ -5599,7 +5605,7 @@ export const PatientRecord = ({
           initialReport={viewingPastReport}
           onReportSaved={() => {
             setViewingPastReport(null);
-            showToast('✓ Attached Lab Report updated!');
+            showToast('âœ“ Attached Lab Report updated!');
             if (currentPatient?.patientId) {
               loadPatientVisits(currentPatient.patientId);
             }
@@ -5636,13 +5642,13 @@ export const PatientRecord = ({
               <div style={styles.dueKpiCard}>
                 <span style={styles.dueKpiLabel}>TOTAL CHARGED</span>
                 <span style={styles.dueKpiValue}>
-                  ₹{patientVisits.reduce((acc, v) => acc + (v.charge || 0), 0)}
+                  â‚¹{patientVisits.reduce((acc, v) => acc + (v.charge || 0), 0)}
                 </span>
               </div>
               <div style={styles.dueKpiCard}>
                 <span style={styles.dueKpiLabel}>TOTAL RECEIVED</span>
                 <span style={{ ...styles.dueKpiValue, color: '#16A34A' }}>
-                  ₹{patientVisits.reduce((acc, v) => acc + (v.received || 0), 0)}
+                  â‚¹{patientVisits.reduce((acc, v) => acc + (v.received || 0), 0)}
                 </span>
               </div>
               <div
@@ -5666,7 +5672,7 @@ export const PatientRecord = ({
                     color: (currentPatient.totalDue || 0) > 0 ? '#DC2626' : '#16A34A',
                   }}
                 >
-                  ₹{currentPatient.totalDue || 0}
+                  â‚¹{currentPatient.totalDue || 0}
                 </span>
               </div>
             </div>
@@ -5760,13 +5766,13 @@ export const PatientRecord = ({
                               )}
                             </td>
                             <td style={{ ...styles.dueTd, textAlign: 'right', fontWeight: 600 }}>
-                              ₹{v.charge || 0}
+                              â‚¹{v.charge || 0}
                             </td>
                             <td style={{ ...styles.dueTd, textAlign: 'right', color: '#16A34A', fontWeight: 600 }}>
-                              ₹{v.received || 0}
+                              â‚¹{v.received || 0}
                             </td>
                             <td style={{ ...styles.dueTd, textAlign: 'right', color: isDue ? '#DC2626' : '#16A34A', fontWeight: 700 }}>
-                              ₹{v.due || 0}
+                              â‚¹{v.due || 0}
                             </td>
                             <td style={{ ...styles.dueTd, textAlign: 'center' }}>
                               <span
@@ -5777,7 +5783,7 @@ export const PatientRecord = ({
                                   color: isDue ? '#DC2626' : '#16A34A',
                                 }}
                               >
-                                {isDue ? `Pending: ₹${v.due}` : '✓ Settled'}
+                                {isDue ? `Pending: â‚¹${v.due}` : 'âœ“ Settled'}
                               </span>
                             </td>
                             <td style={{ ...styles.dueTd, textAlign: 'center' }}>
@@ -5872,7 +5878,7 @@ export const PatientRecord = ({
                         color: (currentPatient.family?.familyDue || familyData?.family?.familyDue || 0) > 0 ? '#DC2626' : '#16A34A',
                       }}
                     >
-                      ₹{currentPatient.family?.familyDue || familyData?.family?.familyDue || 0}
+                      â‚¹{currentPatient.family?.familyDue || familyData?.family?.familyDue || 0}
                     </span>
                   </div>
                   <div style={styles.dueKpiCard}>
@@ -5986,7 +5992,7 @@ export const PatientRecord = ({
                                     fontWeight: 700,
                                   }}
                                 >
-                                  {hasDue ? `Due: ₹${m.totalDue}` : '✓ Settled'}
+                                  {hasDue ? `Due: â‚¹${m.totalDue}` : 'âœ“ Settled'}
                                 </span>
                               </td>
                               <td style={{ ...styles.dueTd, textAlign: 'center' }}>
@@ -6061,13 +6067,13 @@ export const PatientRecord = ({
                                     </div>
                                   </td>
                                   <td style={{ ...styles.dueTd, textAlign: 'right', fontWeight: 600 }}>
-                                    ₹{v.charge || 0}
+                                    â‚¹{v.charge || 0}
                                   </td>
                                   <td style={{ ...styles.dueTd, textAlign: 'right', color: '#16A34A', fontWeight: 600 }}>
-                                    ₹{v.received || 0}
+                                    â‚¹{v.received || 0}
                                   </td>
                                   <td style={{ ...styles.dueTd, textAlign: 'right', color: '#DC2626', fontWeight: 700 }}>
-                                    ₹{v.due || 0}
+                                    â‚¹{v.due || 0}
                                   </td>
                                   <td style={{ ...styles.dueTd, textAlign: 'center' }}>
                                     <button
@@ -6096,7 +6102,7 @@ export const PatientRecord = ({
                 {/* Footer */}
                 <div style={styles.dueModalFooter}>
                   <div style={{ fontSize: 11, color: '#64748B' }}>
-                    Family ID: <strong>FAM-{currentPatient.familyId}</strong> &bull; Total Pending: <strong style={{ color: '#DC2626' }}>₹{currentPatient.family?.familyDue || familyData?.family?.familyDue || 0}</strong>
+                    Family ID: <strong>FAM-{currentPatient.familyId}</strong> &bull; Total Pending: <strong style={{ color: '#DC2626' }}>â‚¹{currentPatient.family?.familyDue || familyData?.family?.familyDue || 0}</strong>
                   </div>
                   <button
                     type="button"
