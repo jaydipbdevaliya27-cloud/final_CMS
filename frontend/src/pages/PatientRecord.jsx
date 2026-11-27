@@ -503,7 +503,11 @@ export const PatientRecord = ({
 
   // Age calculation helper in Years, Months, and Days (relative to Entry Date)
   const calculateDetailedAge = (dobString) => {
-    return calculateContinuousAge(patientAge, patientAgeRecordedAt, dobString, visitForm.visitDate || null);
+    const baseAge =
+      !ageManuallyEdited && currentPatient && !currentPatient.isNewPatient && currentPatient.age !== undefined && currentPatient.age !== null
+        ? String(currentPatient.age)
+        : patientAge;
+    return calculateContinuousAge(baseAge, patientAgeRecordedAt, dobString, visitForm.visitDate || null);
   };
 
   const handleDobChange = (dobVal) => {
@@ -852,8 +856,13 @@ export const PatientRecord = ({
             if (res?.success && res.patient) {
               setCurrentPatient(res.patient);
               if (res.patient.dob) setPatientDob(res.patient.dob);
-              if (res.patient.age !== undefined && res.patient.age !== null) setPatientAge(String(res.patient.age));
-              setPatientAgeRecordedAt(res.patient.ageRecordedAt || res.patient.createdAt || res.patient.updatedAt || null);
+              const recAt = res.patient.ageRecordedAt || res.patient.createdAt || res.patient.updatedAt || null;
+              setPatientAgeRecordedAt(recAt);
+              const rawAge = res.patient.age !== undefined && res.patient.age !== null ? String(res.patient.age) : '';
+              const calcAge = calculateContinuousAge(rawAge, recAt, res.patient.dob || '', visitForm.visitDate || null);
+              const yMatch = calcAge.match(/^(\d+)Y/i);
+              if (yMatch) setPatientAge(yMatch[1]);
+              else if (rawAge) setPatientAge(rawAge);
               if (res.patient.phone) setPatientPhone(res.patient.phone);
               if (res.patient.houseNo) setPatientHouseNo(res.patient.houseNo);
               if (res.patient.society) setPatientSociety(res.patient.society);
@@ -892,8 +901,13 @@ export const PatientRecord = ({
               setCurrentPatient(res.patient);
               currentPatientRef.current = res.patient;
               if (res.patient.dob) setPatientDob(res.patient.dob);
-              if (res.patient.age !== undefined && res.patient.age !== null) setPatientAge(String(res.patient.age));
-              setPatientAgeRecordedAt(res.patient.ageRecordedAt || res.patient.createdAt || res.patient.updatedAt || null);
+              const recAt = res.patient.ageRecordedAt || res.patient.createdAt || res.patient.updatedAt || null;
+              setPatientAgeRecordedAt(recAt);
+              const rawAge = res.patient.age !== undefined && res.patient.age !== null ? String(res.patient.age) : '';
+              const calcAge = calculateContinuousAge(rawAge, recAt, res.patient.dob || '', visitForm.visitDate || null);
+              const yMatch = calcAge.match(/^(\d+)Y/i);
+              if (yMatch) setPatientAge(yMatch[1]);
+              else if (rawAge) setPatientAge(rawAge);
               if (res.patient.phone) setPatientPhone(res.patient.phone);
               if (res.patient.houseNo) setPatientHouseNo(res.patient.houseNo);
               if (res.patient.society) setPatientSociety(res.patient.society);
@@ -1152,9 +1166,13 @@ export const PatientRecord = ({
     }
     setCurrentPatient(patient);
     setPatientDob(patient.dob || '');
-    setPatientAge(patient.age !== undefined && patient.age !== null ? String(patient.age) : '');
+    const recAt = patient.ageRecordedAt || patient.createdAt || patient.updatedAt || null;
+    const rawAge = patient.age !== undefined && patient.age !== null ? String(patient.age) : '';
+    const calcAge = calculateContinuousAge(rawAge, recAt, patient.dob || '', visitForm.visitDate || null);
+    const yMatch = calcAge.match(/^(\d+)Y/i);
+    setPatientAge(yMatch ? yMatch[1] : rawAge);
     setPatientGender(patient.gender && patient.gender !== 'Not Specified' ? patient.gender : 'Male');
-    setPatientAgeRecordedAt(patient.ageRecordedAt || patient.createdAt || patient.updatedAt || null);
+    setPatientAgeRecordedAt(recAt);
     setAgeManuallyEdited(false);
     setPatientPhone(patient.phone || '');
     setPatientHouseNo(patient.houseNo || patient.family?.houseNo || '');
@@ -2619,8 +2637,12 @@ export const PatientRecord = ({
                     onChange={(e) => {
                       const nextDate = e.target.value;
                       updateFormField('visitDate', nextDate);
-                      if (patientDob) {
-                        const detailed = calculateContinuousAge('', null, patientDob, nextDate || null);
+                      const baseAge =
+                        !ageManuallyEdited && currentPatient && !currentPatient.isNewPatient && currentPatient.age !== undefined && currentPatient.age !== null
+                          ? String(currentPatient.age)
+                          : patientAge;
+                      if (patientDob || patientAgeRecordedAt) {
+                        const detailed = calculateContinuousAge(baseAge, patientAgeRecordedAt, patientDob, nextDate || null);
                         const yMatch = detailed.match(/^(\d+)Y/i);
                         if (yMatch) setPatientAge(yMatch[1]);
                       }
