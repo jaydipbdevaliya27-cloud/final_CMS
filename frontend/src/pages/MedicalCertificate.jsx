@@ -1077,15 +1077,11 @@ export const MedicalCertificate = () => {
                     </div>
                   </div>
 
-                  {/* Cert ID & Security Bar */}
+                  {/* Cert ID */}
                   <div style={styles.a4MetaBar}>
                     <div style={styles.a4CertIdWrap}>
                       <span style={styles.a4CertIdLabel}>CERTIFICATE NO:</span>
                       <span style={styles.a4CertIdVal}>{nextCertId}</span>
-                    </div>
-                    <div style={styles.a4SecurityPill}>
-                      <ShieldCheck size={12} color="#15803D" />
-                      <span>AUTHENTIC & VERIFIABLE</span>
                     </div>
                   </div>
 
@@ -1291,108 +1287,123 @@ export const MedicalCertificate = () => {
         </div>
       )}
 
-      {/* 4. DEDICATED PRINTABLE LAYOUT (#printable-cert) */}
-      <div id="printable-cert" className="print-only" style={styles.printCertContainer}>
-        <div style={styles.printOuterBorder}>
-          <div style={styles.printInnerBorder}>
-            {/* Header */}
-            <div style={styles.printClinicHead}>
-              <h1 style={styles.printClinicName}>
-                {activePrintCert.clinicName || 'CLINIC MANAGEMENT SYSTEM'}
-              </h1>
-              <p style={styles.printClinicSub}>
-                Shop No. 1, Mahavir Heights, New Kosad Road, Amroli, Surat &bull; Phone: +91 98765 43210
-              </p>
-              <div style={styles.printDivider} />
-            </div>
-
-            {/* Certificate Title */}
-            <div style={styles.printTitleWrap}>
-              <h2 style={styles.printCertTitle}>
-                {activePrintCert.templateName?.toUpperCase() || 'MEDICAL FITNESS CERTIFICATE'}
-              </h2>
-            </div>
-
-            {/* Meta Bar */}
-            <div style={styles.printMetaBar}>
-              <span style={styles.printCertId}>
-                CERTIFICATE ID: {activePrintCert.certificateId}
-              </span>
-              <span style={styles.printVerifiedTag}>OFFICIAL VERIFIABLE</span>
-            </div>
-
-            {/* Body Paragraph */}
-            <div style={styles.printBodyText}>
-              {activePrintCert.bodyText}
-            </div>
-
-            {/* Period & Joining Dates Details Box */}
-            <div style={{
-              margin: '12px 0 16px',
-              padding: '8px 12px',
-              backgroundColor: '#F8FAFC',
-              border: '1px solid #CBD5E1',
-              borderRadius: '6px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '8px',
-              fontSize: '11px',
+      {/* 4. DEDICATED PRINTABLE LAYOUT (#printable-cert) - A5 PRE-PRINTED LETTERPAD MODE */}
+      <div id="printable-cert" className="print-only" style={{ padding: 0, backgroundColor: '#FFFFFF', color: '#000000' }}>
+        <div style={{ width: '100%', boxSizing: 'border-box' }}>
+          {/* Certificate Title */}
+          <div style={{ textAlign: 'center', marginBottom: '10px' }}>
+            <h2 style={{
+              margin: 0,
+              fontSize: '15px',
+              fontWeight: 900,
+              letterSpacing: '0.8px',
+              color: '#000000',
+              textTransform: 'uppercase',
             }}>
-              <div>
-                <span style={{ fontSize: '9px', color: '#64748B', fontWeight: 600, display: 'block', textTransform: 'uppercase' }}>From Date</span>
-                <strong style={{ color: '#0F172A', fontSize: '11px' }}>{activePrintCert.fromDate || todayStr}</strong>
-              </div>
-              <div style={{ width: '1px', height: '22px', backgroundColor: '#CBD5E1' }} />
-              <div>
-                <span style={{ fontSize: '9px', color: '#64748B', fontWeight: 600, display: 'block', textTransform: 'uppercase' }}>To Date</span>
-                <strong style={{ color: '#0F172A', fontSize: '11px' }}>{activePrintCert.toDate || todayStr}</strong>
-              </div>
-              <div style={{ width: '1px', height: '22px', backgroundColor: '#CBD5E1' }} />
-              <div>
-                <span style={{ fontSize: '9px', color: '#64748B', fontWeight: 600, display: 'block', textTransform: 'uppercase' }}>Rest Period</span>
-                <strong style={{ color: '#0F172A', fontSize: '11px' }}>{activePrintCert.restDays || 1} Day(s)</strong>
-              </div>
-              <div style={{ width: '1px', height: '22px', backgroundColor: '#CBD5E1' }} />
-              <div style={{ backgroundColor: '#F0FDF4', padding: '3px 8px', borderRadius: '4px', border: '1px solid #86EFAC' }}>
-                <span style={{ fontSize: '9px', color: '#166534', fontWeight: 700, display: 'block', textTransform: 'uppercase' }}>Joining Date</span>
-                <strong style={{ color: '#15803D', fontSize: '11px', fontWeight: 800 }}>{activePrintCert.joiningDate || todayStr}</strong>
-              </div>
+              {activePrintCert.templateName?.toUpperCase() || 'MEDICAL FITNESS CERTIFICATE'}
+            </h2>
+          </div>
+
+          {/* Meta Bar (Certificate ID only, no Official Verifiable badge) */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderBottom: '1.5px solid #000000',
+            paddingBottom: '5px',
+            marginBottom: '12px',
+          }}>
+            <span style={{ fontSize: '10.5px', fontWeight: 800, color: '#000000' }}>
+              CERTIFICATE ID: {activePrintCert.certificateId}
+            </span>
+            <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#000000' }}>
+              Date: {activePrintCert.issueDate || todayStr}
+            </span>
+          </div>
+
+          {/* Body Paragraph */}
+          <div style={{
+            fontFamily: 'Georgia, "Times New Roman", serif',
+            fontSize: '12px',
+            lineHeight: 1.65,
+            color: '#000000',
+            textAlign: 'justify',
+            marginBottom: '14px',
+          }}>
+            {activePrintCert.bodyText}
+          </div>
+
+          {/* Period & Joining Dates Details Box */}
+          <div style={{
+            margin: '10px 0 14px',
+            padding: '6px 10px',
+            backgroundColor: '#FFFFFF',
+            border: '1px solid #000000',
+            borderRadius: '4px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '6px',
+            fontSize: '10px',
+          }}>
+            <div>
+              <span style={{ fontSize: '8.5px', color: '#334155', fontWeight: 700, display: 'block', textTransform: 'uppercase' }}>From Date</span>
+              <strong style={{ color: '#000000', fontSize: '10.5px' }}>{activePrintCert.fromDate || todayStr}</strong>
+            </div>
+            <div style={{ width: '1px', height: '20px', backgroundColor: '#CBD5E1' }} />
+            <div>
+              <span style={{ fontSize: '8.5px', color: '#334155', fontWeight: 700, display: 'block', textTransform: 'uppercase' }}>To Date</span>
+              <strong style={{ color: '#000000', fontSize: '10.5px' }}>{activePrintCert.toDate || todayStr}</strong>
+            </div>
+            <div style={{ width: '1px', height: '20px', backgroundColor: '#CBD5E1' }} />
+            <div>
+              <span style={{ fontSize: '8.5px', color: '#334155', fontWeight: 700, display: 'block', textTransform: 'uppercase' }}>Rest Period</span>
+              <strong style={{ color: '#000000', fontSize: '10.5px' }}>{activePrintCert.restDays || 1} Day(s)</strong>
+            </div>
+            <div style={{ width: '1px', height: '20px', backgroundColor: '#CBD5E1' }} />
+            <div>
+              <span style={{ fontSize: '8.5px', color: '#334155', fontWeight: 700, display: 'block', textTransform: 'uppercase' }}>Joining Date</span>
+              <strong style={{ color: '#000000', fontSize: '10.5px', fontWeight: 800 }}>{activePrintCert.joiningDate || todayStr}</strong>
+            </div>
+          </div>
+
+          {/* Signatures & Footer */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'flex-end',
+            justifyContent: 'space-between',
+            marginTop: '18px',
+            paddingTop: '8px',
+          }}>
+            <div style={{ fontSize: '10.5px', lineHeight: 1.5, color: '#000000' }}>
+              <p style={{ margin: 0 }}><strong>Date of Issue:</strong> {activePrintCert.issueDate || todayStr}</p>
+              <p style={{ margin: 0 }}><strong>Place of Issue:</strong> {activePrintCert.issuePlace || 'Surat'}</p>
+              {activePrintCert.joiningDate && (
+                <p style={{ margin: 0 }}><strong>Joining Date:</strong> {activePrintCert.joiningDate}</p>
+              )}
             </div>
 
-            {/* Signatures & Footer */}
-            <div style={styles.printFooter}>
-              <div style={styles.printFootLeft}>
-                <p><strong>Date of Issue:</strong> {activePrintCert.issueDate || todayStr}</p>
-                <p><strong>Place of Issue:</strong> {activePrintCert.issuePlace || 'Ahmedabad'}</p>
-                {activePrintCert.joiningDate && (
-                  <p><strong>Date of Joining / Resumption:</strong> {activePrintCert.joiningDate}</p>
+            <div style={{ textAlign: 'center', minWidth: '140px' }}>
+              <div style={{ minHeight: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {activePrintCert.digitalSignature?.startsWith('data:image') ? (
+                  <img
+                    src={activePrintCert.digitalSignature}
+                    alt="Doctor Signature"
+                    style={{ maxHeight: '36px', objectFit: 'contain' }}
+                  />
+                ) : (
+                  <span style={{ ...styles.printCursiveSig, fontSize: '16px' }}>
+                    {activePrintCert.digitalSignature || 'Dr. Chirag Paghdal'}
+                  </span>
                 )}
-                <p style={{ fontSize: '10px', color: '#666', marginTop: 4 }}>
-                  Security Verifiable Medical Document &bull; Reg: G-14285
-                </p>
               </div>
-
-              <div style={styles.printFootRight}>
-                <div style={styles.printSigWrap}>
-                  {activePrintCert.digitalSignature?.startsWith('data:image') ? (
-                    <img
-                      src={activePrintCert.digitalSignature}
-                      alt="Doctor Signature"
-                      style={{ maxHeight: '48px', objectFit: 'contain' }}
-                    />
-                  ) : (
-                    <span style={styles.printCursiveSig}>
-                      {activePrintCert.digitalSignature || 'Dr. Chirag Paghdal'}
-                    </span>
-                  )}
-                </div>
-                <div style={styles.printSignLine} />
-                <p style={styles.printDocName}>{activePrintCert.doctorName || 'Dr. Chirag Paghdal'}</p>
-                <p style={styles.printDocRole}>
-                  {activePrintCert.doctorQualifications || 'FAMILY PHYSICIAN (B.H.M.S.)'}
-                </p>
-              </div>
+              <div style={{ height: '1px', backgroundColor: '#000000', margin: '3px 0' }} />
+              <p style={{ margin: 0, fontSize: '11px', fontWeight: 800, color: '#000000' }}>
+                {activePrintCert.doctorName || 'Dr. Chirag Paghdal'}
+              </p>
+              <p style={{ margin: 0, fontSize: '9.5px', fontWeight: 600, color: '#334155' }}>
+                {activePrintCert.doctorQualifications || 'FAMILY PHYSICIAN (B.H.M.S.)'}
+              </p>
             </div>
           </div>
         </div>
