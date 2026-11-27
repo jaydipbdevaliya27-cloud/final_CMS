@@ -127,26 +127,21 @@ export const createCut = async (req, res) => {
     const {
       date,
       centerName,
+      companyName,
       patientName = '',
-      category,
+      category = 'EXTRA INCOME',
       amount,
-      status = 'Unpaid',
+      status = 'Paid',
       paymentMode = 'Cash',
       reference = '',
       notes = '',
     } = req.body;
 
-    if (!centerName || !centerName.trim()) {
+    const resolvedName = (companyName || centerName || '').trim();
+    if (!resolvedName) {
       return res.status(400).json({
         success: false,
-        message: 'Diagnostic Center / Lab / Source name is required',
-      });
-    }
-
-    if (!category || !category.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Cut category is required',
+        message: 'Company / Source name is required',
       });
     }
 
@@ -158,9 +153,9 @@ export const createCut = async (req, res) => {
       });
     }
 
-    const cleanCategory = category.trim().toUpperCase();
-    const cleanCenter = centerName.trim().toUpperCase();
-    const cleanStatus = status === 'Paid' ? 'Paid' : 'Unpaid';
+    const cleanCategory = (category || 'EXTRA INCOME').trim().toUpperCase();
+    const cleanCenter = resolvedName.toUpperCase();
+    const cleanStatus = status === 'Unpaid' ? 'Unpaid' : 'Paid';
     const todayStr = new Date().toISOString().split('T')[0];
 
     const cut = await Cut.create({

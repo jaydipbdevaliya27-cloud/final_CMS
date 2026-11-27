@@ -20,8 +20,8 @@ const cutSchema = new mongoose.Schema(
     },
     category: {
       type: String,
-      required: [true, 'Cut category is required'],
       trim: true,
+      default: 'EXTRA INCOME',
       index: true,
     },
     amount: {
@@ -32,7 +32,7 @@ const cutSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: ['Unpaid', 'Paid'],
-      default: 'Unpaid',
+      default: 'Paid',
       index: true,
     },
     paymentMode: {
