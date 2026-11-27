@@ -4217,11 +4217,53 @@ export const PatientRecord = ({
               ) : patientVisits.length === 0 ? (
                 <div style={styles.emptyState}>No previous visits recorded for this patient.</div>
               ) : (
-                patientVisits.map((visit) => (
+                patientVisits.map((visit) => {
+                  const visitTimeStr = (visit.createdAt || visit.updatedAt)
+                    ? new Date(visit.createdAt || visit.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })
+                    : '';
+                  const isEditedVisit = Boolean(
+                    visit.isEdited ||
+                    (visit.updatedAt && visit.createdAt && new Date(visit.updatedAt).getTime() - new Date(visit.createdAt).getTime() > 2000)
+                  );
+                  const editedTimeDisplay = isEditedVisit && (visit.editedAt || visit.updatedAt)
+                    ? new Date(visit.editedAt || visit.updatedAt).toLocaleString('en-GB', {
+                        day: '2-digit',
+                        month: 'short',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: true,
+                      })
+                    : '';
+                  const allergyItems = Array.isArray(visit.allergies)
+                    ? visit.allergies.filter((a) => a && String(a).trim())
+                    : [];
+                  const complaintText = (visit.complaint && visit.complaint.trim())
+                    ? visit.complaint.trim()
+                    : (Array.isArray(visit.complaintList) && visit.complaintList.length > 0 ? visit.complaintList.join(', ') : '');
+                  const investigationText = (Array.isArray(visit.investigationList) && visit.investigationList.length > 0)
+                    ? visit.investigationList.map((i) => (typeof i === 'string' ? i : `${i.reportType}${i.labName ? ` (${i.labName})` : ''}`)).join(', ')
+                    : (visit.investigation && visit.investigation.trim() ? visit.investigation.trim() : '');
+                  const ipdItems = Array.isArray(visit.ipdDetails)
+                    ? visit.ipdDetails.map((i) => (typeof i === 'string' ? i.trim() : (i?.item || '').trim())).filter(Boolean)
+                    : (typeof visit.ipdDetails === 'string' && visit.ipdDetails.trim()
+                        ? visit.ipdDetails.split(',').map((s) => s.trim()).filter(Boolean)
+                        : []);
+                  const treatmentItems = Array.isArray(visit.treatments)
+                    ? visit.treatments.filter((t) => t && (typeof t === 'string' ? t.trim() : (t.item || t.medicine || '').trim()))
+                    : [];
+                  const rxItems = Array.isArray(visit.prescriptions)
+                    ? visit.prescriptions.filter((p) => p && (p.medicine || '').trim())
+                    : [];
+                  const isDueCollection = Boolean(
+                    (visit.reference && visit.reference.toUpperCase().includes('DUE COLLECTION')) ||
+                    (Number(visit.charge || 0) === 0 && Number(visit.received || 0) > 0)
+                  );
+
+                  return (
                   <div key={visit._id} style={styles.visitHistoryCard}>
-                    {/* CARD HEADER: Date, Vitals & Actions */}
+                    {/* CARD HEADER: Date, Time, Edited Badge, Vitals & Actions */}
                     <div style={styles.visitCardHeader}>
-                      <div style={styles.visitCardDate}>
+                      <div style={{ ...styles.visitCardDate, flexWrap: 'wrap' }}>
                         <Calendar size={14} color="#146B5C" />
                         <span style={styles.visitDateText}>
                           {new Date(visit.visitDate).toLocaleDateString('en-GB', {
@@ -4230,6 +4272,16 @@ export const PatientRecord = ({
                             year: 'numeric',
                           })}
                         </span>
+                        {visitTimeStr && (
+                          <span style={{ fontSize: 10.5, fontWeight: 700, color: '#0369A1', backgroundColor: '#F0F9FF', border: '1px solid #BAE6FD', padding: '1px 6px', borderRadius: 4 }}>
+                            {visitTimeStr}
+                          </span>
+                        )}
+                        {isEditedVisit && (
+                          <span style={styles.editedBadge} title={editedTimeDisplay ? `Edited on ${editedTimeDisplay}` : 'Case Edited'}>
+                            EDITED{editedTimeDisplay ? ` (${editedTimeDisplay})` : ''}
+                          </span>
+                        )}
                         {visit.bp && <span style={styles.vitalsBadgeBP}>BP: {visit.bp}</span>}
                         {visit.sugar && <span style={styles.vitalsBadgeSugar}>Sugar: {visit.sugar}</span>}
                         {visit.other && <span style={styles.vitalsBadgeOther}>{visit.other}</span>}
@@ -4239,12 +4291,14 @@ export const PatientRecord = ({
                         <span
                           style={{
                             ...styles.visitDueBadge,
-                            backgroundColor: visit.due > 0 ? '#FEF2F2' : '#F0FDF4',
-                            borderColor: visit.due > 0 ? '#FECACA' : '#BBF7D0',
-                            color: visit.due > 0 ? '#DC2626' : '#16A34A',
+                            backgroundColor: isDueCollection ? '#DCFCE7' : (visit.due > 0 ? '#FEF2F2' : '#F0FDF4'),
+                            borderColor: isDueCollection ? '#86EFAC' : (visit.due > 0 ? '#FECACA' : '#BBF7D0'),
+                            color: isDueCollection ? '#15803D' : (visit.due > 0 ? '#DC2626' : '#16A34A'),
                           }}
                         >
-                          {visit.due > 0 ? `Due: ₹${visit.due}` : '✓ Settled'}
+                          {isDueCollection
+                            ? `✓ Due Collected: ₹${visit.received || 0}`
+                            : (visit.due > 0 ? `Due: ₹${visit.due}` : '✓ Settled')}
                         </span>
 
                         {visit.labReport && (
@@ -4297,49 +4351,112 @@ export const PatientRecord = ({
                       </div>
                     </div>
 
-                    {/* Findings & Prescriptions */}
-                    {(visit.complaint || visit.investigation) && (
-                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: 4 }}>
-                        {visit.complaint && (
-                          <div style={styles.complaintBlock}>
-                            <span style={styles.complaintHeaderLabel}>Complaints:</span>
-                            <span style={{ fontSize: 11, color: '#334155' }}>{visit.complaint}</span>
-                          </div>
-                        )}
-                        {visit.investigation && (
-                          <div style={styles.investigationBlock}>
-                            <span style={styles.investigationHeaderLabel}>Investigations:</span>
-                            <span style={{ fontSize: 11, color: '#334155' }}>{visit.investigation}</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {Array.isArray(visit.ipdDetails) && visit.ipdDetails.length > 0 && (
+                    {/* ALLERGIES */}
+                    {allergyItems.length > 0 && (
                       <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginTop: 4, flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: '#9A3412' }}>IPD Injections/Fluids:</span>
-                        {visit.ipdDetails.map((ipd, idx) => (
-                          <span key={idx} style={{ backgroundColor: '#FFEDD5', border: '1px solid #FED7AA', borderRadius: 4, padding: '1px 6px', fontSize: 11, color: '#9A3412', fontWeight: 600 }}>
-                            {typeof ipd === 'string' ? ipd : ipd?.item}
+                        <span style={{ fontSize: 11, fontWeight: 800, color: '#DC2626' }}>Allergy:</span>
+                        {allergyItems.map((al, idx) => (
+                          <span key={idx} style={{ backgroundColor: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: 4, padding: '1px 6px', fontSize: 11, color: '#991B1B', fontWeight: 700 }}>
+                            {al}
                           </span>
                         ))}
                       </div>
                     )}
 
-                    {Array.isArray(visit.prescriptions) && visit.prescriptions.length > 0 && (
+                    {/* COMPLAINTS & INVESTIGATIONS */}
+                    {(complaintText || investigationText) && (
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: 4 }}>
+                        {complaintText && (
+                          <div style={styles.complaintBlock}>
+                            <span style={styles.complaintHeaderLabel}>Complaints:</span>
+                            <span style={{ fontSize: 11, color: '#334155' }}>{complaintText}</span>
+                          </div>
+                        )}
+                        {investigationText && (
+                          <div style={styles.investigationBlock}>
+                            <span style={styles.investigationHeaderLabel}>Investigations:</span>
+                            <span style={{ fontSize: 11, color: '#334155' }}>{investigationText}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* IPD DETAILS */}
+                    {ipdItems.length > 0 && (
+                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginTop: 4, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: '#9A3412' }}>IPD Injections/Fluids:</span>
+                        {ipdItems.map((ipd, idx) => (
+                          <span key={idx} style={{ backgroundColor: '#FFEDD5', border: '1px solid #FED7AA', borderRadius: 4, padding: '1px 6px', fontSize: 11, color: '#9A3412', fontWeight: 600 }}>
+                            {ipd}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* CLINIC MEDICINES (TREATMENTS) */}
+                    {treatmentItems.length > 0 && (
+                      <div style={{ marginTop: 6 }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: '#0F766E' }}>Clinic Medicines:</span>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 2 }}>
+                          {treatmentItems.map((tr, idx) => {
+                            const itemName = typeof tr === 'string' ? tr : (tr.item || tr.medicine);
+                            const dosePart = typeof tr === 'object' && tr !== null
+                              ? ` (${tr.qty ? `Qty: ${tr.qty}, ` : ''}${tr.morning || '0'}-${tr.noon || '0'}-${tr.evening || '0'})`
+                              : '';
+                            return (
+                              <span key={idx} style={{ backgroundColor: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 4, padding: '2px 6px', fontSize: 11, color: '#065F46', fontWeight: 600 }}>
+                                {itemName}{dosePart}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* PRESCRIBED MEDICINES */}
+                    {rxItems.length > 0 && (
                       <div style={{ marginTop: 6 }}>
                         <span style={{ fontSize: 11, fontWeight: 700, color: '#1E40AF' }}>Prescribed Medicines:</span>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 2 }}>
-                          {visit.prescriptions.map((p, idx) => (
-                            <span key={idx} style={{ backgroundColor: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 4, padding: '2px 6px', fontSize: 11, color: '#1E3A8A' }}>
-                              {p.medicine} ({p.qty ? `Qty: ${p.qty}` : ''} {p.morning}-{p.noon}-{p.evening}-{p.night} {p.timing})
+                          {rxItems.map((p, idx) => (
+                            <span key={idx} style={{ backgroundColor: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 4, padding: '2px 6px', fontSize: 11, color: '#1E3A8A', fontWeight: 600 }}>
+                              {p.medicine} ({p.qty ? `Qty: ${p.qty}, ` : ''}{p.timing === 'SOS' ? (p.sosInstruction || 'SOS') : `${p.morning || '0'}-${p.noon || '0'}-${p.evening || '0'}-${p.night || '0'} ${p.timing || 'AF'}`})
                             </span>
                           ))}
                         </div>
                       </div>
                     )}
+
+                    {/* DIETARY / ADVICE */}
+                    {visit.dietary && visit.dietary.trim() && (
+                      <div style={{ marginTop: 6, backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 4, padding: '4px 8px', fontSize: 11, color: '#334155' }}>
+                        <strong style={{ color: '#0F766E' }}>Dietary / Advice:</strong> {visit.dietary.trim()}
+                      </div>
+                    )}
+
+                    {/* REFERENCE / NOTES & BILLING SUMMARY */}
+                    {(visit.reference?.trim() || Number(visit.charge || 0) > 0 || Number(visit.received || 0) > 0) && (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginTop: 6, paddingTop: 5, borderTop: '1px dashed #E2E8F0', fontSize: 11, color: '#475569' }}>
+                        <div>
+                          {visit.reference?.trim() && (
+                            <span>
+                              <strong style={{ color: isDueCollection ? '#15803D' : '#334155' }}>
+                                {isDueCollection ? 'Payment Note:' : 'Reference:'}
+                              </strong>{' '}
+                              {visit.reference.trim()}
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ display: 'flex', gap: 10, fontWeight: 600 }}>
+                          <span>Charge: ₹{visit.charge || 0}</span>
+                          <span style={{ color: '#15803D' }}>Received: ₹{visit.received || 0}</span>
+                          {Number(visit.due || 0) > 0 && <span style={{ color: '#DC2626' }}>Due: ₹{visit.due}</span>}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                ))
+                  );
+                })
               )}
             </div>
 
