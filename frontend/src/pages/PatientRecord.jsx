@@ -14,6 +14,7 @@ import {
   removeCachedPatient,
 } from '../utils/patientCache';
 import { useDebounce } from '../hooks/useDebounce';
+import { calculateContinuousAge, getPatientDisplayAge } from '../utils/ageUtils';
 import { InvestigationReportModal } from '../components/reports/InvestigationReportModal';
 import {
   Search,
@@ -463,6 +464,8 @@ export const PatientRecord = ({
   // Editable Demographics & Auto-calculated Age
   const [patientDob, setPatientDob] = useState('');
   const [patientAge, setPatientAge] = useState('');
+  const [patientAgeRecordedAt, setPatientAgeRecordedAt] = useState(null);
+  const [ageManuallyEdited, setAgeManuallyEdited] = useState(false);
   const [patientPhone, setPatientPhone] = useState('');
   const [patientHouseNo, setPatientHouseNo] = useState('');
   const [patientSociety, setPatientSociety] = useState('');
@@ -477,34 +480,12 @@ export const PatientRecord = ({
 
   // Age calculation helper in Years, Months, and Days
   const calculateDetailedAge = (dobString) => {
-    if (!dobString) return '';
-    const birthDate = new Date(dobString);
-    if (isNaN(birthDate.getTime())) return '';
-    const today = new Date();
-    let years = today.getFullYear() - birthDate.getFullYear();
-    let months = today.getMonth() - birthDate.getMonth();
-    let days = today.getDate() - birthDate.getDate();
-
-    if (days < 0) {
-      months -= 1;
-      const prevMonth = new Date(today.getFullYear(), today.getMonth(), 0);
-      days += prevMonth.getDate();
-    }
-    if (months < 0) {
-      years -= 1;
-      months += 12;
-    }
-    if (years < 0) return '0 Y';
-
-    const parts = [];
-    if (years > 0) parts.push(`${years} Y`);
-    if (months > 0 || years === 0) parts.push(`${months} M`);
-    if (days > 0 || (years === 0 && months === 0)) parts.push(`${days} D`);
-    return parts.join(' ');
+    return calculateContinuousAge(patientAge, patientAgeRecordedAt, dobString);
   };
 
   const handleDobChange = (dobVal) => {
     setPatientDob(dobVal);
+    setAgeManuallyEdited(false);
     if (dobVal) {
       const birthDate = new Date(dobVal);
       if (!isNaN(birthDate.getTime())) {
@@ -515,6 +496,7 @@ export const PatientRecord = ({
           y--;
         }
         setPatientAge(String(Math.max(0, y)));
+        setPatientAgeRecordedAt(null);
       }
     }
   };
@@ -1152,6 +1134,8 @@ export const PatientRecord = ({
     setCurrentPatient(patient);
     setPatientDob(patient.dob || '');
     setPatientAge(patient.age !== undefined && patient.age !== null ? String(patient.age) : '');
+    setPatientAgeRecordedAt(patient.ageRecordedAt || patient.updatedAt || patient.createdAt || null);
+    setAgeManuallyEdited(false);
     setPatientPhone(patient.phone || '');
     setPatientHouseNo(patient.houseNo || patient.family?.houseNo || '');
     setPatientSociety(patient.society || patient.family?.society || '');
@@ -1258,6 +1242,8 @@ export const PatientRecord = ({
     setShowFamilyHeadDropdown(false);
     setPatientDob('');
     setPatientAge('');
+    setPatientAgeRecordedAt(null);
+    setAgeManuallyEdited(false);
     setPatientPhone('');
     setPatientHouseNo('');
     setPatientSociety('');
@@ -2047,6 +2033,8 @@ export const PatientRecord = ({
         visitDate: form.visitDate || getTodayDateStr(),
         dob: patientDob,
         age: patientAge,
+        ageRecordedAt: patientAgeRecordedAt,
+        ageManuallyEdited,
         phone: patientPhone,
         houseNo: patientHouseNo,
         society: patientSociety,
@@ -2100,6 +2088,7 @@ export const PatientRecord = ({
           isHead: !selectedFamily && resolvedHeadName.toUpperCase() === (patient.name || '').trim().toUpperCase(),
           age: patientAge || patient.age,
           dob: patientDob || patient.dob,
+          ageRecordedAt: ageManuallyEdited ? new Date().toISOString() : (patientAgeRecordedAt || patient.ageRecordedAt || new Date().toISOString()),
           phone: patientPhone || patient.phone,
           houseNo: patientHouseNo || patient.houseNo,
           society: patientSociety || patient.society,
@@ -2566,7 +2555,8 @@ export const PatientRecord = ({
 
                             // Demographics: only written, non-empty data
                             const demoItems = [];
-                            if (p.age && String(p.age).trim() && String(p.age).trim() !== '-') demoItems.push(`Age ${p.age}`);
+                            const dispAge = getPatientDisplayAge(p);
+                            if (dispAge) demoItems.push(`Age ${dispAge}`);
                             if (p.phone && String(p.phone).trim() && String(p.phone).trim() !== '-') demoItems.push(String(p.phone).trim());
                             const areaStr = p.area || p.family?.area || p.society || '';
                             if (areaStr && areaStr.trim() && areaStr.trim() !== '-') demoItems.push(areaStr.trim());
@@ -3017,7 +3007,11 @@ export const PatientRecord = ({
                       ref={ageInputRef}
                       type="text"
                       value={patientAge}
-                      onChange={(e) => setPatientAge(e.target.value)}
+                      onChange={(e) => {
+                        setPatientAge(e.target.value);
+                        setPatientAgeRecordedAt(null);
+                        setAgeManuallyEdited(true);
+                      }}
                       placeholder="e.g. 23"
                       style={{ ...styles.photoInput, width: '42px', flexShrink: 0 }}
                     />
@@ -5387,7 +5381,11 @@ export const PatientRecord = ({
                     <div style={styles.photoPatientColLeft}>
                       <span style={styles.photoPatientLabel}>Age:</span>{' '}
                       <span style={styles.photoPatientValue}>
-                        {currentPatient?.age ? `${currentPatient.age} Y` : (printVisit.age ? `${printVisit.age} Y` : '—')}
+                        {calculateContinuousAge(
+                          currentPatient?.age || printVisit.age,
+                          currentPatient?.ageRecordedAt || currentPatient?.updatedAt || currentPatient?.createdAt,
+                          patientDob || currentPatient?.dob || printVisit.dob
+                        ) || '—'}
                       </span>
                     </div>
                     <div style={styles.photoPatientColRight}>

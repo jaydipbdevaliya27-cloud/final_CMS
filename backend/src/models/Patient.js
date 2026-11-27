@@ -22,6 +22,20 @@ const patientSchema = new mongoose.Schema(
       trim: true,
       default: '',
     },
+    dob: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    ageRecordedAt: {
+      type: Date,
+      default: null,
+    },
+    houseNo: {
+      type: String,
+      trim: true,
+      default: '',
+    },
     gender: {
       type: String,
       default: 'Not Specified',

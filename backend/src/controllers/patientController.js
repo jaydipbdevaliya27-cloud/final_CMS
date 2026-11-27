@@ -179,7 +179,7 @@ export const getPatients = async (req, res) => {
     const maxLimit = reqLimit ? parseInt(reqLimit, 10) : (search && search.trim() ? 50 : 10000);
 
     let patients = await Patient.find(query)
-      .select('patientId familyId name age gender bloodGroup allergies society area phone relation isHead totalDue deposit createdAt')
+      .select('patientId familyId name age dob ageRecordedAt houseNo gender bloodGroup allergies society area phone relation isHead totalDue deposit createdAt updatedAt')
       .limit(maxLimit)
       .lean();
 

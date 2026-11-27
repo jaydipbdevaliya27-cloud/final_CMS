@@ -176,6 +176,7 @@ export const recordVisit = async (req, res) => {
               area: req.body.area || existingFamily.area || '',
               age: req.body.age ? String(req.body.age).trim() : '',
               dob: req.body.dob || '',
+              ageRecordedAt: req.body.age ? new Date() : null,
               gender: req.body.gender || 'Male',
               allergies: Array.isArray(allergies) ? allergies : (allergies ? [allergies] : []),
             });
@@ -218,6 +219,8 @@ export const recordVisit = async (req, res) => {
               area: req.body.area || '',
               age: req.body.age ? String(req.body.age).trim() : '',
               dob: req.body.dob || '',
+              ageRecordedAt: req.body.age ? new Date() : null,
+              ageRecordedAt: req.body.age ? new Date() : null,
               gender: req.body.gender || 'Male',
               allergies: Array.isArray(allergies) ? allergies : (allergies ? [allergies] : []),
             });
@@ -251,6 +254,7 @@ export const recordVisit = async (req, res) => {
               area: req.body.area || '',
               age: req.body.age ? String(req.body.age).trim() : '',
               dob: req.body.dob || '',
+              ageRecordedAt: req.body.age ? new Date() : null,
               gender: req.body.gender || 'Male',
               allergies: Array.isArray(allergies) ? allergies : (allergies ? [allergies] : []),
             });
@@ -378,11 +382,17 @@ export const recordVisit = async (req, res) => {
       await savedLabReport.save();
     }
 
-    // Sync patient demographic updates (dob, age, phone, society, area, allergies)
+    // Sync patient demographic updates (dob, age, ageRecordedAt, phone, society, area, allergies)
     const patUpdates = {};
     if (req.body.phone !== undefined) patUpdates.phone = req.body.phone;
     if (req.body.age !== undefined) patUpdates.age = req.body.age;
     if (req.body.dob !== undefined) patUpdates.dob = req.body.dob;
+    if (req.body.ageManuallyEdited) {
+      patUpdates.ageRecordedAt = new Date();
+    } else if (req.body.ageRecordedAt) {
+      patUpdates.ageRecordedAt = req.body.ageRecordedAt;
+    }
+    if (req.body.houseNo !== undefined) patUpdates.houseNo = req.body.houseNo;
     if (req.body.society !== undefined) patUpdates.society = req.body.society;
     if (req.body.area !== undefined) patUpdates.area = req.body.area;
     if (Array.isArray(allergies)) patUpdates.allergies = allergies;
@@ -619,11 +629,17 @@ export const updateVisit = async (req, res) => {
     visit.updatedAt = new Date();
     await visit.save();
 
-    // Sync patient demographic updates (dob, age, phone, society, area, allergies)
+    // Sync patient demographic updates (dob, age, ageRecordedAt, phone, society, area, allergies)
     const patUpdates = {};
     if (req.body.phone !== undefined) patUpdates.phone = req.body.phone;
     if (req.body.age !== undefined) patUpdates.age = req.body.age;
     if (req.body.dob !== undefined) patUpdates.dob = req.body.dob;
+    if (req.body.ageManuallyEdited) {
+      patUpdates.ageRecordedAt = new Date();
+    } else if (req.body.ageRecordedAt) {
+      patUpdates.ageRecordedAt = req.body.ageRecordedAt;
+    }
+    if (req.body.houseNo !== undefined) patUpdates.houseNo = req.body.houseNo;
     if (req.body.society !== undefined) patUpdates.society = req.body.society;
     if (req.body.area !== undefined) patUpdates.area = req.body.area;
     if (Array.isArray(allergies)) patUpdates.allergies = allergies;
