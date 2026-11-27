@@ -3275,19 +3275,6 @@ export const PatientRecord = ({
                     inputStyle={styles.photoInput}
                   />
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleAddAllergy()}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Tab' && !e.shiftKey) {
-                      e.preventDefault();
-                      complaintInputRef.current?.focus();
-                    }
-                  }}
-                  style={styles.photoAddBtnRed}
-                >
-                  + Add
-                </button>
               </div>
 
               {/* Pills row */}
@@ -3338,19 +3325,6 @@ export const PatientRecord = ({
                     inputStyle={styles.photoInput}
                   />
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleAddComplaint()}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Tab' && !e.shiftKey) {
-                      e.preventDefault();
-                      investigationInputRef.current?.focus();
-                    }
-                  }}
-                  style={styles.photoAddBtnGreen}
-                >
-                  + Add
-                </button>
               </div>
 
               {/* Pills row */}
@@ -3425,19 +3399,6 @@ export const PatientRecord = ({
                     style={styles.photoInput}
                   />
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleAddInvestigation()}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Tab' && !e.shiftKey) {
-                      e.preventDefault();
-                      ipdInputRef.current?.focus();
-                    }
-                  }}
-                  style={styles.photoAddBtnPurple}
-                >
-                  + Add
-                </button>
                 <button
                   type="button"
                   onClick={() => setShowAddReportModal(true)}
@@ -3523,19 +3484,6 @@ export const PatientRecord = ({
                     inputStyle={styles.photoInput}
                   />
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleAddIpdDetail()}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Tab' && !e.shiftKey) {
-                      e.preventDefault();
-                      clinicMedInputRef.current?.focus();
-                    }
-                  }}
-                  style={styles.photoAddBtnAmber}
-                >
-                  + Add
-                </button>
               </div>
 
               {/* Pills row */}
@@ -3683,41 +3631,43 @@ export const PatientRecord = ({
                     title="Evening"
                   />
                 </div>
-                <button
-                  type="button"
-                  onClick={handleAddClinicMedicine}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Tab' && !e.shiftKey) {
-                      e.preventDefault();
-                      if (clinicMedForm.medicine && clinicMedForm.medicine.trim()) {
-                        handleAddClinicMedicine();
-                      } else {
-                        clinicMedInputRef.current?.focus();
-                      }
-                    }
-                  }}
-                  style={{
-                    ...styles.photoAddBtnBlue,
-                    width: editingTreatmentId !== null ? 'auto' : styles.photoAddBtnBlue.width,
-                    padding: editingTreatmentId !== null ? '0 10px' : undefined,
-                    backgroundColor: editingTreatmentId !== null ? '#D97706' : styles.photoAddBtnBlue.backgroundColor,
-                  }}
-                  title={editingTreatmentId !== null ? 'Update selected clinic medicine' : 'Add clinic medicine (Enter / Tab)'}
-                >
-                  {editingTreatmentId !== null ? 'Update' : '+'}
-                </button>
                 {editingTreatmentId !== null && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingTreatmentId(null);
-                      setClinicMedForm({ medicine: '', qty: '1', morning: '1', noon: '0', evening: '1' });
-                    }}
-                    style={{ ...styles.photoRowDeleteBtn, height: '28px', width: '28px', border: '1px solid #CBD5E1', borderRadius: '4px' }}
-                    title="Cancel edit"
-                  >
-                    <X size={13} color="#475569" />
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleAddClinicMedicine}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Tab' && !e.shiftKey) {
+                          e.preventDefault();
+                          if (clinicMedForm.medicine && clinicMedForm.medicine.trim()) {
+                            handleAddClinicMedicine();
+                          } else {
+                            clinicMedInputRef.current?.focus();
+                          }
+                        }
+                      }}
+                      style={{
+                        ...styles.photoAddBtnBlue,
+                        width: 'auto',
+                        padding: '0 10px',
+                        backgroundColor: '#D97706',
+                      }}
+                      title="Update selected clinic medicine"
+                    >
+                      Update
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingTreatmentId(null);
+                        setClinicMedForm({ medicine: '', qty: '1', morning: '1', noon: '0', evening: '1' });
+                      }}
+                      style={{ ...styles.photoRowDeleteBtn, height: '28px', width: '28px', border: '1px solid #CBD5E1', borderRadius: '4px' }}
+                      title="Cancel edit"
+                    >
+                      <X size={13} color="#475569" />
+                    </button>
+                  </>
                 )}
               </div>
 
@@ -3972,41 +3922,43 @@ export const PatientRecord = ({
                     />
                   </div>
                 )}
-                <button
-                  type="button"
-                  onClick={handleAddPrescriptionItem}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Tab' && !e.shiftKey) {
-                      e.preventDefault();
-                      if (rxForm.medicine && rxForm.medicine.trim()) {
-                        handleAddPrescriptionItem();
-                      } else {
-                        rxMedInputRef.current?.focus();
-                      }
-                    }
-                  }}
-                  style={{
-                    ...styles.photoAddBtnBlue,
-                    width: editingRxId !== null ? 'auto' : styles.photoAddBtnBlue.width,
-                    padding: editingRxId !== null ? '0 10px' : undefined,
-                    backgroundColor: editingRxId !== null ? '#D97706' : styles.photoAddBtnBlue.backgroundColor,
-                  }}
-                  title={editingRxId !== null ? 'Update selected prescription' : 'Add prescription item (Enter / Tab)'}
-                >
-                  {editingRxId !== null ? 'Update' : '+'}
-                </button>
                 {editingRxId !== null && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingRxId(null);
-                      setRxForm({ medicine: '', qty: '10', morning: '1', noon: '0', evening: '1', night: '0', timing: 'AF', sosInstruction: '' });
-                    }}
-                    style={{ ...styles.photoRowDeleteBtn, height: '28px', width: '28px', border: '1px solid #CBD5E1', borderRadius: '4px' }}
-                    title="Cancel edit"
-                  >
-                    <X size={13} color="#475569" />
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleAddPrescriptionItem}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Tab' && !e.shiftKey) {
+                          e.preventDefault();
+                          if (rxForm.medicine && rxForm.medicine.trim()) {
+                            handleAddPrescriptionItem();
+                          } else {
+                            rxMedInputRef.current?.focus();
+                          }
+                        }
+                      }}
+                      style={{
+                        ...styles.photoAddBtnBlue,
+                        width: 'auto',
+                        padding: '0 10px',
+                        backgroundColor: '#D97706',
+                      }}
+                      title="Update selected prescription"
+                    >
+                      Update
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingRxId(null);
+                        setRxForm({ medicine: '', qty: '10', morning: '1', noon: '0', evening: '1', night: '0', timing: 'AF', sosInstruction: '' });
+                      }}
+                      style={{ ...styles.photoRowDeleteBtn, height: '28px', width: '28px', border: '1px solid #CBD5E1', borderRadius: '4px' }}
+                      title="Cancel edit"
+                    >
+                      <X size={13} color="#475569" />
+                    </button>
+                  </>
                 )}
               </div>
 
