@@ -4,7 +4,6 @@ import { visitAPI, patientAPI } from '../services/api';
 import { useDebounce } from '../hooks/useDebounce';
 import { extractLabAlerts } from '../utils/labReportConfig';
 import { PRINT_LANGUAGES, PRINT_TRANSLATIONS } from '../utils/printTranslations';
-import { InvestigationReportModal } from '../components/reports/InvestigationReportModal';
 import {
   Search,
   Calendar,
@@ -23,7 +22,6 @@ import {
   ShieldAlert,
   ArrowRight,
   Filter,
-  FlaskConical,
   Languages,
 } from 'lucide-react';
 
@@ -68,7 +66,6 @@ export const RecentHistory = ({
   // Print Prescription Modal State & Stationery Mode
   const [printModalOpen, setPrintModalOpen] = useState(false);
   const [visitToPrint, setVisitToPrint] = useState(null);
-  const [viewingLabReport, setViewingLabReport] = useState(null);
   const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [printLanguage, setPrintLanguage] = useState(() => {
     try {
@@ -1001,9 +998,9 @@ export const RecentHistory = ({
                         )}
                       </td>
 
-                      {/* 7. Lab Alerts */}
+                      {/* 7. Lab Alerts (Out-of-range & '*' danger values only, no modal button) */}
                       <td style={styles.tdAlerts}>
-                        {alerts.length === 0 && !visit.labReport ? (
+                        {alerts.length === 0 ? (
                           <span style={styles.nilText}>-</span>
                         ) : (
                           <div style={styles.alertsList}>
@@ -1020,35 +1017,6 @@ export const RecentHistory = ({
                                 </span>
                               );
                             })}
-                            {visit.labReport && (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setViewingLabReport({
-                                    ...visit.labReport,
-                                    patientName: visit.labReport.patientName || visit.patientName,
-                                    patientId: visit.labReport.patientId || visit.patientId,
-                                  })
-                                }
-                                style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '3px',
-                                  padding: '2px 6px',
-                                  borderRadius: '4px',
-                                  border: '1px solid #93C5FD',
-                                  backgroundColor: '#EFF6FF',
-                                  color: '#1D4ED8',
-                                  fontSize: '10px',
-                                  fontWeight: 700,
-                                  cursor: 'pointer',
-                                }}
-                                title="View full Lab Investigation Details"
-                              >
-                                <FlaskConical size={10} />
-                                <span>Lab Report</span>
-                              </button>
-                            )}
                           </div>
                         )}
                       </td>
@@ -1753,19 +1721,6 @@ export const RecentHistory = ({
             </div>
           </div>
         </div>
-      )}
-
-      {viewingLabReport && (
-        <InvestigationReportModal
-          isOpen={!!viewingLabReport}
-          onClose={() => setViewingLabReport(null)}
-          patient={{
-            name: viewingLabReport.patientName || 'Patient',
-            patientId: viewingLabReport.patientId || '',
-          }}
-          doctor={doctor}
-          initialReport={viewingLabReport}
-        />
       )}
     </div>
   );

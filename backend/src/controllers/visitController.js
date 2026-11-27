@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import Visit from '../models/Visit.js';
 import Patient from '../models/Patient.js';
 import Family from '../models/Family.js';
@@ -333,20 +334,37 @@ export const recordVisit = async (req, res) => {
           }))
       : [];
 
-    // Optional: Save attached Lab Report if present
+    // Optional: Save or link attached Lab Report if present
     let savedLabReport = null;
     if (labReport && typeof labReport === 'object' && Object.keys(labReport).length > 0) {
       try {
-        const reportId = labReport.reportId || (await getNextReportId());
         const summary = labReport.summary || generateLabSummary(labReport);
-        savedLabReport = await LabReport.create({
-          ...labReport,
-          reportId,
-          patientId: finalPatientId.trim(),
-          familyId: finalFamilyId.trim(),
-          patientName: patientName || 'Patient',
-          summary,
-        });
+        if (labReport._id && mongoose.isValidObjectId(labReport._id)) {
+          savedLabReport = await LabReport.findByIdAndUpdate(
+            labReport._id,
+            {
+              ...labReport,
+              patientId: finalPatientId.trim(),
+              familyId: finalFamilyId.trim(),
+              summary,
+            },
+            { new: true }
+          );
+        } else {
+          const reportId = labReport.reportId || (await getNextReportId());
+          savedLabReport = await LabReport.findOneAndUpdate(
+            { reportId },
+            {
+              ...labReport,
+              reportId,
+              patientId: finalPatientId.trim(),
+              familyId: finalFamilyId.trim(),
+              patientName: labReport.patientName || patientName || 'Patient',
+              summary,
+            },
+            { upsert: true, new: true }
+          );
+        }
       } catch (err) {
         console.error('Error auto-creating LabReport in recordVisit:', err.message);
       }
