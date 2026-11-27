@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { visitAPI, patientAPI } from '../services/api';
 import { useDebounce } from '../hooks/useDebounce';
 import { extractLabAlerts } from '../utils/labReportConfig';
+import { PRINT_LANGUAGES, PRINT_TRANSLATIONS } from '../utils/printTranslations';
 import { InvestigationReportModal } from '../components/reports/InvestigationReportModal';
 import {
   Search,
@@ -23,6 +24,7 @@ import {
   ArrowRight,
   Filter,
   FlaskConical,
+  Languages,
 } from 'lucide-react';
 
 // In-memory cache for ultra-fast instant tab switching
@@ -67,6 +69,16 @@ export const RecentHistory = ({
   const [printModalOpen, setPrintModalOpen] = useState(false);
   const [visitToPrint, setVisitToPrint] = useState(null);
   const [viewingLabReport, setViewingLabReport] = useState(null);
+  const [showLanguageModal, setShowLanguageModal] = useState(false);
+  const [printLanguage, setPrintLanguage] = useState(() => {
+    try {
+      return localStorage.getItem('cms_print_language') || 'gu';
+    } catch (e) {
+      return 'gu';
+    }
+  });
+  const [languageHighlightIndex, setLanguageHighlightIndex] = useState(0);
+  const languageHighlightIndexRef = useRef(0);
   const [printMode, setPrintMode] = useState(() => {
     try {
       return localStorage.getItem('cms_print_mode') || 'padOnly';
@@ -224,6 +236,58 @@ export const RecentHistory = ({
   // Keyboard accessibility for modals in Recent History (Enter to print, Esc to close)
   useEffect(() => {
     const handleKeyDown = (e) => {
+      if (showLanguageModal) {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          e.stopPropagation();
+          setLanguageHighlightIndex((prev) => {
+            const next = (prev + 1) % PRINT_LANGUAGES.length;
+            languageHighlightIndexRef.current = next;
+            return next;
+          });
+          return;
+        }
+        if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          e.stopPropagation();
+          setLanguageHighlightIndex((prev) => {
+            const next = (prev - 1 + PRINT_LANGUAGES.length) % PRINT_LANGUAGES.length;
+            languageHighlightIndexRef.current = next;
+            return next;
+          });
+          return;
+        }
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          e.stopPropagation();
+          const chosen = PRINT_LANGUAGES[languageHighlightIndexRef.current] || PRINT_LANGUAGES[0];
+          if (chosen) triggerPrintInLanguage(chosen.key, true);
+          return;
+        }
+        if (e.key === 'p' || e.key === 'P') {
+          e.preventDefault();
+          e.stopPropagation();
+          const chosen = PRINT_LANGUAGES[languageHighlightIndexRef.current] || PRINT_LANGUAGES[0];
+          if (chosen) triggerPrintInLanguage(chosen.key, false);
+          return;
+        }
+        if (e.key === '1' || e.key === '2' || e.key === '3') {
+          e.preventDefault();
+          e.stopPropagation();
+          const idx = parseInt(e.key, 10) - 1;
+          const chosen = PRINT_LANGUAGES[idx];
+          if (chosen) triggerPrintInLanguage(chosen.key, true);
+          return;
+        }
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          e.stopPropagation();
+          setShowLanguageModal(false);
+          return;
+        }
+        return;
+      }
+
       if (printModalOpen) {
         if (e.key === 'Enter') {
           e.preventDefault();
@@ -241,7 +305,7 @@ export const RecentHistory = ({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [printModalOpen, deleteModalOpen]);
+  }, [showLanguageModal, printModalOpen, deleteModalOpen]);
 
   // Handle open delete modal
   const handleOpenDelete = (visit) => {
@@ -307,7 +371,25 @@ export const RecentHistory = ({
   // Handle Action 3: Print
   const handleActionPrint = (visit) => {
     setVisitToPrint(visit);
+    const idx = PRINT_LANGUAGES.findIndex((l) => l.key === printLanguage);
+    const startIdx = idx >= 0 ? idx : 0;
+    setLanguageHighlightIndex(startIdx);
+    languageHighlightIndexRef.current = startIdx;
+    setShowLanguageModal(true);
+  };
+
+  const triggerPrintInLanguage = (langKey, autoTrigger = true) => {
+    setPrintLanguage(langKey);
+    try {
+      localStorage.setItem('cms_print_language', langKey);
+    } catch (e) {}
+    setShowLanguageModal(false);
     setPrintModalOpen(true);
+    if (autoTrigger) {
+      setTimeout(() => {
+        window.print();
+      }, 180);
+    }
   };
 
   // Helper: Format Date & Time consistently and extract edited date/time
@@ -1203,6 +1285,31 @@ export const RecentHistory = ({
                 >
                   Full Letterhead
                 </button>
+                <select
+                  value={printLanguage}
+                  onChange={(e) => {
+                    const lang = e.target.value;
+                    setPrintLanguage(lang);
+                    try {
+                      localStorage.setItem('cms_print_language', lang);
+                    } catch (err) {}
+                  }}
+                  style={{
+                    padding: '3px 6px',
+                    borderRadius: '4px',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    border: '1px solid #CBD5E1',
+                    backgroundColor: '#FFFFFF',
+                    color: '#0F172A',
+                    cursor: 'pointer',
+                  }}
+                  title="Change Prescription Language"
+                >
+                  <option value="gu">ગુજરાતી (Gujarati)</option>
+                  <option value="hi">हिंदी (Hindi)</option>
+                  <option value="en">English</option>
+                </select>
                 <button
                   type="button"
                   onClick={() => setPrintModalOpen(false)}
@@ -1321,16 +1428,20 @@ export const RecentHistory = ({
               </div>
 
               {/* 2. PATIENT INFO BLOCK */}
+              {(() => {
+                const t = PRINT_TRANSLATIONS[printLanguage] || PRINT_TRANSLATIONS.gu;
+                return (
+                  <>
               <div className="rhPatientInfoBlock" style={styles.rhPatientInfoBlock}>
                 <div style={styles.rhPatientRow}>
                   <div style={{ width: '58%', display: 'flex', gap: '4px' }}>
-                    <span style={{ fontWeight: 700 }}>Patient:</span>{' '}
+                    <span style={{ fontWeight: 700 }}>{t.patientLabel}</span>{' '}
                     <span style={{ fontWeight: 800, textTransform: 'uppercase' }}>
                       {visitToPrint.patientName}
                     </span>
                   </div>
                   <div style={{ width: '42%', display: 'flex', gap: '4px' }}>
-                    <span style={{ fontWeight: 700 }}>Date:</span>{' '}
+                    <span style={{ fontWeight: 700 }}>{t.dateLabel}</span>{' '}
                     <span>
                       {(() => {
                         let d = visitToPrint.visitDate || '';
@@ -1338,13 +1449,13 @@ export const RecentHistory = ({
                           const p = d.split('-');
                           if (p.length === 3 && p[0].length === 4) d = `${p[2]}-${p[1]}-${p[0]}`;
                         }
-                        let t = '';
+                        let tm = '';
                         if (visitToPrint.createdAt) {
                           try {
-                            t = new Date(visitToPrint.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+                            tm = new Date(visitToPrint.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
                           } catch (e) {}
                         }
-                        return t ? `${d}, ${t}` : d;
+                        return tm ? `${d}, ${tm}` : d;
                       })()}
                     </span>
                   </div>
@@ -1352,22 +1463,22 @@ export const RecentHistory = ({
 
                 <div style={styles.rhPatientRow}>
                   <div style={{ width: '58%', display: 'flex', gap: '4px' }}>
-                    <span style={{ fontWeight: 700 }}>Age:</span>{' '}
+                    <span style={{ fontWeight: 700 }}>{t.ageLabel}</span>{' '}
                     <span>{visitToPrint.age ? `${visitToPrint.age} Y` : '—'}</span>
                   </div>
                   <div style={{ width: '42%', display: 'flex', gap: '4px' }}>
-                    <span style={{ fontWeight: 700 }}>B.P.:</span>{' '}
+                    <span style={{ fontWeight: 700 }}>{t.bpLabel}</span>{' '}
                     <span>{visitToPrint.bp || '-'}</span>
                   </div>
                 </div>
 
                 <div style={styles.rhPatientRow}>
                   <div style={{ width: '58%', display: 'flex', gap: '4px' }}>
-                    <span style={{ fontWeight: 700 }}>Mobile:</span>{' '}
+                    <span style={{ fontWeight: 700 }}>{t.mobileLabel}</span>{' '}
                     <span>{visitToPrint.phone || '-'}</span>
                   </div>
                   <div style={{ width: '42%', display: 'flex', gap: '4px' }}>
-                    <span style={{ fontWeight: 700 }}>Sugar:</span>{' '}
+                    <span style={{ fontWeight: 700 }}>{t.sugarLabel}</span>{' '}
                     <span>{visitToPrint.sugar || '-'}</span>
                   </div>
                 </div>
@@ -1384,10 +1495,10 @@ export const RecentHistory = ({
               <table className="rhRxTable" style={styles.rhRxTable}>
                 <thead>
                   <tr>
-                    <th style={{ width: '42%', textAlign: 'left', padding: '4px 6px', borderBottom: '1.5px solid #000', fontWeight: 700, fontSize: '11px' }}>Medicine Name</th>
-                    <th style={{ width: '12%', textAlign: 'center', padding: '4px 6px', borderBottom: '1.5px solid #000', fontWeight: 700, fontSize: '11px' }}>Qty</th>
-                    <th style={{ width: '26%', textAlign: 'center', padding: '4px 6px', borderBottom: '1.5px solid #000', fontWeight: 700, fontSize: '11px' }}>Dose</th>
-                    <th style={{ width: '20%', textAlign: 'left', padding: '4px 6px', borderBottom: '1.5px solid #000', fontWeight: 700, fontSize: '11px' }}>Instruction</th>
+                    <th style={{ width: '42%', textAlign: 'left', padding: '4px 6px', borderBottom: '1.5px solid #000', fontWeight: 700, fontSize: '11px' }}>{t.colMedicine}</th>
+                    <th style={{ width: '12%', textAlign: 'center', padding: '4px 6px', borderBottom: '1.5px solid #000', fontWeight: 700, fontSize: '11px' }}>{t.colQty}</th>
+                    <th style={{ width: '26%', textAlign: 'center', padding: '4px 6px', borderBottom: '1.5px solid #000', fontWeight: 700, fontSize: '11px' }}>{t.colDose}</th>
+                    <th style={{ width: '20%', textAlign: 'left', padding: '4px 6px', borderBottom: '1.5px solid #000', fontWeight: 700, fontSize: '11px' }}>{t.colInstruction}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1397,11 +1508,11 @@ export const RecentHistory = ({
                       const hasDose = (p.morning && p.morning !== '0') || (p.noon && p.noon !== '0') || (p.evening && p.evening !== '0') || (p.night && p.night !== '0');
                       let instr = '';
                       if (isSos) {
-                        instr = p.sosInstruction?.trim() || 'તાવ આવે ત્યારે';
+                        instr = p.sosInstruction?.trim() || t.feverSos || 'SOS';
                       } else if (p.timing === 'BF') {
-                        instr = 'જમ્યા પહેલા';
+                        instr = t.beforeFood;
                       } else {
-                        instr = 'જમ્યા પછી';
+                        instr = t.afterFood;
                       }
 
                       return (
@@ -1419,10 +1530,10 @@ export const RecentHistory = ({
                               <table style={styles.rhDoseMiniTable}>
                                 <thead>
                                   <tr>
-                                    <th style={styles.rhDoseMiniTh}>સવાર</th>
-                                    <th style={styles.rhDoseMiniTh}>બપોર</th>
-                                    <th style={styles.rhDoseMiniTh}>સાંજ</th>
-                                    <th style={{ ...styles.rhDoseMiniTh, borderRight: 'none' }}>રાત</th>
+                                    <th style={styles.rhDoseMiniTh}>{t.morning}</th>
+                                    <th style={styles.rhDoseMiniTh}>{t.noon}</th>
+                                    <th style={styles.rhDoseMiniTh}>{t.evening}</th>
+                                    <th style={{ ...styles.rhDoseMiniTh, borderRight: 'none' }}>{t.night}</th>
                                   </tr>
                                 </thead>
                                 <tbody>
@@ -1445,7 +1556,7 @@ export const RecentHistory = ({
                   ) : (
                     <tr>
                       <td colSpan={4} style={{ padding: '16px', textAlign: 'center', color: '#64748B', fontStyle: 'italic' }}>
-                        No prescriptions recorded for this visit
+                        {t.noPrescription}
                       </td>
                     </tr>
                   )}
@@ -1456,13 +1567,16 @@ export const RecentHistory = ({
               {Boolean(visitToPrint.dietary && visitToPrint.dietary.trim()) && (
                 <div className="rhAdviceBox" style={styles.rhAdviceBox}>
                   <span style={{ fontWeight: 800, textDecoration: 'underline' }}>
-                    સૂચન / પરહેજ (ADVICE):{' '}
+                    {t.adviceTitle}{' '}
                   </span>
                   <span style={{ fontWeight: 700 }}>
                     {visitToPrint.dietary.trim()}
                   </span>
                 </div>
               )}
+                  </>
+                );
+              })()}
 
               {/* Separator line */}
               <div
@@ -1508,6 +1622,134 @@ export const RecentHistory = ({
                 <Printer size={15} />
                 <span>Print Document</span>
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: PRESCRIPTION PRINT LANGUAGE SELECTION */}
+      {showLanguageModal && visitToPrint && (
+        <div style={styles.modalOverlay} onClick={() => setShowLanguageModal(false)}>
+          <div
+            style={{
+              backgroundColor: '#FFFFFF',
+              borderRadius: '12px',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
+              width: '92%',
+              maxWidth: '460px',
+              overflow: 'hidden',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                padding: '14px 18px',
+                backgroundColor: '#F0FDF4',
+                borderBottom: '1.5px solid #BBF7D0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+                <Languages size={20} color="#15803D" />
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: '#166534' }}>
+                    Select Prescription Language
+                  </h3>
+                  <span style={{ fontSize: '11px', color: '#16A34A', fontWeight: 600 }}>
+                    Use ↑ / ↓ & Enter to select & print (or press Esc)
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowLanguageModal(false)}
+                style={styles.modalCloseBtn}
+                title="Cancel (Esc)"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {PRINT_LANGUAGES.map((lang, idx) => {
+                const isCurrent = printLanguage === lang.key;
+                const isHighlighted = idx === languageHighlightIndex;
+                return (
+                  <button
+                    key={lang.key}
+                    type="button"
+                    onClick={() => triggerPrintInLanguage(lang.key, true)}
+                    onMouseEnter={() => {
+                      setLanguageHighlightIndex(idx);
+                      languageHighlightIndexRef.current = idx;
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '12px 16px',
+                      backgroundColor: isHighlighted ? '#FFFFFF' : lang.bg,
+                      border: isHighlighted
+                        ? `2.5px solid ${lang.color}`
+                        : isCurrent
+                        ? `2px solid ${lang.color}`
+                        : `1.5px solid ${lang.border}`,
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      boxShadow: isHighlighted ? '0 6px 18px rgba(0,0,0,0.12)' : 'none',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <span style={{ fontSize: '14px', fontWeight: 900, color: '#0F172A', fontFamily: 'monospace' }}>
+                        {lang.code}
+                      </span>
+                      <div>
+                        <div style={{ fontWeight: 800, fontSize: '14px', color: lang.color }}>
+                          {lang.title}
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#64748B', marginTop: '2px' }}>
+                          {lang.sub}
+                        </div>
+                      </div>
+                    </div>
+                    <Printer size={18} color={lang.color} />
+                  </button>
+                );
+              })}
+            </div>
+
+            <div
+              style={{
+                padding: '10px 18px',
+                backgroundColor: '#F8FAFC',
+                borderTop: '1px solid #E2E8F0',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  const targetLang = PRINT_LANGUAGES[languageHighlightIndex]?.key || printLanguage || 'gu';
+                  triggerPrintInLanguage(targetLang, false);
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#2563EB',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                }}
+              >
+                Preview First (P)
+              </button>
+              <span style={{ fontSize: '11px', color: '#64748B' }}>Keys: 1, 2, 3</span>
             </div>
           </div>
         </div>
