@@ -913,6 +913,34 @@ input:focus, select:focus, textarea:focus {
     -webkit-overflow-scrolling: touch;
   }
 
+  .cms-page-container {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .cms-split-container {
+    flex-direction: column !important;
+    height: auto !important;
+    gap: 12px !important;
+  }
+
+  .cms-split-pane {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow-y: visible !important;
+  }
+
+  .cms-split-dragger {
+    display: none !important;
+  }
+
+  .patient-record-container {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
   /* Ensure tables & wide toolbars scroll smoothly horizontally on mobile */
   .cms-main-mobile table {
     font-size: 0.78rem;
@@ -922,6 +950,12 @@ input:focus, select:focus, textarea:focus {
   .cms-main-mobile select,
   .cms-main-mobile textarea {
     font-size: 14px;
+  }
+}
+
+@media screen and (max-width: 640px) {
+  .cms-grid-responsive {
+    grid-template-columns: 1fr !important;
   }
 }
 

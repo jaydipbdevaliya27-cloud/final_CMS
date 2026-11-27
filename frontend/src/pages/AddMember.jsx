@@ -457,7 +457,7 @@ export const AddMember = ({ initialFamilyId, onProceedToCaseEntry, onNavigateToF
           {/* Registration Form (Matching Reference Image media_1793636589247_117aec1f.png) */}
           <form onSubmit={handleSubmit} style={styles.form}>
             {/* ROW 1: MEMBER FULL NAME * & RELATION TO HEAD (ENTER TO MATCH) * */}
-            <div style={styles.grid2}>
+            <div className="cms-grid-responsive" style={styles.grid2}>
               <div style={styles.inputGroup}>
                 <label style={styles.label}>
                   MEMBER FULL NAME <span style={styles.requiredMark}>*</span>
@@ -523,7 +523,7 @@ export const AddMember = ({ initialFamilyId, onProceedToCaseEntry, onNavigateToF
             </div>
 
             {/* ROW 2: AGE, GENDER, BLOOD GROUP */}
-            <div style={styles.grid3}>
+            <div className="cms-grid-responsive" style={styles.grid3}>
               <div style={styles.inputGroup}>
                 <label style={styles.label}>AGE</label>
                 <input
@@ -581,21 +581,8 @@ export const AddMember = ({ initialFamilyId, onProceedToCaseEntry, onNavigateToF
               />
             </div>
 
-            {/* ROW 3: SOCIETY / FLAT & AREA / LOCATION (AUTO-FILLED, EDITABLE) */}
-            <div style={styles.grid2}>
-              <div style={styles.inputGroup}>
-                <label style={styles.label}>
-                  SOCIETY / FLAT <span style={styles.autoFilledTag}>(AUTO-FILLED, EDITABLE)</span>
-                </label>
-                <MasterDataInput
-                  type="area"
-                  placeholder="e.g. Shanti Niketan"
-                  value={formData.society}
-                  onChange={(val) => handleInputChange('society', val)}
-                  inputStyle={styles.input}
-                />
-              </div>
-
+            {/* ROW 3: AREA / LOCATION (AUTO-FILLED, EDITABLE) */}
+            <div style={styles.grid1}>
               <div style={styles.inputGroup}>
                 <label style={styles.label}>
                   AREA / LOCATION <span style={styles.hintSub}>(ENTER TO MATCH)</span>{' '}

@@ -325,10 +325,10 @@ export const FamilyHeadRegistration = ({ onNavigateToAddMember, onNavigateToPati
   };
 
   return (
-    <div style={styles.container} onKeyDown={handleFormKeyDown}>
-      <div ref={splitContainerRef} style={styles.gridContainer}>
+    <div className="cms-page-container" style={styles.container} onKeyDown={handleFormKeyDown}>
+      <div ref={splitContainerRef} className="cms-split-container" style={styles.gridContainer}>
         {/* LEFT PANE: Register / Update Family Head Form */}
-        <section style={{ ...styles.formPane, width: `${formWidthPercent}%` }}>
+        <section className="cms-split-pane" style={{ ...styles.formPane, width: `${formWidthPercent}%` }}>
           {/* Header */}
           <div style={styles.paneHeader}>
             <div style={styles.headerLeft}>
@@ -438,7 +438,7 @@ export const FamilyHeadRegistration = ({ onNavigateToAddMember, onNavigateToPati
             </div>
 
             {/* AGE, GENDER, BLOOD GROUP */}
-            <div style={styles.grid3}>
+            <div className="cms-grid-responsive" style={styles.grid3}>
               <div style={styles.inputGroup}>
                 <label style={styles.label}>AGE</label>
                 <input
@@ -498,35 +498,22 @@ export const FamilyHeadRegistration = ({ onNavigateToAddMember, onNavigateToPati
               />
             </div>
 
-            {/* SOCIETY / FLAT, AREA / LOCATION */}
-            <div style={styles.grid2}>
-              <div style={styles.inputGroup}>
-                <label style={styles.label}>SOCIETY / FLAT</label>
-                <MasterDataInput
-                  type="area"
-                  placeholder="e.g. Shanti Niketan"
-                  value={formData.society}
-                  onChange={(val) => handleInputChange('society', val)}
-                  inputStyle={styles.input}
-                />
-              </div>
-
-              <div style={styles.inputGroup}>
-                <label style={styles.label}>
-                  AREA / LOCATION <span style={styles.hintText}></span>
-                </label>
-                <MasterDataInput
-                  type="area"
-                  placeholder="e.g. Vastrapur"
-                  value={formData.area}
-                  onChange={(val) => handleInputChange('area', val)}
-                  inputStyle={styles.input}
-                />
-              </div>
+            {/* AREA / LOCATION */}
+            <div style={styles.inputGroup}>
+              <label style={styles.label}>
+                AREA / LOCATION <span style={styles.hintText}></span>
+              </label>
+              <MasterDataInput
+                type="area"
+                placeholder="e.g. Vastrapur"
+                value={formData.area}
+                onChange={(val) => handleInputChange('area', val)}
+                inputStyle={styles.input}
+              />
             </div>
 
             {/* REGISTRATION DONE BY, PHONE NUMBER */}
-            <div style={styles.grid2}>
+            <div className="cms-grid-responsive" style={styles.grid2}>
               <div style={styles.inputGroup}>
                 <label style={styles.label}>
                   REGISTRATION DONE BY <span style={styles.requiredMark}>*</span>
@@ -593,6 +580,7 @@ export const FamilyHeadRegistration = ({ onNavigateToAddMember, onNavigateToPati
 
         {/* DRAGGER AT BORDER: Resize Form vs Directory */}
         <div
+          className="cms-split-dragger"
           onMouseDown={() => setIsDraggingDivider(true)}
           style={{
             ...styles.paneDragger,
@@ -605,6 +593,7 @@ export const FamilyHeadRegistration = ({ onNavigateToAddMember, onNavigateToPati
 
         {/* RIGHT PANE: Registered Families Directory with Full CRUD */}
         <section
+          className="cms-split-pane"
           style={{
             ...styles.directoryPane,
             width: `calc(${100 - formWidthPercent}% - 8px)`,
