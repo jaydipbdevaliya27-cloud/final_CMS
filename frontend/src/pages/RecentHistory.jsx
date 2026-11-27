@@ -37,6 +37,12 @@ export const RecentHistory = ({
   onNavigateToAddPatient,
 }) => {
   const { doctor } = useAuth();
+  const [isMobile, setIsMobile] = useState(() => (typeof window !== 'undefined' ? window.innerWidth <= 900 : false));
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth <= 900);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
   const [visits, setVisits] = useState(() => recentVisitsCache || []);
   const [loading, setLoading] = useState(() => !recentVisitsCache);
   const [searchQuery, setSearchQuery] = useState('');
@@ -592,13 +598,13 @@ export const RecentHistory = ({
       )}
 
       {/* TOP HEADER: Universal Patient Search / Filter Bar */}
-      <div style={styles.topBar}>
+      <div style={{ ...styles.topBar, ...(isMobile ? { flexDirection: 'column', alignItems: 'stretch', gap: '8px' } : {}) }}>
         <div style={styles.titleSection}>
           <div style={styles.titleIconBadge}>
             <Clock size={18} color="#0D5C4E" />
           </div>
           <div>
-            <h1 style={styles.heading}>Recent History / Case Ledger</h1>
+            <h1 style={{ ...styles.heading, ...(isMobile ? { fontSize: '15px' } : {}) }}>Recent History / Case Ledger</h1>
             <span style={styles.subHeading}>
               Live chronological patient OPD records, lab alerts & financial status
             </span>
@@ -606,7 +612,7 @@ export const RecentHistory = ({
         </div>
 
         {/* Filter Pills: Today, Yesterday, All, Custom */}
-        <div style={styles.filterPillTrack}>
+        <div style={{ ...styles.filterPillTrack, ...(isMobile ? { flexWrap: 'wrap', width: '100%' } : {}) }}>
           {[
             { key: 'today', label: 'Today' },
             { key: 'yesterday', label: 'Yesterday' },
@@ -644,8 +650,8 @@ export const RecentHistory = ({
       </div>
 
       {/* SEARCH STRIP MATCHING USER PHOTO */}
-      <div style={styles.searchStrip}>
-        <div style={styles.searchInputWrap}>
+      <div style={{ ...styles.searchStrip, ...(isMobile ? { flexDirection: 'column', alignItems: 'stretch', gap: '8px' } : {}) }}>
+        <div style={{ ...styles.searchInputWrap, ...(isMobile ? { width: '100%', maxWidth: '100%', minWidth: 0 } : {}) }}>
           <Search size={16} color="#64748B" style={styles.searchIcon} />
           <input
             type="text"
@@ -692,7 +698,7 @@ export const RecentHistory = ({
         </div>
 
         {/* Right Action: Record Count & Add Patient button */}
-        <div style={styles.searchStripRight}>
+        <div style={{ ...styles.searchStripRight, ...(isMobile ? { flexWrap: 'wrap', justifyContent: 'space-between', width: '100%' } : {}) }}>
           <div style={styles.recordCountBadge}>
             {loading ? 'Loading...' : `${displayedVisits.length} Cases Found`}
           </div>
@@ -738,7 +744,178 @@ export const RecentHistory = ({
         </div>
       </div>
 
-      {/* MAIN TABLE CONTAINER MATCHING PHOTO */}
+      {/* MAIN VIEW: Mobile Scrollable Cards OR Desktop Table */}
+      {isMobile ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', paddingBottom: '12px' }}>
+          {loading && displayedVisits.length === 0 ? (
+            <div style={{ background: '#FFFFFF', borderRadius: '10px', padding: '24px', textAlign: 'center', color: '#64748B', border: '1px solid #E2E8F0' }}>
+              Loading recent visits...
+            </div>
+          ) : displayedVisits.length === 0 ? (
+            <div style={{ background: '#FFFFFF', borderRadius: '10px', padding: '24px', textAlign: 'center', color: '#64748B', border: '1px solid #E2E8F0' }}>
+              No matching records found.
+            </div>
+          ) : (
+            displayedVisits.map((visit, idx) => {
+              const { dateStr, timeStr } = formatDateTime(visit);
+              const isDueCollection = Boolean(
+                (visit.reference && visit.reference.toUpperCase().includes('DUE COLLECTION')) ||
+                (Number(visit.charge || 0) === 0 &&
+                  Number(visit.received || 0) > 0 &&
+                  (!visit.prescriptions || visit.prescriptions.length === 0) &&
+                  (!visit.treatments || visit.treatments.length === 0))
+              );
+              const complaints = !isDueCollection && visit.complaint ? visit.complaint.toUpperCase() : '';
+              let ipdList = [];
+              if (!isDueCollection && visit.ipdDetails) {
+                if (Array.isArray(visit.ipdDetails)) {
+                  ipdList = visit.ipdDetails.map((i) => (typeof i === 'string' ? i.trim() : (i?.item || '').trim())).filter(Boolean);
+                } else if (typeof visit.ipdDetails === 'string' && visit.ipdDetails.trim()) {
+                  ipdList = visit.ipdDetails.split(',').map((s) => s.trim()).filter(Boolean);
+                }
+              }
+              const clinicMeds = !isDueCollection && Array.isArray(visit.treatments) ? visit.treatments : [];
+              const rxMeds = !isDueCollection && Array.isArray(visit.prescriptions) ? visit.prescriptions : [];
+              const alerts = getLabAlerts(visit);
+              const caseCharge = Number(visit.charge) || 0;
+              const caseReceived = Number(visit.received) || 0;
+              const caseDue = Math.max(0, caseCharge - caseReceived);
+              const rawAllergies = visit.allergies || [];
+              const allergiesList = (Array.isArray(rawAllergies) ? rawAllergies : [rawAllergies])
+                .flatMap((a) => (typeof a === 'string' ? a.split(',') : [String(a || '')]))
+                .map((a) => a.trim())
+                .filter(Boolean);
+
+              return (
+                <div
+                  key={visit._id || idx}
+                  style={{
+                    backgroundColor: isDueCollection ? '#F0FDF4' : '#FFFFFF',
+                    border: '1.5px solid #CBD5E1',
+                    borderRadius: '10px',
+                    padding: '10px 12px',
+                    boxShadow: '0 2px 6px rgba(15, 23, 42, 0.06)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '7px',
+                  }}
+                >
+                  {/* Card Top: Patient Name + Date/Time + Charge/Due */}
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ fontSize: '14px', fontWeight: 800, color: '#0F172A', wordBreak: 'break-word' }}>
+                        {visit.patientName || 'PATIENT'}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '11px', fontWeight: 700, color: '#0D5C4E', backgroundColor: '#E6F4F1', padding: '1px 6px', borderRadius: '4px' }}>
+                          {dateStr}
+                        </span>
+                        <span style={styles.timeBadge}>{timeStr}</span>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '3px', flexShrink: 0 }}>
+                      {isDueCollection ? (
+                        <span style={{ fontSize: '11px', fontWeight: 800, color: '#065F46', backgroundColor: '#DCFCE7', border: '1px solid #6EE7B7', padding: '2px 7px', borderRadius: '5px' }}>
+                          PAID ₹{caseReceived.toLocaleString('en-IN')}
+                        </span>
+                      ) : (
+                        <>
+                          <span style={{ fontSize: '11.5px', fontWeight: 800, color: '#0F172A', backgroundColor: '#F1F5F9', padding: '2px 7px', borderRadius: '5px' }}>
+                            ₹{caseCharge.toLocaleString('en-IN')}
+                          </span>
+                          {caseDue > 0 && (
+                            <span style={{ fontSize: '11px', fontWeight: 800, color: '#B91C1C', backgroundColor: '#FEE2E2', border: '1px solid #FCA5A5', padding: '1px 7px', borderRadius: '5px' }}>
+                              DUE ₹{caseDue.toLocaleString('en-IN')}
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Allergy Pill */}
+                  {allergiesList.length > 0 && (
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', backgroundColor: '#FEE2E2', color: '#B91C1C', border: '1px solid #FCA5A5', padding: '3px 8px', borderRadius: '5px', fontSize: '11px', fontWeight: 800, alignSelf: 'flex-start' }}>
+                      <ShieldAlert size={12} color="#DC2626" />
+                      <span>ALLERGY: {allergiesList.join(', ')}</span>
+                    </div>
+                  )}
+
+                  {/* Clinical Details */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '12px', color: '#1E293B', borderTop: '1px solid #F1F5F9', paddingTop: '6px' }}>
+                    {complaints && (
+                      <div><strong style={{ color: '#0F766E' }}>Complaints:</strong> {complaints}</div>
+                    )}
+                    {ipdList.length > 0 && (
+                      <div><strong style={{ color: '#C2410C' }}>IPD:</strong> {ipdList.join(', ')}</div>
+                    )}
+                    {clinicMeds.length > 0 && (
+                      <div>
+                        <strong style={{ color: '#1D4ED8' }}>Clinic Med:</strong>{' '}
+                        {clinicMeds.map((m) => `${m.item}${m.qty ? ` (${m.qty})` : ''}`).join(', ')}
+                      </div>
+                    )}
+                    {rxMeds.length > 0 && (
+                      <div>
+                        <strong style={{ color: '#0D5C4E' }}>Rx:</strong>{' '}
+                        {rxMeds.map((r) => `${r.medicine}${r.qty ? ` (${r.qty})` : ''}`).join(', ')}
+                      </div>
+                    )}
+                    {alerts.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '2px' }}>
+                        {alerts.map((al, aIdx) => (
+                          <span key={aIdx} style={{ fontSize: '10.5px', fontWeight: 700, color: '#991B1B', backgroundColor: '#FEF2F2', border: '1px solid #FECACA', padding: '1px 6px', borderRadius: '4px' }}>
+                            {al.label}: {al.value}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Card Footer Actions */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', borderTop: '1px solid #F1F5F9', paddingTop: '7px', marginTop: '2px' }}>
+                    <button
+                      type="button"
+                      onClick={() => handleActionNewCase(visit)}
+                      style={{ ...styles.btnNewCase, flex: 1, width: 'auto', gap: '4px', padding: '6px 8px', fontSize: '11px', fontWeight: 700, color: '#0284C7' }}
+                    >
+                      <FilePlus size={13} color="#0284C7" />
+                      <span>Case</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleActionEditCase(visit)}
+                      disabled={isDueCollection}
+                      style={{ ...styles.btnEditCase, flex: 1, width: 'auto', gap: '4px', padding: '6px 8px', fontSize: '11px', fontWeight: 700, color: '#D97706', opacity: isDueCollection ? 0.35 : 1 }}
+                    >
+                      <Pencil size={13} color="#D97706" />
+                      <span>Edit</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleActionPrint(visit)}
+                      style={{ ...styles.btnPrint, flex: 1, width: 'auto', gap: '4px', padding: '6px 8px', fontSize: '11px', fontWeight: 700, color: '#0F766E' }}
+                    >
+                      <Printer size={13} color="#0F766E" />
+                      <span>Print</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenDelete(visit)}
+                      style={{ ...styles.btnDelete, flex: 1, width: 'auto', gap: '4px', padding: '6px 8px', fontSize: '11px', fontWeight: 700, color: '#DC2626' }}
+                    >
+                      <Trash2 size={13} color="#DC2626" />
+                      <span>Del</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      ) : (
+      /* MAIN TABLE CONTAINER MATCHING PHOTO */
       <div style={styles.tableCard}>
         <div style={styles.tableScroll}>
           <table style={styles.table}>
@@ -1123,6 +1300,7 @@ export const RecentHistory = ({
           </table>
         </div>
       </div>
+      )}
 
       {/* MODAL 1: DOCTOR PASSWORD AUTHENTICATION FOR DELETION */}
       {deleteModalOpen && visitToDelete && (
