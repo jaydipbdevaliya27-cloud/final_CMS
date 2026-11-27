@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { familyAPI } from '../services/api';
 import { MasterDataInput } from '../components/common/MasterDataInput';
 import { useDebounce } from '../hooks/useDebounce';
+import { removeCachedFamily } from '../utils/patientCache';
 import {
   ListChecks,
   Network,
@@ -210,6 +211,7 @@ export const FamilyHeadRegistration = ({ onNavigateToAddMember, onNavigateToPati
     try {
       const res = await familyAPI.delete(fam.familyId);
       if (res.success) {
+        removeCachedFamily(fam.familyId);
         setSuccessMessage(res.message);
         if (editingFamily && editingFamily.familyId === fam.familyId) {
           handleCancelEdit();

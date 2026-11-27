@@ -1,6 +1,9 @@
 import Family from '../models/Family.js';
 import Patient from '../models/Patient.js';
 import Counter from '../models/Counter.js';
+import Visit from '../models/Visit.js';
+import LabReport from '../models/LabReport.js';
+import Certificate from '../models/Certificate.js';
 import { autoSaveMasterItem } from './masterDataController.js';
 
 // Helper: Get or initialize next 5-digit sequence starting with 00001
@@ -383,12 +386,33 @@ export const deleteFamily = async (req, res) => {
       });
     }
 
-    // Cascade delete all associated patients in this family
-    const deletedPatients = await Patient.deleteMany({ familyId });
+    // Collect all patientIds in this family before deleting them
+    const familyPatients = await Patient.find({ familyId }).select('patientId').lean();
+    const patientIds = familyPatients.map((p) => p.patientId).filter(Boolean);
+
+    // Cascade delete all associated patients, visits, lab reports, and certificates
+    const [deletedPatients, deletedVisits, deletedLabReports, deletedCertificates] = await Promise.all([
+      Patient.deleteMany({ familyId }),
+      Visit.deleteMany({
+        $or: [
+          { familyId },
+          ...(patientIds.length > 0 ? [{ patientId: { $in: patientIds } }] : []),
+        ],
+      }),
+      LabReport.deleteMany({
+        $or: [
+          { familyId },
+          ...(patientIds.length > 0 ? [{ patientId: { $in: patientIds } }] : []),
+        ],
+      }),
+      patientIds.length > 0
+        ? Certificate.deleteMany({ patientId: { $in: patientIds } })
+        : Promise.resolve({ deletedCount: 0 }),
+    ]);
 
     return res.status(200).json({
       success: true,
-      message: `Family FAM-${familyId} and ${deletedPatients.deletedCount} linked patient record(s) deleted successfully`,
+      message: `Family FAM-${familyId} and ${deletedPatients.deletedCount} linked patient(s), ${deletedVisits.deletedCount} visit(s), ${deletedLabReports.deletedCount} lab report(s), and ${deletedCertificates.deletedCount} certificate(s) deleted successfully`,
     });
   } catch (error) {
     console.error('Error deleting family:', error);

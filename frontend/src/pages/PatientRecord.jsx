@@ -11,6 +11,7 @@ import {
   searchPatientsInMemory,
   searchFamiliesInMemory,
   updateCachedPatient,
+  removeCachedPatient,
 } from '../utils/patientCache';
 import { useDebounce } from '../hooks/useDebounce';
 import { InvestigationReportModal } from '../components/reports/InvestigationReportModal';
@@ -2207,17 +2208,31 @@ export const PatientRecord = ({
   const handleDeletePatient = async () => {
     try {
       setDeletingPatient(true);
-      const res = await patientAPI.delete(currentPatient._id);
+      const deletedPid = currentPatient.patientId;
+      const deletedMongoId = currentPatient._id;
+      const deletedName = currentPatient.name;
+
+      const res = await patientAPI.delete(deletedMongoId);
       if (res.success) {
         setShowDeleteModal(false);
-        showToast(`Patient ${currentPatient.name} deleted successfully.`);
-        const listRes = await patientAPI.getAll('');
-        if (listRes.success && listRes.data && listRes.data.length > 0) {
-          setCurrentPatient(listRes.data[0]);
-        } else {
-          setCurrentPatient(null);
-          setPatientVisits([]);
-        }
+        // Immediately purge from RAM cache, recent searches, and dropdown visit cache
+        removeCachedPatient(deletedPid, deletedMongoId);
+        setRecentPatientsList((prev) => {
+          const updated = prev.filter((item) => item.patientId !== deletedPid && item._id !== deletedMongoId);
+          try {
+            localStorage.setItem('cms_recent_patients_v1', JSON.stringify(updated));
+          } catch (e) {}
+          return updated;
+        });
+        setDropdownVisitsMap((prev) => {
+          const next = { ...prev };
+          if (deletedPid) delete next[deletedPid];
+          return next;
+        });
+        setSearchResults((prev) => prev.filter((item) => item.patientId !== deletedPid && item._id !== deletedMongoId));
+        handleClearActivePatient();
+        setPatientSearch('');
+        showToast(`Patient ${deletedName} and all related records deleted successfully.`);
       }
     } catch (err) {
       showToast(err.response?.data?.message || 'Failed to delete patient', 'error');

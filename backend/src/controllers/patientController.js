@@ -2,6 +2,8 @@ import mongoose from 'mongoose';
 import Patient from '../models/Patient.js';
 import Family from '../models/Family.js';
 import Visit from '../models/Visit.js';
+import LabReport from '../models/LabReport.js';
+import Certificate from '../models/Certificate.js';
 import { autoSaveMasterItem } from './masterDataController.js';
 
 // @desc    Add a new Patient Member under an existing Family Head
@@ -422,21 +424,58 @@ export const deletePatient = async (req, res) => {
     const { familyId, isHead, patientId } = patient;
     await patient.deleteOne();
 
-    // Delete associated visits for this patient and recalculate family due
-    await Visit.deleteMany({ patientId });
-    const remainingFamilyVisits = await Visit.find({ familyId });
-    const newFamDue = remainingFamilyVisits.reduce((acc, v) => acc + (v.due || 0), 0);
+    // Cascade delete all records linked to this patient
+    const [deletedVisits, deletedLabReports, deletedCertificates] = await Promise.all([
+      Visit.deleteMany({ patientId }),
+      LabReport.deleteMany({ patientId }),
+      Certificate.deleteMany({ patientId }),
+    ]);
 
-    // Decrement member count on family if not head
-    const remainingCount = await Patient.countDocuments({ familyId });
-    await Family.findOneAndUpdate(
-      { familyId },
-      { membersCount: remainingCount, familyDue: newFamDue }
-    );
+    // Check remaining members in this family
+    const remainingMembers = await Patient.find({ familyId }).sort({ createdAt: 1 });
+    const remainingCount = remainingMembers.length;
+
+    if (remainingCount === 0 && familyId) {
+      // No members left in family -> clean up orphan Family and any family-level records
+      await Promise.all([
+        Family.deleteOne({ familyId }),
+        Visit.deleteMany({ familyId }),
+        LabReport.deleteMany({ familyId }),
+      ]);
+    } else if (familyId) {
+      // Recalculate family due from remaining visits
+      const remainingFamilyVisits = await Visit.find({ familyId }).select('charge received due').lean();
+      const totalCharge = remainingFamilyVisits.reduce((acc, v) => acc + Number(v.charge || 0), 0);
+      const totalReceived = remainingFamilyVisits.reduce((acc, v) => acc + Number(v.received || 0), 0);
+      const newFamDue = Math.max(0, totalCharge - totalReceived);
+
+      const familyUpdate = {
+        membersCount: remainingCount,
+        familyDue: newFamDue,
+      };
+
+      // If the deleted patient was the Family Head, promote the next remaining member
+      if (isHead && remainingMembers[0]) {
+        const nextHead = remainingMembers[0];
+        await Patient.updateOne(
+          { _id: nextHead._id },
+          { $set: { isHead: true, relation: 'Self' } }
+        );
+        familyUpdate.headName = nextHead.name;
+        familyUpdate.headPatientId = nextHead._id;
+      }
+
+      await Family.findOneAndUpdate({ familyId }, { $set: familyUpdate });
+    }
 
     return res.status(200).json({
       success: true,
-      message: 'Patient deleted successfully and dues updated',
+      message: 'Patient and all related records deleted successfully',
+      deleted: {
+        visits: deletedVisits.deletedCount || 0,
+        labReports: deletedLabReports.deletedCount || 0,
+        certificates: deletedCertificates.deletedCount || 0,
+      },
     });
   } catch (error) {
     return res.status(500).json({

@@ -153,6 +153,41 @@ export const updateCachedPatient = (patient) => {
 };
 
 /**
+ * Remove a deleted patient from RAM cache and localStorage immediately.
+ */
+export const removeCachedPatient = (patientId, mongoId = null) => {
+  if (!patientId && !mongoId) return;
+  patientCache = patientCache.filter((p) => {
+    if (patientId && p.patientId === patientId) return false;
+    if (mongoId && p._id === mongoId) return false;
+    return true;
+  });
+  if (typeof window !== 'undefined') {
+    window.patientCache = patientCache;
+    try {
+      window.dispatchEvent(new CustomEvent('cms_patient_deleted', { detail: { patientId, mongoId } }));
+    } catch (e) {}
+  }
+  persistCacheToStorage(patientCache);
+};
+
+/**
+ * Remove all patients belonging to a deleted family from RAM cache and localStorage immediately.
+ */
+export const removeCachedFamily = (familyId) => {
+  if (!familyId) return;
+  const famKey = String(familyId).trim();
+  patientCache = patientCache.filter((p) => String(p.familyId || p.family?.familyId || '').trim() !== famKey);
+  if (typeof window !== 'undefined') {
+    window.patientCache = patientCache;
+    try {
+      window.dispatchEvent(new CustomEvent('cms_patient_deleted', { detail: { familyId: famKey } }));
+    } catch (e) {}
+  }
+  persistCacheToStorage(patientCache);
+};
+
+/**
  * Ultra-fast sub-millisecond in-memory search across all preloaded patients.
  * Searches STRICTLY by patient's own name (or phone / patient ID).
  * Never matches family head or other family members.

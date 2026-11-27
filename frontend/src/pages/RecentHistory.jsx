@@ -151,7 +151,11 @@ export const RecentHistory = ({
       fetchRecentVisits();
     };
     window.addEventListener('cms_visit_saved', handleLiveVisitSync);
-    return () => window.removeEventListener('cms_visit_saved', handleLiveVisitSync);
+    window.addEventListener('cms_patient_deleted', handleLiveVisitSync);
+    return () => {
+      window.removeEventListener('cms_visit_saved', handleLiveVisitSync);
+      window.removeEventListener('cms_patient_deleted', handleLiveVisitSync);
+    };
   }, [debouncedSearch, selectedPeriod, selectedDate]);
 
   // Instant synchronous in-memory filter across loaded visits with latest edited cases ranked at the top
