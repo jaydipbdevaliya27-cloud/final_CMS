@@ -185,15 +185,28 @@ export const RecentHistory = ({
       });
     }
 
-    // Always sort by latest updatedAt / createdAt so edited cases immediately move to the top
+    // Sort strictly by visitDate descending (latest date first -> oldest at the end), then createdAt descending
+    const getDateKey = (v) => {
+      const raw = String(v.visitDate || '').trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+      if (/^\d{2}-\d{2}-\d{4}$/.test(raw)) {
+        const [dd, mm, yyyy] = raw.split('-');
+        return `${yyyy}-${mm}-${dd}`;
+      }
+      const d = new Date(v.visitDate || v.createdAt || 0);
+      return isNaN(d.getTime()) ? '0000-00-00' : d.toISOString().split('T')[0];
+    };
+
     const sorted = [...list].sort((a, b) => {
-      const aTime = new Date(a.updatedAt || a.createdAt || a.visitDate || 0).getTime();
-      const bTime = new Date(b.updatedAt || b.createdAt || b.visitDate || 0).getTime();
+      const aDate = getDateKey(a);
+      const bDate = getDateKey(b);
+      if (bDate !== aDate) return bDate.localeCompare(aDate);
+      const aTime = new Date(a.createdAt || a.updatedAt || 0).getTime();
+      const bTime = new Date(b.createdAt || b.updatedAt || 0).getTime();
       return bTime - aTime;
     });
 
     // Return all case entries so all patient visits are shown in Recent History
-    // Sorted by latest updatedAt / createdAt descending so edited cases immediately move to top
     const uniqueVisits = [];
     const seenIds = new Set();
     for (const v of sorted) {
@@ -652,16 +665,16 @@ export const RecentHistory = ({
           <table style={styles.table}>
             <thead>
               <tr style={styles.theadRow}>
-                <th style={{ ...styles.th, width: '110px' }}>Date & Time</th>
-                <th style={{ ...styles.th, width: '200px' }}>Patient Name</th>
-                <th style={{ ...styles.th, width: '150px' }}>Complaints</th>
-                <th style={{ ...styles.th, width: '110px' }}>IPD Detail</th>
-                <th style={{ ...styles.th, width: '160px' }}>Clinic Med</th>
-                <th style={{ ...styles.th, width: '200px' }}>Prescription</th>
-                <th style={{ ...styles.th, width: '140px' }}>Lab Alerts</th>
-                <th style={{ ...styles.th, width: '90px', textAlign: 'right' }}>Charged (₹)</th>
-                <th style={{ ...styles.th, width: '80px', textAlign: 'right' }}>Due (₹)</th>
-                <th style={{ ...styles.th, width: '140px', textAlign: 'center' }}>Act</th>
+                <th style={{ ...styles.th, width: '8%' }}>Date & Time</th>
+                <th style={{ ...styles.th, width: '14%' }}>Patient Name</th>
+                <th style={{ ...styles.th, width: '11%' }}>Complaints</th>
+                <th style={{ ...styles.th, width: '9%' }}>IPD Detail</th>
+                <th style={{ ...styles.th, width: '12%' }}>Clinic Med</th>
+                <th style={{ ...styles.th, width: '15%' }}>Prescription</th>
+                <th style={{ ...styles.th, width: '11%' }}>Lab Alerts</th>
+                <th style={{ ...styles.th, width: '6%', textAlign: 'right' }}>Charged</th>
+                <th style={{ ...styles.th, width: '6%', textAlign: 'right' }}>Due</th>
+                <th style={{ ...styles.th, width: '8%', textAlign: 'center' }}>Act</th>
               </tr>
             </thead>
             <tbody>
@@ -769,15 +782,6 @@ export const RecentHistory = ({
                         <div style={{ marginTop: '2px' }}>
                           <span style={styles.timeBadge}>{timeStr}</span>
                         </div>
-                        {isEdited && (
-                          <div style={styles.editedInfoBox}>
-                            <span style={styles.editedBadge}>EDITED</span>
-                            <div style={styles.editedDateTimeText}>
-                              {editedDateStr && <span>{editedDateStr}</span>}
-                              {editedTimeStr && <span>{editedTimeStr}</span>}
-                            </div>
-                          </div>
-                        )}
                       </td>
 
                       {/* 2. Patient Name & Highlighted Allergies Only */}
@@ -1556,6 +1560,8 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: '8px',
     padding: '6px 12px',
     backgroundColor: '#FFFFFF',
     borderRadius: '8px',
@@ -1710,12 +1716,13 @@ const styles = {
   tableScroll: {
     flex: 1,
     overflowY: 'auto',
-    overflowX: 'auto',
+    overflowX: 'hidden',
   },
   table: {
     width: '100%',
+    tableLayout: 'fixed',
     borderCollapse: 'collapse',
-    fontSize: '12px',
+    fontSize: '11.5px',
   },
   theadRow: {
     backgroundColor: '#0D5C4E',
@@ -1725,22 +1732,23 @@ const styles = {
     zIndex: 2,
   },
   th: {
-    padding: '9px 10px',
-    fontSize: '11px',
+    padding: '7px 6px',
+    fontSize: '10.5px',
     fontWeight: '700',
-    letterSpacing: '0.3px',
+    letterSpacing: '0.2px',
     textAlign: 'left',
     borderRight: '1px solid rgba(255, 255, 255, 0.15)',
-    whiteSpace: 'nowrap',
+    whiteSpace: 'normal',
+    wordBreak: 'break-word',
   },
   tr: {
     borderBottom: '1px solid #E2E8F0',
     transition: 'background-color 0.1s ease',
   },
   tdDateTime: {
-    padding: '8px 10px',
+    padding: '6px 6px',
     verticalAlign: 'top',
-    whiteSpace: 'nowrap',
+    wordBreak: 'break-word',
   },
   dateText: {
     fontWeight: '700',
@@ -1787,15 +1795,18 @@ const styles = {
     flexDirection: 'column',
   },
   tdPatient: {
-    padding: '8px 10px',
+    padding: '6px 6px',
     verticalAlign: 'top',
+    wordBreak: 'break-word',
+    overflowWrap: 'anywhere',
   },
   patientName: {
     fontWeight: '700',
     color: '#0F172A',
-    fontSize: '13px',
+    fontSize: '12px',
     textTransform: 'uppercase',
     letterSpacing: '-0.1px',
+    wordBreak: 'break-word',
   },
   patientSubMeta: {
     display: 'flex',
@@ -1822,24 +1833,28 @@ const styles = {
     fontFamily: 'monospace',
   },
   tdComplaints: {
-    padding: '8px 10px',
+    padding: '6px 6px',
     verticalAlign: 'top',
+    wordBreak: 'break-word',
+    overflowWrap: 'anywhere',
   },
   complaintText: {
-    fontSize: '11.5px',
+    fontSize: '11px',
     color: '#1E293B',
     fontWeight: '600',
-    lineHeight: '1.4',
+    lineHeight: '1.35',
   },
   tdIpd: {
-    padding: '8px 10px',
+    padding: '6px 6px',
     verticalAlign: 'top',
+    wordBreak: 'break-word',
   },
   ipdBadgesList: {
     display: 'flex',
     flexDirection: 'column',
     gap: '3px',
     alignItems: 'flex-start',
+    maxWidth: '100%',
   },
   ipdBadge: {
     display: 'inline-block',
@@ -1847,11 +1862,13 @@ const styles = {
     color: '#92400E',
     border: '1px solid #FCD34D',
     borderRadius: '4px',
-    padding: '2px 6px',
-    fontSize: '11px',
+    padding: '2px 5px',
+    fontSize: '10.5px',
     fontWeight: '700',
     lineHeight: '1.25',
-    whiteSpace: 'nowrap',
+    whiteSpace: 'normal',
+    wordBreak: 'break-word',
+    maxWidth: '100%',
   },
   ipdText: {
     fontSize: '11.5px',
@@ -1859,8 +1876,10 @@ const styles = {
     fontWeight: '700',
   },
   tdMeds: {
-    padding: '8px 10px',
+    padding: '6px 6px',
     verticalAlign: 'top',
+    wordBreak: 'break-word',
+    overflowWrap: 'anywhere',
   },
   medsList: {
     display: 'flex',
@@ -1871,27 +1890,30 @@ const styles = {
     display: 'flex',
     alignItems: 'flex-start',
     gap: '4px',
-    fontSize: '11.5px',
+    fontSize: '11px',
     color: '#1E293B',
-    lineHeight: '1.35',
+    lineHeight: '1.3',
   },
   bullet: {
     color: '#64748B',
-    fontSize: '12px',
+    fontSize: '11px',
   },
   medName: {
     fontWeight: '600',
     textTransform: 'uppercase',
+    wordBreak: 'break-word',
   },
   tdAlerts: {
-    padding: '8px 10px',
+    padding: '6px 6px',
     verticalAlign: 'top',
+    wordBreak: 'break-word',
   },
   alertsList: {
     display: 'flex',
     flexDirection: 'column',
     gap: '3px',
     alignItems: 'flex-start',
+    maxWidth: '100%',
   },
   badgeRed: {
     display: 'inline-flex',
@@ -1901,10 +1923,12 @@ const styles = {
     color: '#DC2626',
     border: '1px solid #F87171',
     borderRadius: '4px',
-    padding: '2px 6px',
-    fontSize: '11px',
+    padding: '2px 5px',
+    fontSize: '10.5px',
     fontWeight: '700',
-    whiteSpace: 'nowrap',
+    whiteSpace: 'normal',
+    wordBreak: 'break-word',
+    maxWidth: '100%',
   },
   badgeBlue: {
     display: 'inline-flex',
@@ -1914,10 +1938,12 @@ const styles = {
     color: '#0284C7',
     border: '1px solid #7DD3FC',
     borderRadius: '4px',
-    padding: '2px 6px',
-    fontSize: '11px',
+    padding: '2px 5px',
+    fontSize: '10.5px',
     fontWeight: '700',
-    whiteSpace: 'nowrap',
+    whiteSpace: 'normal',
+    wordBreak: 'break-word',
+    maxWidth: '100%',
   },
   badgeGreen: {
     display: 'inline-flex',
@@ -1927,10 +1953,12 @@ const styles = {
     color: '#166534',
     border: '1px solid #86EFAC',
     borderRadius: '4px',
-    padding: '2px 6px',
-    fontSize: '11px',
+    padding: '2px 5px',
+    fontSize: '10.5px',
     fontWeight: '700',
-    whiteSpace: 'nowrap',
+    whiteSpace: 'normal',
+    wordBreak: 'break-word',
+    maxWidth: '100%',
   },
   badgeOrange: {
     display: 'inline-flex',
@@ -1940,10 +1968,12 @@ const styles = {
     color: '#C2410C',
     border: '1px solid #FDBA74',
     borderRadius: '4px',
-    padding: '2px 6px',
-    fontSize: '11px',
+    padding: '2px 5px',
+    fontSize: '10.5px',
     fontWeight: '700',
-    whiteSpace: 'nowrap',
+    whiteSpace: 'normal',
+    wordBreak: 'break-word',
+    maxWidth: '100%',
   },
   badgePurple: {
     display: 'inline-flex',
@@ -1953,31 +1983,33 @@ const styles = {
     color: '#6D28D9',
     border: '1px solid #C4B5FD',
     borderRadius: '4px',
-    padding: '2px 6px',
-    fontSize: '11px',
+    padding: '2px 5px',
+    fontSize: '10.5px',
     fontWeight: '700',
-    whiteSpace: 'nowrap',
+    whiteSpace: 'normal',
+    wordBreak: 'break-word',
+    maxWidth: '100%',
   },
   tdCharged: {
-    padding: '8px 10px',
+    padding: '6px 6px',
     verticalAlign: 'top',
     textAlign: 'right',
   },
   chargedText: {
-    fontSize: '13px',
+    fontSize: '12px',
     fontWeight: '700',
     color: '#D97706',
   },
   tdDue: {
-    padding: '8px 10px',
+    padding: '6px 6px',
     verticalAlign: 'top',
     textAlign: 'right',
   },
   dueText: {
-    fontSize: '13px',
+    fontSize: '12px',
   },
   tdAct: {
-    padding: '8px 8px',
+    padding: '6px 4px',
     verticalAlign: 'top',
     textAlign: 'center',
   },
@@ -1985,7 +2017,8 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: '5px',
+    flexWrap: 'wrap',
+    gap: '3px',
   },
   btnNewCase: {
     width: '28px',
