@@ -7,7 +7,11 @@
 
 export const calculateAgeFromDob = (dobString) => {
   if (!dobString) return '';
-  const birthDate = new Date(dobString);
+  const str = String(dobString).trim();
+  const ymdMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  const birthDate = ymdMatch
+    ? new Date(Number(ymdMatch[1]), Number(ymdMatch[2]) - 1, Number(ymdMatch[3]))
+    : new Date(str);
   if (isNaN(birthDate.getTime())) return '';
 
   const today = new Date();
@@ -80,7 +84,7 @@ export const getPatientDisplayAge = (patient) => {
   if (!patient) return '';
   const dob = patient.dob || '';
   const age = patient.age !== undefined && patient.age !== null ? String(patient.age) : '';
-  const recordedAt = patient.ageRecordedAt || patient.updatedAt || patient.createdAt || null;
+  const recordedAt = patient.ageRecordedAt || patient.createdAt || patient.updatedAt || null;
   return calculateContinuousAge(age, recordedAt, dob);
 };
 

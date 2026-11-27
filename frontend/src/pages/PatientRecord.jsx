@@ -858,6 +858,7 @@ export const PatientRecord = ({
               setCurrentPatient(res.patient);
               if (res.patient.dob) setPatientDob(res.patient.dob);
               if (res.patient.age !== undefined && res.patient.age !== null) setPatientAge(String(res.patient.age));
+              setPatientAgeRecordedAt(res.patient.ageRecordedAt || res.patient.createdAt || res.patient.updatedAt || null);
               if (res.patient.phone) setPatientPhone(res.patient.phone);
               if (res.patient.houseNo) setPatientHouseNo(res.patient.houseNo);
               if (res.patient.society) setPatientSociety(res.patient.society);
@@ -897,6 +898,7 @@ export const PatientRecord = ({
               currentPatientRef.current = res.patient;
               if (res.patient.dob) setPatientDob(res.patient.dob);
               if (res.patient.age !== undefined && res.patient.age !== null) setPatientAge(String(res.patient.age));
+              setPatientAgeRecordedAt(res.patient.ageRecordedAt || res.patient.createdAt || res.patient.updatedAt || null);
               if (res.patient.phone) setPatientPhone(res.patient.phone);
               if (res.patient.houseNo) setPatientHouseNo(res.patient.houseNo);
               if (res.patient.society) setPatientSociety(res.patient.society);
@@ -1157,7 +1159,7 @@ export const PatientRecord = ({
     setPatientDob(patient.dob || '');
     setPatientAge(patient.age !== undefined && patient.age !== null ? String(patient.age) : '');
     setPatientGender(patient.gender && patient.gender !== 'Not Specified' ? patient.gender : 'Male');
-    setPatientAgeRecordedAt(patient.ageRecordedAt || patient.updatedAt || patient.createdAt || null);
+    setPatientAgeRecordedAt(patient.ageRecordedAt || patient.createdAt || patient.updatedAt || null);
     setAgeManuallyEdited(false);
     setPatientPhone(patient.phone || '');
     setPatientHouseNo(patient.houseNo || patient.family?.houseNo || '');
@@ -2433,6 +2435,9 @@ export const PatientRecord = ({
     try {
       setEditSaving(true);
       const updatePayload = { ...editFormData };
+      if (String(editFormData.age || '').trim() !== String(currentPatient.age || '').trim()) {
+        updatePayload.ageRecordedAt = new Date().toISOString();
+      }
       if (editFamilyAction === 'link-existing' && editSelectedFamily?.familyId) {
         updatePayload.familyAction = 'link-existing';
         updatePayload.familyId = editSelectedFamily.familyId;
@@ -2453,6 +2458,11 @@ export const PatientRecord = ({
         setCurrentPatient(updatedPatient);
         currentPatientRef.current = updatedPatient;
         updateCachedPatient(updatedPatient);
+        if (res.patient.age !== undefined && res.patient.age !== null) {
+          setPatientAge(String(res.patient.age));
+          setPatientAgeRecordedAt(res.patient.ageRecordedAt || res.patient.createdAt || res.patient.updatedAt || null);
+          setAgeManuallyEdited(false);
+        }
         setShowEditModal(false);
         showToast('Patient details updated successfully!');
       }
@@ -5808,7 +5818,7 @@ export const PatientRecord = ({
                       <span style={styles.photoPatientValue}>
                         {calculateContinuousAge(
                           currentPatient?.age || printVisit.age,
-                          currentPatient?.ageRecordedAt || currentPatient?.updatedAt || currentPatient?.createdAt,
+                          currentPatient?.ageRecordedAt || currentPatient?.createdAt || currentPatient?.updatedAt,
                           patientDob || currentPatient?.dob || printVisit.dob
                         ) || '—'}
                       </span>
