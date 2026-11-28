@@ -476,8 +476,7 @@ export const AddMember = ({ initialFamilyId, onProceedToCaseEntry, onNavigateToF
               {/* RELATION TO HEAD */}
               <div style={{ ...styles.inputGroup, position: 'relative' }}>
                 <label style={styles.label}>
-                  RELATION TO HEAD <span style={styles.hintSub}>(ENTER TO MATCH)</span>{' '}
-                  <span style={styles.requiredMark}>*</span>
+                  RELATION TO HEAD <span style={styles.requiredMark}>*</span>
                 </label>
                 <input
                   type="text"
@@ -585,8 +584,7 @@ export const AddMember = ({ initialFamilyId, onProceedToCaseEntry, onNavigateToF
             <div style={styles.grid1}>
               <div style={styles.inputGroup}>
                 <label style={styles.label}>
-                  AREA / LOCATION <span style={styles.hintSub}>(ENTER TO MATCH)</span>{' '}
-                  <span style={styles.autoFilledTag}>(AUTO-FILLED, EDITABLE)</span>
+                  AREA / LOCATION
                 </label>
                 <MasterDataInput
                   type="area"
@@ -602,7 +600,7 @@ export const AddMember = ({ initialFamilyId, onProceedToCaseEntry, onNavigateToF
             <div style={styles.grid1}>
               <div style={styles.inputGroup}>
                 <label style={styles.label}>
-                  CONTACT PHONE <span style={styles.optionalTag}>(OPTIONAL)</span>
+                  CONTACT PHONE
                 </label>
                 <input
                   type="tel"

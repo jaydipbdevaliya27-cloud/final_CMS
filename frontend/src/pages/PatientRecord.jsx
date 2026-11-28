@@ -2779,9 +2779,6 @@ export const PatientRecord = ({
                               <div style={{ fontSize: 13, fontWeight: 800, color: '#0F172A' }}>
                                 Register New Patient: <span style={{ color: '#0D5C4E' }}>"{patientSearch.trim().toUpperCase()}"</span>
                               </div>
-                              <div style={{ fontSize: 11, color: '#475569', marginTop: 2 }}>
-                                Patient not found in clinic records. Click here or press <kbd style={styles.enterKeyBadge}>Enter â†µ</kbd> to start new entry.
-                              </div>
                             </div>
                             <span style={styles.newPatientQuickActionBtn}>
                               + Create Entry
@@ -3124,16 +3121,12 @@ export const PatientRecord = ({
                           ) : currentPatient.isNewPatient ? (
                             familyHeadName && familyHeadName.trim() ? (
                               <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#047857' }}>
-                                New Family Head (Auto-creates FAM ID on Save)
+                                New Family Head
                               </span>
-                            ) : (
-                              <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#64748B' }}>
-                                Optional — leave blank to link later
-                              </span>
-                            )
+                            ) : null
                           ) : (
                             <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#64748B' }}>
-                              No Family Head Linked — search or type to link
+                              Unlinked
                             </span>
                           )}
                         </div>
@@ -3258,7 +3251,6 @@ export const PatientRecord = ({
                               }}
                             >
                               <span>+ Use New Family Head: "{familyHeadName.trim().toUpperCase()}"</span>
-                              <span style={{ fontSize: '10px', color: '#047857' }}>New Family (Enter ↵)</span>
                             </div>
                           )}
 
@@ -3698,7 +3690,6 @@ export const PatientRecord = ({
                 <Syringe size={14} color="#EA580C" />
                 <span style={{ ...styles.photoHeaderTitle, color: '#9A3412' }}>IPD Detail</span>
               </div>
-              <span style={{ fontSize: 10, color: '#9A3412', fontWeight: 600 }}>Injections, IV Bottles & Procedures</span>
             </div>
             <div style={{ ...styles.photoCardBody, flex: 1, minHeight: 0, overflow: 'visible' }}>
               <div style={{ ...styles.photoInputAddRow, position: 'relative' }}>
@@ -5331,9 +5322,6 @@ export const PatientRecord = ({
                   <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: '#166534' }}>
                     Select Prescription Language
                   </h3>
-                  <span style={{ fontSize: '11px', color: '#16A34A', fontWeight: 600 }}>
-                    Use â†‘ / â†“ arrow keys & Enter to select & print (or press Esc)
-                  </span>
                 </div>
               </div>
               <button
@@ -6025,10 +6013,7 @@ export const PatientRecord = ({
               </div>
 
               {/* MODAL BOTTOM ACTION BAR (NON-PRINTABLE) */}
-              <div style={styles.printModalFooter} className="no-print">
-                <span style={{ fontSize: '12px', color: '#64748B' }}>
-                  Press <kbd style={{ padding: '2px 6px', background: '#F1F5F9', border: '1px solid #CBD5E1', borderRadius: '4px', fontWeight: 700, fontSize: '11px', color: '#334155' }}>Ctrl+P</kbd> to print &bull; <kbd style={{ padding: '2px 6px', background: '#F1F5F9', border: '1px solid #CBD5E1', borderRadius: '4px', fontWeight: 700, fontSize: '11px', color: '#334155' }}>Esc</kbd> to close
-                </span>
+              <div style={{ ...styles.printModalFooter, justifyContent: 'flex-end' }} className="no-print">
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <button
                     type="button"

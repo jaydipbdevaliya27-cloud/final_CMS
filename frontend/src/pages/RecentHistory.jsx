@@ -792,7 +792,7 @@ export const RecentHistory = ({
             title="Register new patient / Open Case Entry (Enter)"
           >
             <Plus size={15} />
-            <span>ADD PATIENT (Enter)</span>
+            <span>ADD PATIENT</span>
           </button>
         </div>
       </div>
@@ -1902,9 +1902,6 @@ export const RecentHistory = ({
                   <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: '#166534' }}>
                     Select Prescription Language
                   </h3>
-                  <span style={{ fontSize: '11px', color: '#16A34A', fontWeight: 600 }}>
-                    Use ↑ / ↓ & Enter to select & print (or press Esc)
-                  </span>
                 </div>
               </div>
               <button
