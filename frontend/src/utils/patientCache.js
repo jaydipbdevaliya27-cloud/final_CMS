@@ -59,15 +59,15 @@ if (typeof window !== 'undefined') {
 const persistCacheToStorage = (list) => {
   try {
     if (typeof window !== 'undefined' && window.localStorage) {
-      // Store essential fields to keep storage compact & fast
-      const compactList = list.slice(0, 3000).map((p) => ({
+      // Store essential fields to keep storage compact & fast for 5,000+ patients
+      const compactList = list.slice(0, 6000).map((p) => ({
         _id: p._id,
         patientId: p.patientId,
         familyId: p.familyId,
         name: p.name,
         age: p.age,
         dob: p.dob || '',
-        ageRecordedAt: p.ageRecordedAt || p.updatedAt || p.createdAt || null,
+        ageRecordedAt: p.ageRecordedAt || p.createdAt || p.updatedAt || null,
         houseNo: p.houseNo || p.family?.houseNo || '',
         gender: p.gender,
         phone: p.phone,
@@ -79,7 +79,6 @@ const persistCacheToStorage = (list) => {
         isHead: p.isHead,
         totalDue: p.totalDue,
         deposit: p.deposit,
-        recentVisits: Array.isArray(p.recentVisits) ? p.recentVisits.slice(0, 3) : [],
         family: p.family ? {
           familyId: p.family.familyId,
           headName: p.family.headName,

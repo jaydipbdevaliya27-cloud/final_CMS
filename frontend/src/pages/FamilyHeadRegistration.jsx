@@ -144,7 +144,7 @@ export const FamilyHeadRegistration = ({ onNavigateToAddMember, onNavigateToPati
   };
 
   // Debounced directory search
-  const debouncedDirectorySearch = useDebounce(directorySearch, 300);
+  const debouncedDirectorySearch = useDebounce(directorySearch, 100);
 
   useEffect(() => {
     loadNextId();

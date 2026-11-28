@@ -50,7 +50,8 @@ export const RecentHistory = ({
   const [loadingMore, setLoadingMore] = useState(false);
   const [loading, setLoading] = useState(() => !recentVisitsCache);
   const [searchQuery, setSearchQuery] = useState('');
-  const debouncedSearch = useDebounce(searchQuery, 120);
+  const debouncedSearch = useDebounce(searchQuery, 200);
+  const fetchSeqRef = useRef(0);
   const [selectedPeriod, setSelectedPeriod] = useState('all'); // 'today' | 'yesterday' | 'all' | 'custom'
   const [selectedDate, setSelectedDate] = useState(() => {
     const now = new Date();
@@ -101,8 +102,9 @@ export const RecentHistory = ({
     } catch (e) {}
   };
 
-  // Fetch recent visits (instant cache + background sync)
+  // Fetch recent visits (instant cache + background sync with stale-request guard)
   const fetchRecentVisits = async () => {
+    const seq = ++fetchSeqRef.current;
     try {
       if (!recentVisitsCache) {
         setLoading(true);
@@ -117,6 +119,7 @@ export const RecentHistory = ({
         params.date = selectedDate;
       }
       const res = await visitAPI.getRecent(params);
+      if (seq !== fetchSeqRef.current) return;
       if (res?.success) {
         const fetched = res.visits || [];
         setVisits(fetched);

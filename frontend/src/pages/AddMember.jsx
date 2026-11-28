@@ -46,7 +46,7 @@ export const AddMember = ({ initialFamilyId, onProceedToCaseEntry, onNavigateToF
   const [families, setFamilies] = useState([]);
   const [selectedFamily, setSelectedFamily] = useState(null);
   const [familySearch, setFamilySearch] = useState('');
-  const debouncedFamilySearch = useDebounce(familySearch, 250);
+  const debouncedFamilySearch = useDebounce(familySearch, 80);
   const [loadingFamilies, setLoadingFamilies] = useState(false);
   const [familyHighlightIndex, setFamilyHighlightIndex] = useState(0);
 

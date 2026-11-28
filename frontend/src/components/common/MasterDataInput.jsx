@@ -177,7 +177,7 @@ export const MasterDataInput = React.forwardRef(({
   };
 
   const currentToken = getActiveToken(value);
-  const debouncedToken = useDebounce(currentToken, 200);
+  const debouncedToken = useDebounce(currentToken, 60);
 
   // 1. Instant 0ms synchronous filtering from RAM cache (eliminates typing latency)
   useEffect(() => {

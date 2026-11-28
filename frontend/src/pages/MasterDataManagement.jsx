@@ -300,7 +300,7 @@ export const MasterDataManagement = () => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
-  const debouncedSearch = useDebounce(search, 300);
+  const debouncedSearch = useDebounce(search, 80);
 
   // Pagination State
   const [page, setPage] = useState(1);

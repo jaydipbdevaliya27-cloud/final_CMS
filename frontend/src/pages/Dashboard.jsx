@@ -69,7 +69,7 @@ export const Dashboard = () => {
   const [patientForNewCase, setPatientForNewCase] = useState(null);
   const [visitToEdit, setVisitToEdit] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const debouncedSearchQuery = useDebounce(searchQuery, 120);
+  const debouncedSearchQuery = useDebounce(searchQuery, 50);
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);

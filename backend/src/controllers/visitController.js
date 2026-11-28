@@ -962,8 +962,12 @@ export const getRecentVisits = async (req, res) => {
       }
     }
 
+    const countPromise = Object.keys(query).length === 0
+      ? Visit.estimatedDocumentCount()
+      : Visit.countDocuments(query);
+
     const [totalCount, visits] = await Promise.all([
-      Visit.countDocuments(query),
+      countPromise,
       Visit.find(query)
         .select('patientId familyId patientName visitDate createdAt updatedAt isEdited editedAt complaint complaintList ipdDetails treatments prescriptions bp sugar other reference charge received due allergies investigation investigationList labReport labReportId dietary')
         .sort({ visitDate: -1, createdAt: -1 })

@@ -243,7 +243,7 @@ export const PatientRecord = ({
   const { doctor } = useAuth();
   // --- Search & Patient State ---
   const [patientSearch, setPatientSearch] = useState('');
-  const debouncedSearch = useDebounce(patientSearch, 100);
+  const debouncedSearch = useDebounce(patientSearch, 50);
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
