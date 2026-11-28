@@ -1,4 +1,4 @@
-import MasterData from '../models/MasterData.js';
+import MasterData, { getMasterModel, getAllMasterModels, MASTER_COLLECTION_MAP } from '../models/MasterData.js';
 import { toUpperTrim } from '../utils/textUtils.js';
 
 // Escape regex special characters
@@ -26,14 +26,17 @@ export const autoSaveMasterItem = async (type, value, shortcut = '') => {
   }
 
   try {
-    const existing = await MasterData.findOne({
-      type,
-      value: { $regex: new RegExp(`^${escapeRegex(trimmed)}$`, 'i') },
-    });
+    const Model = getMasterModel(type);
+    const isDedicated = Boolean(MASTER_COLLECTION_MAP[String(type || '').trim().toLowerCase()]);
+    const findQuery = isDedicated
+      ? { value: { $regex: new RegExp(`^${escapeRegex(trimmed)}$`, 'i') } }
+      : { type, value: { $regex: new RegExp(`^${escapeRegex(trimmed)}$`, 'i') } };
+
+    const existing = await Model.findOne(findQuery);
     if (!existing) {
-      await MasterData.create({
+      await Model.create({
         type,
-        value: toUpperTrim(trimmed),
+        value: type === 'dietary' ? trimmed : toUpperTrim(trimmed),
         shortcut: toUpperTrim(shortcut),
       });
     }
@@ -151,11 +154,13 @@ export const getMasterItems = async (req, res) => {
     const skip = (page - 1) * limit;
 
     const query = {};
+    const Model = type ? getMasterModel(type) : MasterData;
+    const isDedicated = Boolean(type && MASTER_COLLECTION_MAP[String(type).trim().toLowerCase()]);
 
     if (type) {
-      query.type = type;
+      if (!isDedicated) query.type = type;
       if (type === 'navigation') {
-        const navCount = await MasterData.countDocuments({ type: 'navigation' });
+        const navCount = await Model.countDocuments(query);
         if (navCount === 0) {
           const defaultNav = [
             { value: 'Family Head Reg. (Register Family Head)', shortcut: 'F1' },
@@ -172,7 +177,7 @@ export const getMasterItems = async (req, res) => {
             { value: 'Save & Print Prescription (Save Visit & Open Clean Letterhead)', shortcut: 'Ctrl+Enter' },
           ];
           for (const n of defaultNav) {
-            await MasterData.create({
+            await Model.create({
               type: 'navigation',
               value: n.value,
               shortcut: n.shortcut,
@@ -183,15 +188,15 @@ export const getMasterItems = async (req, res) => {
     }
 
     if (search && search.trim()) {
-      const regex = new RegExp(search.trim(), 'i');
+      const regex = new RegExp(escapeRegex(search.trim()), 'i');
       query.$or = [
         { value: regex },
         { shortcut: regex },
       ];
     }
 
-    const total = await MasterData.countDocuments(query);
-    let items = await MasterData.find(query)
+    const total = await Model.countDocuments(query);
+    let items = await Model.find(query)
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
@@ -251,13 +256,16 @@ export const addMasterItem = async (req, res) => {
       });
     }
 
-    const trimmedValue = toUpperTrim(value);
+    const trimmedValue = type === 'dietary' ? value.trim() : toUpperTrim(value);
     const trimmedShortcut = toUpperTrim(shortcut);
+    const Model = getMasterModel(type);
+    const isDedicated = Boolean(MASTER_COLLECTION_MAP[String(type || '').trim().toLowerCase()]);
 
-    const existing = await MasterData.findOne({
-      type,
-      value: { $regex: new RegExp(`^${trimmedValue}$`, 'i') },
-    });
+    const findQuery = isDedicated
+      ? { value: { $regex: new RegExp(`^${escapeRegex(trimmedValue)}$`, 'i') } }
+      : { type, value: { $regex: new RegExp(`^${escapeRegex(trimmedValue)}$`, 'i') } };
+
+    const existing = await Model.findOne(findQuery);
 
     if (existing) {
       return res.status(400).json({
@@ -267,7 +275,7 @@ export const addMasterItem = async (req, res) => {
       });
     }
 
-    const newItem = await MasterData.create({
+    const newItem = await Model.create({
       type,
       value: trimmedValue,
       shortcut: trimmedShortcut,
@@ -292,8 +300,20 @@ export const addMasterItem = async (req, res) => {
 // @access  Private
 export const updateMasterItem = async (req, res) => {
   try {
-    const { value, shortcut } = req.body;
-    const item = await MasterData.findById(req.params.id);
+    const { value, shortcut, type } = req.body;
+    let item = null;
+    if (type && MASTER_COLLECTION_MAP[String(type).trim().toLowerCase()]) {
+      item = await getMasterModel(type).findById(req.params.id);
+    }
+    if (!item) {
+      for (const { model } of getAllMasterModels()) {
+        item = await model.findById(req.params.id);
+        if (item) break;
+      }
+    }
+    if (!item) {
+      item = await MasterData.findById(req.params.id);
+    }
 
     if (!item) {
       return res.status(404).json({
@@ -303,7 +323,7 @@ export const updateMasterItem = async (req, res) => {
     }
 
     if (value && value.trim()) {
-      item.value = toUpperTrim(value);
+      item.value = item.type === 'dietary' ? value.trim() : toUpperTrim(value);
     }
     if (shortcut !== undefined) {
       item.shortcut = toUpperTrim(shortcut);
@@ -330,7 +350,20 @@ export const updateMasterItem = async (req, res) => {
 // @access  Private
 export const deleteMasterItem = async (req, res) => {
   try {
-    const item = await MasterData.findByIdAndDelete(req.params.id);
+    const type = req.query.type || req.body?.type;
+    let item = null;
+    if (type && MASTER_COLLECTION_MAP[String(type).trim().toLowerCase()]) {
+      item = await getMasterModel(type).findByIdAndDelete(req.params.id);
+    }
+    if (!item) {
+      for (const { model } of getAllMasterModels()) {
+        item = await model.findByIdAndDelete(req.params.id);
+        if (item) break;
+      }
+    }
+    if (!item) {
+      item = await MasterData.findByIdAndDelete(req.params.id);
+    }
 
     if (!item) {
       return res.status(404).json({
