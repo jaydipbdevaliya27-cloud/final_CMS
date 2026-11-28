@@ -44,6 +44,10 @@ export const RecentHistory = ({
     return () => window.removeEventListener('resize', onResize);
   }, []);
   const [visits, setVisits] = useState(() => recentVisitsCache || []);
+  const [totalCount, setTotalCount] = useState(() => (recentVisitsCache ? recentVisitsCache.length : 0));
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [loading, setLoading] = useState(() => !recentVisitsCache);
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearch = useDebounce(searchQuery, 120);
@@ -107,6 +111,7 @@ export const RecentHistory = ({
         search: debouncedSearch.trim(),
         period: selectedPeriod,
         limit: 150,
+        page: 1,
       };
       if (selectedPeriod === 'custom' && selectedDate) {
         params.date = selectedDate;
@@ -115,6 +120,9 @@ export const RecentHistory = ({
       if (res?.success) {
         const fetched = res.visits || [];
         setVisits(fetched);
+        setPage(1);
+        setTotalCount(res.totalCount ?? fetched.length);
+        setHasMore(Boolean(res.hasMore));
         if (selectedPeriod === 'all' && !debouncedSearch.trim()) {
           recentVisitsCache = fetched;
         }
@@ -136,6 +144,7 @@ export const RecentHistory = ({
         search: (searchQuery || '').trim(),
         period: selectedPeriod,
         limit: 150,
+        page: 1,
       };
       if (selectedPeriod === 'custom' && selectedDate) {
         params.date = selectedDate;
@@ -144,6 +153,9 @@ export const RecentHistory = ({
       if (res?.success) {
         const fetched = res.visits || [];
         setVisits(fetched);
+        setPage(1);
+        setTotalCount(res.totalCount ?? fetched.length);
+        setHasMore(Boolean(res.hasMore));
         if (selectedPeriod === 'all' && !searchQuery.trim()) {
           recentVisitsCache = fetched;
         }
@@ -156,6 +168,45 @@ export const RecentHistory = ({
       showToast('Error refreshing records: ' + (err.message || 'Server error'), 'error');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleLoadMore = async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const nextPage = page + 1;
+      const params = {
+        search: (searchQuery || '').trim(),
+        period: selectedPeriod,
+        limit: 150,
+        page: nextPage,
+      };
+      if (selectedPeriod === 'custom' && selectedDate) {
+        params.date = selectedDate;
+      }
+      const res = await visitAPI.getRecent(params);
+      if (res?.success) {
+        const more = res.visits || [];
+        setVisits((prev) => {
+          const seen = new Set(prev.map((v) => String(v._id)));
+          const merged = [...prev];
+          for (const v of more) {
+            if (!seen.has(String(v._id))) {
+              seen.add(String(v._id));
+              merged.push(v);
+            }
+          }
+          return merged;
+        });
+        setPage(nextPage);
+        setTotalCount(res.totalCount ?? totalCount);
+        setHasMore(Boolean(res.hasMore));
+      }
+    } catch (err) {
+      showToast('Error loading more records: ' + (err.message || 'Server error'), 'error');
+    } finally {
+      setLoadingMore(false);
     }
   };
 
@@ -700,7 +751,9 @@ export const RecentHistory = ({
         {/* Right Action: Record Count & Add Patient button */}
         <div style={{ ...styles.searchStripRight, ...(isMobile ? { flexWrap: 'wrap', justifyContent: 'space-between', width: '100%' } : {}) }}>
           <div style={styles.recordCountBadge}>
-            {loading ? 'Loading...' : `${displayedVisits.length} Cases Found`}
+            {loading && visits.length === 0
+              ? 'Loading...'
+              : `${(totalCount || displayedVisits.length).toLocaleString('en-IN')} Cases Found`}
           </div>
 
           <button
@@ -1322,6 +1375,30 @@ export const RecentHistory = ({
           </table>
         </div>
       </div>
+      )}
+
+      {hasMore && (
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 4px 0' }}>
+          <button
+            type="button"
+            onClick={handleLoadMore}
+            disabled={loadingMore}
+            style={{
+              padding: '7px 18px',
+              borderRadius: '8px',
+              border: '1.5px solid #0D5C4E',
+              backgroundColor: '#E6F4F1',
+              color: '#0D5C4E',
+              fontWeight: 700,
+              fontSize: '12px',
+              cursor: loadingMore ? 'wait' : 'pointer',
+            }}
+          >
+            {loadingMore
+              ? 'Loading more...'
+              : `Load More Cases (Showing ${visits.length.toLocaleString('en-IN')} of ${(totalCount || visits.length).toLocaleString('en-IN')})`}
+          </button>
+        </div>
       )}
 
       {/* MODAL 1: DOCTOR PASSWORD AUTHENTICATION FOR DELETION */}

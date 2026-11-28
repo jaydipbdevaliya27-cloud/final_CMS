@@ -905,7 +905,10 @@ export const collectDue = async (req, res) => {
 // @access  Private
 export const getRecentVisits = async (req, res) => {
   try {
-    const { search = '', period = 'all', date = '', limit = 150 } = req.query;
+    const { search = '', period = 'all', date = '', limit = 150, page = 1 } = req.query;
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const pageLimit = Math.min(500, Math.max(1, parseInt(limit, 10) || 150));
+    const skip = (pageNum - 1) * pageLimit;
 
     const query = {};
 
@@ -959,11 +962,15 @@ export const getRecentVisits = async (req, res) => {
       }
     }
 
-    const visits = await Visit.find(query)
-      .select('patientId familyId patientName visitDate createdAt updatedAt isEdited editedAt complaint complaintList ipdDetails treatments prescriptions bp sugar other reference charge received due allergies investigation investigationList labReport labReportId dietary')
-      .sort({ visitDate: -1, createdAt: -1 })
-      .limit(Math.min(250, Number(limit) || 100))
-      .lean();
+    const [totalCount, visits] = await Promise.all([
+      Visit.countDocuments(query),
+      Visit.find(query)
+        .select('patientId familyId patientName visitDate createdAt updatedAt isEdited editedAt complaint complaintList ipdDetails treatments prescriptions bp sugar other reference charge received due allergies investigation investigationList labReport labReportId dietary')
+        .sort({ visitDate: -1, createdAt: -1 })
+        .skip(skip)
+        .limit(pageLimit)
+        .lean(),
+    ]);
 
     // Attach latest patient allergies & current totalDue
     const patientIds = [...new Set(visits.map((v) => v.patientId).filter(Boolean))];
@@ -1028,6 +1035,9 @@ export const getRecentVisits = async (req, res) => {
     return res.status(200).json({
       success: true,
       count: uniqueVisits.length,
+      totalCount,
+      page: pageNum,
+      hasMore: skip + uniqueVisits.length < totalCount,
       visits: uniqueVisits,
     });
   } catch (error) {
