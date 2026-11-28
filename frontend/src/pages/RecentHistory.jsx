@@ -981,7 +981,15 @@ export const RecentHistory = ({
       ) : (
       /* MAIN TABLE CONTAINER MATCHING PHOTO */
       <div style={styles.tableCard}>
-        <div style={styles.tableScroll}>
+        <div
+          style={styles.tableScroll}
+          onScroll={(e) => {
+            const el = e.currentTarget;
+            if (hasMore && !loadingMore && el.scrollTop + el.clientHeight >= el.scrollHeight - 160) {
+              handleLoadMore();
+            }
+          }}
+        >
           <table style={styles.table}>
             <thead>
               <tr style={styles.theadRow}>
@@ -1378,30 +1386,6 @@ export const RecentHistory = ({
           </table>
         </div>
       </div>
-      )}
-
-      {hasMore && (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 4px 0' }}>
-          <button
-            type="button"
-            onClick={handleLoadMore}
-            disabled={loadingMore}
-            style={{
-              padding: '7px 18px',
-              borderRadius: '8px',
-              border: '1.5px solid #0D5C4E',
-              backgroundColor: '#E6F4F1',
-              color: '#0D5C4E',
-              fontWeight: 700,
-              fontSize: '12px',
-              cursor: loadingMore ? 'wait' : 'pointer',
-            }}
-          >
-            {loadingMore
-              ? 'Loading more...'
-              : `Load More Cases (Showing ${visits.length.toLocaleString('en-IN')} of ${(totalCount || visits.length).toLocaleString('en-IN')})`}
-          </button>
-        </div>
       )}
 
       {/* MODAL 1: DOCTOR PASSWORD AUTHENTICATION FOR DELETION */}
@@ -2012,8 +1996,8 @@ const styles = {
     backgroundColor: '#F8FAFC',
     overflow: 'hidden',
     boxSizing: 'border-box',
-    padding: '10px 14px',
-    gap: '10px',
+    padding: '4px 6px',
+    gap: '8px',
   },
   toast: {
     position: 'fixed',

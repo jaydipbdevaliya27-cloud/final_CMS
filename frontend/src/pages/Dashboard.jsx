@@ -1550,8 +1550,8 @@ export const Dashboard = () => {
             ...styles.mainContent,
             width: isMobile ? '100%' : (isSidebarCollapsed ? 'calc(100% - 28px)' : `calc(100% - ${sidebarWidth}px)`),
             padding: isMobile
-              ? (activeTab === 'patient-record' ? '4px 4px 76px 4px' : '10px 10px 80px 10px')
-              : (activeTab === 'patient-record' ? '2px 4px' : '8px 12px'),
+              ? (activeTab === 'patient-record' || activeTab === 'recent-history' ? '4px 4px 76px 4px' : '10px 10px 80px 10px')
+              : (activeTab === 'patient-record' || activeTab === 'recent-history' ? '2px 4px' : '6px 8px'),
           }}
         >
           {/* PatientRecord is ALWAYS kept alive in the DOM so clinical case entry 100% persists across tab switches */}
